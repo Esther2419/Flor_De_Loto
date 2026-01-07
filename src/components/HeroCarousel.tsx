@@ -1,11 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
-
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const slides = [
     {
@@ -31,17 +31,32 @@ export default function HeroCarousel() {
     },
   ];
 
+  const resetTimeout = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [slides.length]);
+    resetTimeout();
+
+    timeoutRef.current = setTimeout(
+      () =>
+        setCurrentSlide((prevIndex) =>
+          prevIndex === slides.length - 1 ? 0 : prevIndex + 1
+        ),
+      5000
+    );
+
+    return () => {
+      resetTimeout();
+    };
+  }, [currentSlide]);
 
   return (
-    <div className="relative h-[50vh] w-full overflow-hidden bg-negro">
+    <div className="relative h-[50vh] w-full overflow-hidden bg-negro group">
       
-      {/* --- PORTADAS DE FONDO --- */}
+      {/* --- IMÁGENES DE FONDO --- */}
       {slides.map((slide, index) => (
         <div
           key={slide.id}
@@ -54,12 +69,12 @@ export default function HeroCarousel() {
             alt={slide.title}
             fill
             className="object-cover brightness-[0.6]"
-            priority={index === 0} 
+            priority={index === 0}
           />
         </div>
       ))}
 
-      {/* --- TEXTO SUPERPUESTO SOBRE LA IMAGEN --- */}
+      {/* --- TEXTO SUPERPUESTO --- */}
       <div className="absolute inset-0 flex flex-col items-center justify-center text-center px-4 z-10">
         {slides.map((slide, index) => (
           <div
@@ -84,15 +99,16 @@ export default function HeroCarousel() {
         ))}
       </div>
 
-      {}
+      {/* --- PUNTITOS DE NAVEGACIÓN (con delay) --- */}
       <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-20">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`w-2 h-2 rounded-full transition-all duration-500 ${
-              index === currentSlide ? "bg-[#C5A059] w-8" : "bg-white/30 hover:bg-white"
+            className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${
+              index === currentSlide ? "bg-[#C5A059] w-8" : "bg-white/30 hover:bg-white w-2"
             }`}
+            aria-label={`Ir a diapositiva ${index + 1}`}
           />
         ))}
       </div>
