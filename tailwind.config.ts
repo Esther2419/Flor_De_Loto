@@ -9,20 +9,19 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        dorado: '#BFA37C',
-        negroSuave: '#1A1A1A',
-        rosaPalo: '#F4C2C2',
-        crema: '#FFFCF9',
-        rosaBeige: '#EBD8D0',
-        
         rosaViejo: '#E5A1A6',
-        doradoMate: '#C5A059',
+        crema: '#F9F6EE',
+        negro: '#050505', 
+        dorado: '#C5A059',
+        gris: '#2D2D2D',
         verdeWhatsapp: '#25D366',
-        grisOscuro: '#2D2D2D',
+        goldDark: '#BF953F',
+        goldLight: '#F3E5AB',
       },
       fontFamily: {
         serif: ['var(--font-playfair)', 'serif'],
         sans: ['var(--font-lato)', 'sans-serif'],
+        roman: ['var(--font-cinzel)', 'serif'],
       },
     },
   },

@@ -8,13 +8,22 @@
     --foreground: 222.2 84% 4.9%;
   }
  
-  /* Estilos base para scroll suave */
   html {
     scroll-behavior: smooth;
   }
 
-  /* Tu color crema de fondo por defecto */
   body {
     @apply bg-crema text-negroSuave antialiased;
+  }
+}
+@layer utilities {
+  .animate-shine {
+    animation: shine 3s linear infinite;
+  }
+}
+
+@keyframes shine {
+  to {
+    background-position: 200% center;
   }
 }

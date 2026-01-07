@@ -1,48 +1,97 @@
 import Link from "next/link";
+import Image from "next/image";
+import prisma from "@/lib/prisma";
+import Navbar from "@/components/Navbar";
+export const dynamic = 'force-dynamic';
 
-export default function HomePage() {
+export default async function HomePage() {
+  // Conexión a la Base de Datos para obtener categorías
+  const categorias = await prisma.categorias.findMany({
+    where: { categoria_padre_id: null },
+    orderBy: { nombre: 'asc' },
+  });
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-crema px-4 text-center">
+    <main className="min-h-screen bg-crema">
       
+      {/* HEADER NEGRO PARA EL LOGO */}
+      <Navbar /> 
+
       {}
-      <div className="space-y-8 max-w-3xl animate-in fade-in zoom-in duration-700">
+      <div className="relative h-[50vh] w-full overflow-hidden">
+        {/* Imagen de la portada pe */}
+        <div className="absolute inset-0">
+          <Image
+            src="/portada.jpg"
+            alt="Flor de Loto Banner"
+            fill
+            className="object-cover brightness-[0.7]"
+            priority
+          />
+        </div>
         
         {}
-        <h1 className="font-serif text-6xl md:text-8xl text-dorado font-bold tracking-tight drop-shadow-sm">
-          Flor de Loto
-        </h1>
-
-        {}
-        <p className="font-sans text-xl md:text-2xl text-negroSuave/80 max-w-lg mx-auto leading-relaxed">
-          Donde la elegancia natural encuentra su diseño. <br />
-          Arreglos exclusivos para momentos inolvidables.
-        </p>
-        
-        {}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center pt-8">
-          
-          {}
-          <Link 
-            href="/catalogo" 
-            className="bg-dorado hover:bg-doradoMate text-white px-8 py-4 rounded-full transition-all font-sans font-semibold text-lg shadow-lg hover:shadow-xl hover:-translate-y-1"
-          >
-            Ver Catálogo
-          </Link>
-
-          {}
-          <button 
-            className="border-2 border-dorado text-dorado px-8 py-4 rounded-full hover:bg-dorado/10 transition-all font-sans font-semibold text-lg"
-          >
-            Contactar ahora
-          </button>
+        <div className="relative z-10 flex flex-col h-full items-center justify-center text-center px-4 animate-in fade-in zoom-in duration-1000">
+          <h2 className="font-serif text-4xl md:text-6xl text-[#F3E5AB] drop-shadow-md tracking-wide italic">
+            Colección 2026
+          </h2>
+          <p className="text-white/90 font-sans mt-2 tracking-widest text-sm uppercase">
+            Elegancia Natural
+          </p>
         </div>
       </div>
 
       {}
-      <footer className="absolute bottom-6 text-rosaViejo text-sm font-sans font-medium tracking-wide">
-        © 2026 Flor de Loto • Cochabamba, Bolivia
+      <section className="max-w-7xl mx-auto px-4 py-16 -mt-16 relative z-20">
+        
+        {categorias.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {categorias.map((cat) => (
+              <Link 
+                key={cat.id.toString()} 
+                href={`/catalogo/${cat.id.toString()}`} 
+                className="group relative h-96 overflow-hidden rounded-md bg-white shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-[#C5A059]/10"
+              >
+                {/* Foto */}
+                {cat.foto ? (
+                  <Image 
+                    src={cat.foto} 
+                    alt={cat.nombre} 
+                    fill 
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  />
+                ) : (
+                  <div className="absolute inset-0 bg-[#F9F6EE] flex items-center justify-center">
+                    <span className="text-6xl text-[#C5A059]/20 font-serif">❀</span>
+                  </div>
+                )}
+                
+                {/* Degradado y Texto */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
+
+                <div className="absolute bottom-0 left-0 w-full p-8 text-center">
+                  <h3 className="font-serif text-3xl text-[#F3E5AB] italic group-hover:text-white transition-colors">
+                    {cat.nombre}
+                  </h3>
+                  <div className="w-12 h-[1px] bg-[#C5A059] mx-auto my-3 group-hover:w-24 transition-all duration-500" />
+                  <span className="text-xs text-white/80 uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform translate-y-4 group-hover:translate-y-0">
+                    Ver Diseño
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20 bg-white rounded-xl border border-dashed border-[#C5A059]/30">
+            <p className="text-xl text-gray-500 font-serif">Cargando el catálogo...</p>
+          </div>
+        )}
+      </section>
+
+      {}
+      <footer className="py-12 text-center bg-[#1A1A1A] text-[#C5A059]/60 text-xs tracking-widest uppercase">
+        © 2026 Flor de Loto • Cochabamba
       </footer>
-      
     </main>
   );
 }
