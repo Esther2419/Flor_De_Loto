@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+  }
+ 
+  /* Estilos base para scroll suave */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Tu color crema de fondo por defecto */
+  body {
+    @apply bg-crema text-negroSuave antialiased;
+  }
+}

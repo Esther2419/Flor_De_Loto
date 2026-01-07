@@ -14,6 +14,11 @@ const config: Config = {
         rosaPalo: '#F4C2C2',
         crema: '#FFFCF9',
         rosaBeige: '#EBD8D0',
+        
+        rosaViejo: '#E5A1A6',
+        doradoMate: '#C5A059',
+        verdeWhatsapp: '#25D366',
+        grisOscuro: '#2D2D2D',
       },
       fontFamily: {
         serif: ['var(--font-playfair)', 'serif'],
@@ -21,6 +26,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 };
 export default config;
