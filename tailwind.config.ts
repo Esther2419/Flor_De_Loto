@@ -11,7 +11,8 @@ const config: Config = {
       colors: {
         rosaViejo: '#E5A1A6',
         crema: '#F9F6EE',
-        negro: '#050505', 
+        negro: '#050505',
+        negroSuave: '#1a1a1a',
         dorado: '#C5A059',
         gris: '#2D2D2D',
         verdeWhatsapp: '#25D366',
