@@ -2,10 +2,11 @@ import Link from "next/link";
 import Image from "next/image";
 import prisma from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
+import HeroCarousel from "@/components/HeroCarousel"; // Carrusel pe
+
 export const dynamic = 'force-dynamic';
 
 export default async function HomePage() {
-  // Conexión a la Base de Datos para obtener categorías
   const categorias = await prisma.categorias.findMany({
     where: { categoria_padre_id: null },
     orderBy: { nombre: 'asc' },
@@ -14,35 +15,14 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-crema">
       
-      {/* HEADER NEGRO PARA EL LOGO */}
+      {}
       <Navbar /> 
 
       {}
-      <div className="relative h-[50vh] w-full overflow-hidden">
-        {/* Imagen de la portada pe */}
-        <div className="absolute inset-0">
-          <Image
-            src="/portada.jpg"
-            alt="Flor de Loto Banner"
-            fill
-            className="object-cover brightness-[0.7]"
-            priority
-          />
-        </div>
-        
-        {}
-        <div className="relative z-10 flex flex-col h-full items-center justify-center text-center px-4 animate-in fade-in zoom-in duration-1000">
-          <h2 className="font-serif text-4xl md:text-6xl text-[#F3E5AB] drop-shadow-md tracking-wide italic">
-            Colección 2026
-          </h2>
-          <p className="text-white/90 font-sans mt-2 tracking-widest text-sm uppercase">
-            Elegancia Natural
-          </p>
-        </div>
-      </div>
+      <HeroCarousel />
 
       {}
-      <section className="max-w-7xl mx-auto px-4 py-16 -mt-16 relative z-20">
+      <section className="max-w-7xl mx-auto px-4 py-16 -mt-10 relative z-20">
         
         {categorias.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -52,7 +32,7 @@ export default async function HomePage() {
                 href={`/catalogo/${cat.id.toString()}`} 
                 className="group relative h-96 overflow-hidden rounded-md bg-white shadow-xl hover:shadow-2xl transition-all duration-500 hover:-translate-y-2 border border-[#C5A059]/10"
               >
-                {/* Foto */}
+                {/* Foto de cada Categoría */}
                 {cat.foto ? (
                   <Image 
                     src={cat.foto} 
@@ -66,7 +46,7 @@ export default async function HomePage() {
                   </div>
                 )}
                 
-                {/* Degradado y Texto */}
+                {/* Textos de Categoría */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity" />
 
                 <div className="absolute bottom-0 left-0 w-full p-8 text-center">
@@ -88,8 +68,8 @@ export default async function HomePage() {
         )}
       </section>
 
-      {}
-      <footer className="py-12 text-center bg-[#1A1A1A] text-[#C5A059]/60 text-xs tracking-widest uppercase">
+      {/* Footer */}
+      <footer className="py-12 text-center bg-[#050505] text-[#C5A059]/60 text-xs tracking-widest uppercase">
         © 2026 Flor de Loto • Cochabamba
       </footer>
     </main>
