@@ -4,6 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase"; 
+import { getSession } from "next-auth/react";
 import { createFlor, getFlores, deleteFlor, updateFlor } from "./actions";
 
 type Flor = {
@@ -44,6 +45,7 @@ export default function FloresAdminPage() {
   const [activeTab, setActiveTab] = useState<"ver" | "crear" | "editar">("ver");
   const [loading, setLoading] = useState(false);
   const [flores, setFlores] = useState<Flor[]>([]);
+  const [currentUser, setCurrentUser] = useState("");
   
   const [formData, setFormData] = useState({
     id: "",
@@ -60,6 +62,14 @@ export default function FloresAdminPage() {
   useEffect(() => {
     if (activeTab === "ver") loadFlores();
   }, [activeTab]);
+
+  useEffect(() => {
+    getSession().then((session) => {
+      if (session?.user?.email) {
+        setCurrentUser(session.user.email);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const qty = parseInt(formData.cantidad) || 0;
@@ -102,10 +112,10 @@ export default function FloresAdminPage() {
     setLoading(true);
 
     if (activeTab === "editar" && formData.id) {
-        await updateFlor(formData.id, formData);
+        await updateFlor(formData.id, formData, currentUser);
         alert("¡Inventario actualizado!");
     } else {
-        await createFlor(formData);
+        await createFlor(formData, currentUser);
         alert("¡Flor registrada!");
     }
 

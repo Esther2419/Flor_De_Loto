@@ -16,10 +16,13 @@ export async function getFlores() {
   return serialize(flores);
 }
 
-export async function createFlor(formData: any) {
+export async function createFlor(formData: any, usuario: string) {
   try {
     const cantidad = parseInt(formData.cantidad) || 0;
     const disponible = cantidad > 0 ? true : false; 
+
+    const usuarioDb = await prisma.usuarios.findUnique({ where: { email: usuario } });
+    const fechaAjustada = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
 
     await prisma.flores.create({
       data: {
@@ -29,7 +32,9 @@ export async function createFlor(formData: any) {
         precio_unitario: parseFloat(formData.precio),
         foto: formData.foto,
         cantidad: cantidad,
-        disponible: disponible 
+        disponible: disponible,
+        usuario_actualizacion_id: usuarioDb?.id,
+        fecha_actualizacion: fechaAjustada
       }
     });
     revalidatePath('/admin/flores');
@@ -40,10 +45,13 @@ export async function createFlor(formData: any) {
   }
 }
 
-export async function updateFlor(id: string, formData: any) {
+export async function updateFlor(id: string, formData: any, usuario: string) {
   try {
     const cantidad = parseInt(formData.cantidad) || 0;
     const disponible = cantidad === 0 ? false : formData.disponible;
+
+    const usuarioDb = await prisma.usuarios.findUnique({ where: { email: usuario } });
+    const fechaAjustada = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
 
     await prisma.flores.update({
       where: { id: BigInt(id) },
@@ -53,8 +61,10 @@ export async function updateFlor(id: string, formData: any) {
         color: formData.color,
         precio_unitario: parseFloat(formData.precio),
         cantidad: cantidad,
-        disponible: disponible, 
-        foto: formData.foto, 
+        disponible: disponible,
+        foto: formData.foto,
+        usuario_actualizacion_id: usuarioDb?.id,
+        fecha_actualizacion: fechaAjustada
       }
     });
     revalidatePath('/admin/flores');
