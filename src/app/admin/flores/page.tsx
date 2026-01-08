@@ -293,7 +293,7 @@ export default function FloresAdminPage() {
                                 <div className="flex items-center justify-center h-full text-xl md:text-3xl opacity-20">🌸</div>
                             )}
                             
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 md:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute inset-0 bg-black/50 hidden md:flex items-center justify-center gap-2 md:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button onClick={() => handleEditClick(flor)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-[#C5A059] hover:text-white transition-colors shadow-lg" title="Editar">✏️</button>
                                 <button onClick={() => handleDelete(flor.id)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar">🗑️</button>
                             </div>
@@ -321,14 +321,20 @@ export default function FloresAdminPage() {
                                 {flor.descripcion || "Sin descripción detallada."}
                             </p>
 
-                            <div className="flex items-center gap-1 md:gap-2 pt-1 md:pt-2 border-t border-gray-100">
-                                <div 
-                                  className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm"
-                                  style={{ backgroundColor: getColorStyle(flor.color) }}
-                                ></div>
-                                <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">
-                                  {flor.color || "Sin color"}
-                                </span>
+                            <div className="flex items-center justify-between pt-1 md:pt-2 border-t border-gray-100">
+                                <div className="flex items-center gap-1 md:gap-2">
+                                    <div 
+                                      className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm"
+                                      style={{ backgroundColor: getColorStyle(flor.color) }}
+                                    ></div>
+                                    <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">
+                                      {flor.color || "Sin color"}
+                                    </span>
+                                </div>
+                                <div className="flex md:hidden gap-1">
+                                    <button onClick={() => handleEditClick(flor)} className="p-1 bg-gray-100 rounded-full text-[10px]" title="Editar">✏️</button>
+                                    <button onClick={() => handleDelete(flor.id)} className="p-1 bg-red-50 rounded-full text-[10px]" title="Eliminar">🗑️</button>
+                                </div>
                             </div>
                         </div>
                     </div>
