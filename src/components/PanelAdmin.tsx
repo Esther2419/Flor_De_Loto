@@ -3,18 +3,18 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { signIn, signOut, getSession } from "next-auth/react";
 
 export default function PanelAdmin() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   
-  // Estados del formulario
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [userData, setUserData] = useState<{name?: string | null, image?: string | null} | null>(null);
+  const searchParams = useSearchParams();
 
-  // Verificar si ya existe una sesión de Google al cargar
   useEffect(() => {
     getSession().then((session) => {
       if (session) {
@@ -23,6 +23,13 @@ export default function PanelAdmin() {
       }
     });
   }, []);
+
+  // Detectar si venimos rebotados de Google con un error
+  useEffect(() => {
+    if (searchParams.get("error") === "AccessDenied") {
+      setError("Tu cuenta de Google no tiene permisos de administrador.");
+    }
+  }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +71,7 @@ export default function PanelAdmin() {
           </div>
           <button 
             onClick={async () => {
-              await signOut({ redirect: false }); // Cierra sesión de Google si existe
+              await signOut({ redirect: false });
               setIsLoggedIn(false);
               setUserData(null);
             }}
