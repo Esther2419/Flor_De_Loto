@@ -54,7 +54,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
         {}
         <div 
           ref={scrollContainerRef}
-          className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-4 -mx-4 scrollbar-hide scroll-smooth"
+          className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory px-4 -mx-4 scrollbar-hide scroll-smooth touch-pan-x"
         >
           {categories.map((cat) => (
             <Link 
@@ -72,6 +72,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
                     alt={cat.nombre}
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    draggable={false}
                   />
                 ) : (
                   <div className="absolute inset-0 bg-white flex items-center justify-center">
