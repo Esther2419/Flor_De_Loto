@@ -280,53 +280,53 @@ export default function FloresAdminPage() {
                 {flores.map((flor) => (
                     <div key={flor.id} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
                         
-                        <div className="absolute top-3 left-3 z-10 flex flex-col gap-1">
-                            <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
+                        <div className="absolute top-1 left-1 md:top-3 md:left-3 z-10 flex flex-col gap-1">
+                            <span className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
                                 Stock: {flor.cantidad}
                             </span>
                         </div>
 
-                        <div className="absolute top-3 right-3 z-10">
-                            {flor.disponible ? (
-                                <span className="bg-[#25D366]/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">
-                                    Disponible
-                                </span>
-                            ) : (
-                                <span className="bg-red-500/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">
-                                    No Disponible
-                                </span>
-                            )}
-                        </div>
-
-                        <div className="relative h-48 bg-gray-100">
+                        <div className="relative h-24 md:h-48 bg-gray-100">
                             {flor.foto ? (
                                 <Image src={flor.foto} alt={flor.nombre} fill className={`object-cover ${!flor.disponible ? 'grayscale' : ''}`} />
                             ) : (
-                                <div className="flex items-center justify-center h-full text-3xl opacity-20">🌸</div>
+                                <div className="flex items-center justify-center h-full text-xl md:text-3xl opacity-20">🌸</div>
                             )}
                             
-                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditClick(flor)} className="bg-white p-3 rounded-full hover:bg-[#C5A059] hover:text-white transition-colors shadow-lg" title="Editar">✏️</button>
-                                <button onClick={() => handleDelete(flor.id)} className="bg-white p-3 rounded-full hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar">🗑️</button>
+                            <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-2 md:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button onClick={() => handleEditClick(flor)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-[#C5A059] hover:text-white transition-colors shadow-lg" title="Editar">✏️</button>
+                                <button onClick={() => handleDelete(flor.id)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar">🗑️</button>
+                            </div>
+
+                            <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 z-10">
+                                {flor.disponible ? (
+                                    <span className="bg-[#25D366]/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">
+                                        <span className="md:hidden">Disp.</span><span className="hidden md:inline">Disponible</span>
+                                    </span>
+                                ) : (
+                                    <span className="bg-red-500/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">
+                                        <span className="md:hidden">No Disp.</span><span className="hidden md:inline">No Disponible</span>
+                                    </span>
+                                )}
                             </div>
                         </div>
 
-                        <div className="p-4">
-                            <div className="flex justify-between items-start mb-2">
-                                <h3 className="font-serif font-bold text-lg text-[#0A0A0A]">{flor.nombre}</h3>
-                                <span className="text-[#C5A059] font-bold text-sm bg-[#F9F6EE] px-2 py-1 rounded">Bs {flor.precio_unitario}</span>
+                        <div className="p-2 md:p-4">
+                            <div className="flex flex-col md:flex-row justify-between items-start mb-1 md:mb-2 gap-0.5 md:gap-0">
+                                <h3 className="font-serif font-bold text-[10px] md:text-lg text-[#0A0A0A] leading-tight line-clamp-1">{flor.nombre}</h3>
+                                <span className="text-[#C5A059] font-bold text-[9px] md:text-sm bg-[#F9F6EE] px-1.5 py-0.5 md:px-2 md:py-1 rounded whitespace-nowrap">Bs {flor.precio_unitario}</span>
                             </div>
                             
-                            <p className="text-xs text-gray-500 line-clamp-2 mb-3 leading-relaxed">
+                            <p className="text-[9px] md:text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed">
                                 {flor.descripcion || "Sin descripción detallada."}
                             </p>
 
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                            <div className="flex items-center gap-1 md:gap-2 pt-1 md:pt-2 border-t border-gray-100">
                                 <div 
-                                  className="w-3 h-3 rounded-full border border-gray-200 shadow-sm"
+                                  className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm"
                                   style={{ backgroundColor: getColorStyle(flor.color) }}
                                 ></div>
-                                <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">
+                                <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">
                                   {flor.color || "Sin color"}
                                 </span>
                             </div>
