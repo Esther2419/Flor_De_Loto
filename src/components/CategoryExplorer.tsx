@@ -33,6 +33,9 @@ export default function CategoryExplorer({ categories }: { categories: Category[
           Categorías
         </h2>
         <div className="w-20 h-1 bg-[#E5A1A6] mx-auto rounded-full" />
+        <p className="mt-4 text-[#5D4E4E] font-['Lato'] text-base md:text-lg tracking-wide">
+          Explora nuestras categorías especializadas para cada tipo de evento
+        </p>
       </div>
 
       {/* --- CONTENEDOR CON FLECHAS --- */}
