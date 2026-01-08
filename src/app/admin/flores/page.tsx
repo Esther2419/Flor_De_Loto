@@ -45,6 +45,7 @@ export default function FloresAdminPage() {
   const [activeTab, setActiveTab] = useState<"ver" | "crear" | "editar">("ver");
   const [loading, setLoading] = useState(false);
   const [flores, setFlores] = useState<Flor[]>([]);
+  const [selectedFlor, setSelectedFlor] = useState<Flor | null>(null);
   const [currentUser, setCurrentUser] = useState("");
   
   const [formData, setFormData] = useState({
@@ -126,6 +127,7 @@ export default function FloresAdminPage() {
   };
 
   const handleEditClick = (flor: Flor) => {
+    setSelectedFlor(null);
     setFormData({
         id: flor.id,
         nombre: flor.nombre,
@@ -142,6 +144,7 @@ export default function FloresAdminPage() {
   const handleDelete = async (id: string) => {
     if (confirm("¿Estás seguro de eliminar permanentemente?")) {
         await deleteFlor(id);
+        setSelectedFlor(null);
         loadFlores();
     }
   };
@@ -278,7 +281,7 @@ export default function FloresAdminPage() {
           {activeTab === "ver" && (
             <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6 animate-in fade-in">
                 {flores.map((flor) => (
-                    <div key={flor.id} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
+                    <div key={flor.id} onClick={() => setSelectedFlor(flor)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative cursor-pointer ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
                         
                         <div className="absolute top-1 left-1 md:top-3 md:left-3 z-10 flex flex-col gap-1">
                             <span className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
@@ -292,11 +295,6 @@ export default function FloresAdminPage() {
                             ) : (
                                 <div className="flex items-center justify-center h-full text-xl md:text-3xl opacity-20">🌸</div>
                             )}
-                            
-                            <div className="absolute inset-0 bg-black/50 hidden md:flex items-center justify-center gap-2 md:gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => handleEditClick(flor)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-[#C5A059] hover:text-white transition-colors shadow-lg" title="Editar">✏️</button>
-                                <button onClick={() => handleDelete(flor.id)} className="bg-white p-1.5 md:p-3 rounded-full hover:bg-red-500 hover:text-white transition-colors shadow-lg" title="Eliminar">🗑️</button>
-                            </div>
 
                             <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 z-10">
                                 {flor.disponible ? (
@@ -321,7 +319,7 @@ export default function FloresAdminPage() {
                                 {flor.descripcion || "Sin descripción detallada."}
                             </p>
 
-                            <div className="flex items-center justify-between pt-1 md:pt-2 border-t border-gray-100">
+                            <div className="flex items-center justify-center md:justify-start pt-1 md:pt-2 border-t border-gray-100">
                                 <div className="flex items-center gap-1 md:gap-2">
                                     <div 
                                       className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm"
@@ -331,10 +329,6 @@ export default function FloresAdminPage() {
                                       {flor.color || "Sin color"}
                                     </span>
                                 </div>
-                                <div className="flex md:hidden gap-1">
-                                    <button onClick={() => handleEditClick(flor)} className="p-1 bg-gray-100 rounded-full text-[10px]" title="Editar">✏️</button>
-                                    <button onClick={() => handleDelete(flor.id)} className="p-1 bg-red-50 rounded-full text-[10px]" title="Eliminar">🗑️</button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -343,6 +337,51 @@ export default function FloresAdminPage() {
           )}
 
         </div>
+
+        {/* MODAL DE DETALLE */}
+        {selectedFlor && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedFlor(null)}>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => setSelectedFlor(null)} className="absolute top-4 right-4 z-10 bg-black/20 hover:bg-black/40 text-white rounded-full p-1 transition-colors">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+
+                    <div className="relative h-64 bg-gray-100">
+                        {selectedFlor.foto ? (
+                            <Image src={selectedFlor.foto} alt={selectedFlor.nombre} fill className="object-cover" />
+                        ) : (
+                            <div className="flex items-center justify-center h-full text-6xl opacity-20">🌸</div>
+                        )}
+                    </div>
+
+                    <div className="p-6">
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="font-serif text-2xl text-[#0A0A0A] leading-tight">{selectedFlor.nombre}</h3>
+                            <span className="text-[#C5A059] font-bold text-xl whitespace-nowrap">Bs {selectedFlor.precio_unitario}</span>
+                        </div>
+                        
+                        <div className="space-y-4 mb-8">
+                            <p className="text-gray-600 text-sm leading-relaxed">{selectedFlor.descripcion || "Sin descripción detallada."}</p>
+                            
+                            <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-widest text-gray-400">
+                                <span className="bg-gray-100 px-2 py-1 rounded">Color: {selectedFlor.color || "N/A"}</span>
+                                <span className="bg-gray-100 px-2 py-1 rounded">Stock: {selectedFlor.cantidad}</span>
+                                <span className={`px-2 py-1 rounded ${selectedFlor.disponible ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{selectedFlor.disponible ? "Disponible" : "No Disponible"}</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <button onClick={() => handleEditClick(selectedFlor)} className="bg-[#0A0A0A] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-colors flex items-center justify-center gap-2">
+                                <span>✏️</span> Editar
+                            </button>
+                            <button onClick={() => handleDelete(selectedFlor.id)} className="bg-red-50 text-red-500 border border-red-100 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2">
+                                <span>🗑️</span> Eliminar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );
