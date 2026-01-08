@@ -276,7 +276,7 @@ export default function FloresAdminPage() {
           )}
 
           {activeTab === "ver" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
+            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6 animate-in fade-in">
                 {flores.map((flor) => (
                     <div key={flor.id} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
                         
