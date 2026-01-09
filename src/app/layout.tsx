@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { Playfair_Display, Lato } from "next/font/google";
+import { Playfair_Display, Lato, Cinzel } from "next/font/google";
 import "./globals.css";
 
-// Configuracion de las fuentes
 const playfair = Playfair_Display({ 
   subsets: ["latin"], 
-  variable: "--font-playfair", //Tailwind
+  variable: "--font-playfair",
   display: 'swap',
 });
 
@@ -16,9 +15,15 @@ const lato = Lato({
   display: 'swap',
 });
 
+const cinzel = Cinzel({
+  subsets: ["latin"],
+  variable: "--font-cinzel",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
   title: "Flor de Loto | Floristería Boutique",
-  description: "Arreglos florales exclusivos para momentos inolvidables.",
+  description: "Arreglos florales exclusivos.",
 };
 
 export default function RootLayout({
@@ -28,7 +33,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${playfair.variable} ${lato.variable} bg-crema text-negroSuave font-sans antialiased`}>
+      {}
+      <body className={`${playfair.variable} ${lato.variable} ${cinzel.variable} bg-crema text-gris font-sans antialiased`}>
         {children}
       </body>
     </html>
