@@ -6,6 +6,9 @@ import { useState, useEffect, useRef } from "react";
 export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
 
   const slides = [
     {
@@ -28,6 +31,13 @@ export default function HeroCarousel() {
       title: "Regalos Únicos",
       subtitle: "Detalles que Enamoran",
       desc: "Expresa tus sentimientos con el lenguaje de las flores."
+    },
+    {
+      id: 4,
+      image: "/portada.jpg",
+      title: "Momentos Inolvidables",
+      subtitle: "Elegancia en cada pétalo",
+      desc: "Diseños exclusivos que transforman tus sentimientos en arte floral."
     },
   ];
 
@@ -53,8 +63,31 @@ export default function HeroCarousel() {
     };
   }, [currentSlide]);
 
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) setCurrentSlide((prev) => (prev === slides.length - 1 ? 0 : prev + 1));
+    if (isRightSwipe) setCurrentSlide((prev) => (prev === 0 ? slides.length - 1 : prev - 1));
+  };
+
   return (
-    <div className="relative h-[50vh] w-full overflow-hidden bg-negro group">
+    <div className="relative h-[50vh] w-full overflow-hidden bg-negro group"
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       
       {/* --- IMÁGENES DE FONDO --- */}
       {slides.map((slide, index) => (

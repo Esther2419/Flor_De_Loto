@@ -97,8 +97,8 @@ export default function Navbar() {
 
       {/* --- BOTÓN FLOTANTE DE WHATSAPP --- */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
-        <div className="bg-white text-[#5D4E4E] px-4 py-2 rounded-xl shadow-lg border border-[#E5A1A6]/30 hidden md:block">
-          <p className="text-xs font-['Lato'] font-bold">
+        <div className="bg-white text-[#5D4E4E] px-3 py-2 md:px-4 rounded-xl shadow-lg border border-[#E5A1A6]/30 block">
+          <p className="text-[10px] md:text-xs font-['Lato'] font-bold whitespace-nowrap">
             Si necesitas asesoria da click aquí
           </p>
         </div>

@@ -27,14 +27,11 @@
     background-position: 200% center;
   }
 }
-/* ... tu código existente ... */
 
 @layer utilities {
-  /* Ocultar barra de scroll en Chrome/Safari/Edge */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
-  /* Ocultar barra de scroll en Firefox */
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;

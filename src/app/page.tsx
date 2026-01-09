@@ -16,10 +16,13 @@ export default async function HomePage() {
     orderBy: { nombre: 'asc' },
   });
 
+  // [MODIFICADO] Mapeamos los campos nuevos
   const categorias = categoriasRaw.map((cat) => ({
     id: cat.id.toString(),
     nombre: cat.nombre,
     foto: cat.foto,
+    portada: cat.portada,          // <--- Importante
+    descripcion: cat.descripcion,  // <--- Importante
     children: cat.other_categorias.map((child) => ({
       id: child.id.toString(),
       nombre: child.nombre,
@@ -30,20 +33,18 @@ export default async function HomePage() {
 
   return (
     <main className="min-h-screen bg-crema">
-      
-      {/* HEADER */}
       <Navbar /> 
-
-      {/* CARRUSEL */}
       <HeroCarousel />
 
-      {/* SECCIÓN CATEGORÍAS */}
-      <div className="bg-[#FFF5F7] min-h-[600px] border-t border-[#E5A1A6]/20">
+      <div className="min-h-[600px] border-t border-[#E5A1A6]/20 relative z-10">
         <CategoryExplorer categories={categorias} />
       </div>
 
-      {/* Footer */}
-      <footer className="py-12 text-center bg-[#050505] text-[#C5A059]/60 text-xs tracking-widest uppercase border-t border-[#C5A059]/10">
+      <footer className="py-12 text-center bg-[#0A0A0A] text-[#C5A059]/60 text-xs tracking-widest uppercase border-t border-[#C5A059]/10">
+        <div className="mb-4">
+           <span className="block text-2xl mb-1">❀</span>
+           <span className="font-serif italic">Flor de Loto</span>
+        </div>
         © 2026 Flor de Loto • Cochabamba
       </footer>
     </main>
