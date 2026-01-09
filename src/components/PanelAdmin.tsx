@@ -85,6 +85,7 @@ export default function PanelAdmin() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             
+            {/* MÓDULO 1: FLORES */}
             <Link href="/admin/flores" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
               
@@ -100,6 +101,7 @@ export default function PanelAdmin() {
               </p>
             </Link>
 
+            {/* MÓDULO 2: RAMOS (Próximamente) */}
             <div className="bg-white/50 p-8 rounded-xl border border-dashed border-gray-200 flex flex-col items-center text-center grayscale opacity-60 cursor-not-allowed">
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                 <span className="text-3xl text-gray-300">💐</span>
@@ -108,13 +110,21 @@ export default function PanelAdmin() {
               <span className="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-500 uppercase tracking-widest">Próximamente</span>
             </div>
 
-            <div className="bg-white/50 p-8 rounded-xl border border-dashed border-gray-200 flex flex-col items-center text-center grayscale opacity-60 cursor-not-allowed">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl text-gray-300">🏷️</span>
+            {/* MÓDULO 3: CATEGORÍAS (AHORA ACTIVO) */}
+            <Link href="/admin/categorias" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="w-16 h-16 bg-[#F9F6EE] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl">🏷️</span>
               </div>
-              <h3 className="font-serif text-lg text-gray-400 mb-2">Categorías</h3>
-              <span className="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-500 uppercase tracking-widest">Próximamente</span>
-            </div>
+              
+              <h3 className="font-serif text-lg text-[#0A0A0A] group-hover:text-[#C5A059] transition-colors mb-2">
+                Categorías
+              </h3>
+              <p className="text-xs text-gray-400 font-light leading-relaxed">
+                Crear estructura del menú, asignar fotos y portadas.
+              </p>
+            </Link>
 
           </div>
         </div>
