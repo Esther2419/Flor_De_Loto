@@ -94,23 +94,14 @@ export default function PanelAdmin() {
               </div>
               
               <h3 className="font-serif text-lg text-[#0A0A0A] group-hover:text-[#C5A059] transition-colors mb-2 leading-tight">
-                Administrar flores y catálogo
+                Flores
               </h3>
               <p className="text-xs text-gray-400 font-light leading-relaxed">
-                Gestión completa de inventario, altas, bajas y edición.
+                Gestión de inventario de flores individuales.
               </p>
             </Link>
 
-            {/* MÓDULO 2: RAMOS (Próximamente) */}
-            <div className="bg-white/50 p-8 rounded-xl border border-dashed border-gray-200 flex flex-col items-center text-center grayscale opacity-60 cursor-not-allowed">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl text-gray-300">💐</span>
-              </div>
-              <h3 className="font-serif text-lg text-gray-400 mb-2">Ramos</h3>
-              <span className="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-500 uppercase tracking-widest">Próximamente</span>
-            </div>
-
-            {/* MÓDULO 3: CATEGORÍAS (AHORA ACTIVO) */}
+            {/* MÓDULO 2: CATEGORÍAS */}
             <Link href="/admin/categorias" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
               
@@ -122,9 +113,34 @@ export default function PanelAdmin() {
                 Categorías
               </h3>
               <p className="text-xs text-gray-400 font-light leading-relaxed">
-                Crear estructura del menú, asignar fotos y portadas.
+                Estructura del menú y tipos de eventos.
               </p>
             </Link>
+
+            {/* MÓDULO 3: ENVOLTURAS (NUEVO) */}
+            <Link href="/admin/envolturas" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className="w-16 h-16 bg-[#F9F6EE] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-3xl">🎁</span>
+              </div>
+              
+              <h3 className="font-serif text-lg text-[#0A0A0A] group-hover:text-[#C5A059] transition-colors mb-2">
+                Envolturas
+              </h3>
+              <p className="text-xs text-gray-400 font-light leading-relaxed">
+                Papeles, cajas, cintas y presentación.
+              </p>
+            </Link>
+
+            {/* MÓDULO 4: RAMOS (Próximamente) */}
+            <div className="bg-white/50 p-8 rounded-xl border border-dashed border-gray-200 flex flex-col items-center text-center grayscale opacity-60 cursor-not-allowed">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <span className="text-3xl text-gray-300">💐</span>
+              </div>
+              <h3 className="font-serif text-lg text-gray-400 mb-2">Ramos</h3>
+              <span className="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-500 uppercase tracking-widest">Próximamente</span>
+            </div>
 
           </div>
         </div>
@@ -132,6 +148,7 @@ export default function PanelAdmin() {
     );
   }
 
+  // --- VISTA: LOGIN (Sin cambios) ---
   return (
     <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 relative overflow-hidden">
       <div className="absolute top-0 left-0 w-full h-full bg-[url('/pattern-bg.png')] opacity-5 pointer-events-none" />
