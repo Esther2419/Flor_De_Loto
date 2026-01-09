@@ -16,10 +16,13 @@ export default async function HomePage() {
     orderBy: { nombre: 'asc' },
   });
 
+  // [MODIFICADO] Mapeamos los campos nuevos
   const categorias = categoriasRaw.map((cat) => ({
     id: cat.id.toString(),
     nombre: cat.nombre,
     foto: cat.foto,
+    portada: cat.portada,          // <--- Importante
+    descripcion: cat.descripcion,  // <--- Importante
     children: cat.other_categorias.map((child) => ({
       id: child.id.toString(),
       nombre: child.nombre,
@@ -31,8 +34,6 @@ export default async function HomePage() {
   return (
     <main className="min-h-screen bg-crema">
       <Navbar /> 
-
-      {/* CARRUSEL DE PORTADA */}
       <HeroCarousel />
 
       <div className="min-h-[600px] border-t border-[#E5A1A6]/20 relative z-10">
