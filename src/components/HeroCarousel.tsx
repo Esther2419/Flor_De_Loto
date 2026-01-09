@@ -32,6 +32,13 @@ export default function HeroCarousel() {
       subtitle: "Detalles que Enamoran",
       desc: "Expresa tus sentimientos con el lenguaje de las flores."
     },
+    {
+      id: 4,
+      image: "/portada.jpg",
+      title: "Momentos Inolvidables",
+      subtitle: "Elegancia en cada pétalo",
+      desc: "Diseños exclusivos que transforman tus sentimientos en arte floral."
+    },
   ];
 
   const resetTimeout = () => {
