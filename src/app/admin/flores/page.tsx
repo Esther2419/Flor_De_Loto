@@ -18,40 +18,37 @@ type Flor = {
   disponible: boolean;
 };
 
-// 1. Botones de colores primarios para selección rápida
+// 1. Colores primarios (Botones rápidos)
 const PRIMARY_PRESETS = [
   { name: 'Rojo', hex: '#EF4444' },
-  { name: 'Amarillo', hex: '#E8CF2B' },
-  { name: 'Blanco', hex: '#FFFFFF' },
-  { name: 'Lila', hex: '#C4B5FD' },
+  { name: 'Negro', hex: '#000000' },
   { name: 'Rosado', hex: '#EC4899' },
+  { name: 'Blanco', hex: '#FFFFFF' },
+  { name: 'Verde', hex: '#10B981' },
+  { name: 'Dorado', hex: '#C5A059' },
+  { name: 'Celeste', hex: '#60A5FA' },
   { name: 'Violeta', hex: '#8B5CF6' },
 ];
 
-// 2. REFERENCIA AMPLIADA PARA DETECCIÓN (Mejora la precisión de la paleta extra)
+// 2. Referencia para detección automática (Traduce códigos a nombres)
 const COLOR_DETECTION_REF = [
   ...PRIMARY_PRESETS,
-  { name: 'Negro', hex: '#000000' },
-  { name: 'Gris Oscuro', hex: '#374151' },
-  { name: 'Gris', hex: '#9CA3AF' },
-  { name: 'Gris Claro', hex: '#E5E7EB' },
-  { name: 'Marrón Oscuro', hex: '#452214' },
-  { name: 'Marrón', hex: '#78350F' },
-  { name: 'Marrón Claro', hex: '#B45309' },
-  { name: 'Beige', hex: '#F5F5DC' },
-  { name: 'Crema', hex: '#FFFDD0' },
-  { name: 'Dorado', hex: '#D4AF37' },
-  { name: 'Naranja', hex: '#FB923C' },
-  { name: 'Rojo Oscuro', hex: '#991B1B' },
+  { name: 'Rojo Oscuro', hex: '#7F1D1D' },
   { name: 'Vino', hex: '#722F37' },
-  { name: 'Azul Oscuro', hex: '#1E3A8A' },
-  { name: 'Azul', hex: '#3B82F6' },
-  { name: 'Celeste', hex: '#60A5FA' },
-  { name: 'Verde Oscuro', hex: '#064E3B' },
-  { name: 'Verde', hex: '#22C55E' },
+  { name: 'Marrón', hex: '#78350F' },
+  { name: 'Chocolate', hex: '#452214' },
+  { name: 'Café', hex: '#8D6E63' },
+  { name: 'Beige', hex: '#F5F5DC' },
+  { name: 'Crema', hex: '#F9F6EE' },
+  { name: 'Gris', hex: '#9CA3AF' },
+  { name: 'Azul Marino', hex: '#1E3A8A' },
+  { name: 'Turquesa', hex: '#22D3EE' },
+  { name: 'Esmeralda', hex: '#059669' },
   { name: 'Verde Limón', hex: '#84CC16' },
+  { name: 'Amarillo', hex: '#E8CF2B' },
+  { name: 'Naranja', hex: '#F97316' },
   { name: 'Fucsia', hex: '#D946EF' },
-  { name: 'Lila Oscuro', hex: '#6D28D9' },
+  { name: 'Lila', hex: '#C4B5FD' },
   { name: 'Rosado Pastel', hex: '#FBCFE8' },
 ];
 
@@ -60,19 +57,14 @@ const getNameFromHex = (hex: string) => {
   const r1 = parseInt(hex.slice(1, 3), 16);
   const g1 = parseInt(hex.slice(3, 5), 16);
   const b1 = parseInt(hex.slice(5, 7), 16);
-
   let nearest = COLOR_DETECTION_REF[0];
   let minDistance = Infinity;
-
   COLOR_DETECTION_REF.forEach(color => {
     const r2 = parseInt(color.hex.slice(1, 3), 16);
     const g2 = parseInt(color.hex.slice(3, 5), 16);
     const b2 = parseInt(color.hex.slice(5, 7), 16);
     const dist = Math.sqrt(Math.pow(r1-r2, 2) + Math.pow(g1-g2, 2) + Math.pow(b1-b2, 2));
-    if (dist < minDistance) {
-      minDistance = dist;
-      nearest = color;
-    }
+    if (dist < minDistance) { minDistance = dist; nearest = color; }
   });
   return nearest.name;
 };
@@ -90,20 +82,18 @@ export default function FloresAdminPage() {
   const [flores, setFlores] = useState<Flor[]>([]);
   const [selectedFlor, setSelectedFlor] = useState<Flor | null>(null);
   const [currentUser, setCurrentUser] = useState("");
+  
   const [formData, setFormData] = useState({
     id: "", nombre: "", descripcion: "", color: "", precio: "", cantidad: "", foto: "", disponible: true
   });
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => { if (activeTab === "ver") loadFlores(); }, [activeTab]);
-
-  useEffect(() => {
-    getSession().then((session) => { if (session?.user?.email) setCurrentUser(session.user.email); });
-  }, []);
-
+  useEffect(() => { getSession().then((s) => { if (s?.user?.email) setCurrentUser(s.user.email); }); }, []);
+  
   useEffect(() => {
     const qty = parseInt(formData.cantidad) || 0;
-    if (qty === 0) setFormData(prev => ({ ...prev, disponible: false }));
+    if (qty === 0) setFormData(p => ({ ...p, disponible: false }));
   }, [formData.cantidad]);
 
   const loadFlores = async () => {
@@ -113,16 +103,41 @@ export default function FloresAdminPage() {
     setLoading(false);
   };
 
+  // FUNCIÓN DE DETECCIÓN AUTOMÁTICA MEJORADA
+  const analyzeColor = (url: string) => {
+    const img = new window.Image();
+    img.crossOrigin = "Anonymous";
+    img.src = url;
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      canvas.width = 100; canvas.height = 100;
+      ctx?.drawImage(img, 0, 0, 100, 100);
+      const imageData = ctx?.getImageData(30, 30, 40, 40).data;
+      if (!imageData) return;
+      let r = 0, g = 0, b = 0, count = 0;
+      for (let i = 0; i < imageData.length; i += 4) {
+        const pr = imageData[i], pg = imageData[i+1], pb = imageData[i+2];
+        const brightness = (pr + pg + pb) / 3;
+        if (brightness < 245 && brightness > 15) { r += pr; g += pg; b += pb; count++; }
+      }
+      if (count > 0) {
+        const hex = `#${((1 << 24) + (Math.round(r/count) << 16) + (Math.round(g/count) << 8) + Math.round(b/count)).toString(16).slice(1)}`;
+        setFormData(prev => ({ ...prev, color: getNameFromHex(hex.toUpperCase()) }));
+      }
+    };
+  };
+
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploading(true);
     const file = e.target.files[0];
     const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
     try {
-      const { error: uploadError } = await supabase.storage.from('flores').upload(fileName, file);
-      if (uploadError) throw uploadError;
-      const { data } = supabase.storage.from('flores').getPublicUrl(fileName);
-      setFormData(prev => ({ ...prev, foto: data.publicUrl }));
+      await supabase.storage.from('flores').upload(fileName, file);
+      const { data: urlData } = supabase.storage.from('flores').getPublicUrl(fileName);
+      setFormData(prev => ({ ...prev, foto: urlData.publicUrl }));
+      analyzeColor(urlData.publicUrl); // Detecta color automáticamente al subir
     } catch (error) { alert("Error al subir imagen."); } finally { setUploading(false); }
   };
 
@@ -132,38 +147,25 @@ export default function FloresAdminPage() {
     const res = (activeTab === "editar" && formData.id) 
         ? await updateFlor(formData.id, formData, currentUser)
         : await createFlor(formData, currentUser);
-
     if (res.success) {
       alert(activeTab === "editar" ? "¡Inventario actualizado!" : "¡Flor registrada!");
-      setFormData({ id: "", nombre: "", descripcion: "", color: "", precio: "", cantidad: "", foto: "", disponible: true });
-      setActiveTab("ver");
-      loadFlores();
-    } else {
-      alert(res.error);
-    }
+      resetForm(); setActiveTab("ver"); loadFlores();
+    } else { alert(res.error); }
     setLoading(false);
   };
 
+  const resetForm = () => setFormData({ id: "", nombre: "", descripcion: "", color: "", precio: "", cantidad: "", foto: "", disponible: true });
+
   const handleEditClick = (flor: Flor) => {
     setSelectedFlor(null);
-    setFormData({
-        id: flor.id, nombre: flor.nombre, descripcion: flor.descripcion || "",
-        color: flor.color || "", precio: flor.precio_unitario.toString(),
-        cantidad: flor.cantidad?.toString() || "0", foto: flor.foto || "", disponible: flor.disponible
-    });
+    setFormData({ id: flor.id, nombre: flor.nombre, descripcion: flor.descripcion || "", color: flor.color || "", precio: flor.precio_unitario.toString(), cantidad: flor.cantidad.toString(), foto: flor.foto || "", disponible: flor.disponible });
     setActiveTab("editar");
   };
 
   const handleDelete = async (id: string) => {
     if (confirm("¿Estás seguro de eliminar permanentemente?")) {
         const res = await deleteFlor(id);
-        if (res.success) {
-            setSelectedFlor(null); 
-            loadFlores();
-            alert("¡Flor eliminada con éxito!");
-        } else {
-            alert(res.error); 
-        }
+        if (res.success) { setSelectedFlor(null); loadFlores(); } else { alert(res.error); }
     }
   };
 
@@ -173,9 +175,7 @@ export default function FloresAdminPage() {
     <div className="min-h-screen bg-[#F9F6EE] text-[#0A0A0A] pb-20">
       <nav className="bg-[#0A0A0A] text-white p-4 border-b border-[#C5A059] flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-[#C5A059] hover:text-white transition-colors flex items-center text-xs uppercase tracking-widest">
-            ← Volver al Panel
-          </Link>
+          <Link href="/admin" className="text-[#C5A059] hover:text-white transition-colors flex items-center text-xs uppercase tracking-widest">← Volver al Panel</Link>
           <div className="h-4 w-px bg-[#C5A059]/30"></div>
           <h1 className="font-serif text-lg italic text-white">Administración de Flores</h1>
         </div>
@@ -184,144 +184,118 @@ export default function FloresAdminPage() {
       <div className="max-w-7xl mx-auto p-8">
         <div className="grid grid-cols-2 gap-4 mb-10 max-w-2xl mx-auto">
           <button onClick={() => setActiveTab("ver")} className={`p-4 rounded-xl border transition-all ${activeTab === "ver" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>📋 Ver Inventario</button>
-          <button onClick={() => { setActiveTab("crear"); setFormData({ id: "", nombre: "", descripcion: "", color: "", precio: "", cantidad: "", foto: "", disponible: true }); }} className={`p-4 rounded-xl border transition-all ${activeTab === "crear" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>✨ Añadir Flor</button>
+          <button onClick={() => { setActiveTab("crear"); resetForm(); }} className={`p-4 rounded-xl border transition-all ${activeTab === "crear" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>✨ Añadir Flor</button>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 border border-[#C5A059]/10 shadow-sm min-h-[500px]">
+        <div className="bg-white rounded-2xl shadow-sm border border-[#C5A059]/10 p-8 min-h-[500px]">
           {(activeTab === "crear" || activeTab === "editar") && (
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h3 className="font-serif text-2xl text-center border-b border-[#C5A059]/20 pb-4">{activeTab === "crear" ? "Registrar Nueva Variedad" : "Editar Datos de la Flor"}</h3>
-               
+               <h3 className="font-serif text-2xl text-[#0A0A0A] mb-6 text-center border-b border-[#C5A059]/20 pb-4">{activeTab === "crear" ? "Registrar Nueva Variedad" : "Editar Datos de la Flor"}</h3>
+
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="col-span-full border-2 border-dashed border-[#C5A059]/30 rounded-xl p-8 bg-[#F9F6EE] relative flex flex-col items-center cursor-pointer group hover:bg-white transition-colors">
-                    <input type="file" onChange={handleImageUpload} className="absolute inset-0 opacity-0 cursor-pointer z-20" />
-                    {uploading ? <span className="animate-pulse font-bold text-[#C5A059]">Subiendo...</span> : formData.foto ? <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg"><Image src={formData.foto} alt="P" fill className="object-cover" /></div> : <div className="text-center"><span className="text-4xl block mb-2">📷</span><span className="text-xs text-gray-400 uppercase tracking-widest">Subir Foto</span></div>}
+                 {/* FOTO */}
+                 <div className="col-span-full flex flex-col items-center justify-center border-2 border-dashed border-[#C5A059]/30 rounded-xl p-8 bg-[#F9F6EE] hover:bg-white transition-colors cursor-pointer relative group">
+                    <input type="file" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept="image/*" />
+                    {uploading ? <span className="text-xs font-bold text-[#C5A059] animate-pulse">Analizando imagen...</span> : formData.foto ? <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg"><Image src={formData.foto} alt="Preview" fill className="object-cover" /></div> : <div className="text-center"><span className="text-4xl mb-2 block">📷</span><span className="text-xs text-gray-400 uppercase tracking-widest">Subir Foto</span></div>}
                  </div>
 
                  <div className="space-y-2 col-span-full">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Nombre</label>
-                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full p-3 bg-[#F9F6EE] rounded-lg focus:ring-1 focus:ring-[#C5A059] text-[#0A0A0A]" />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</label>
+                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" placeholder="Ej: Girasol, Rosa Roja" />
                  </div>
 
-                 <div className="space-y-3 col-span-full">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Color de la Flor</label>
-                    <div className="flex flex-wrap items-center gap-3 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        {PRIMARY_PRESETS.map(c => (
-                            <button key={c.hex} type="button" onClick={() => setFormData({...formData, color: c.name})} className={`w-10 h-10 rounded-full border-2 transition-all hover:scale-110 shadow-sm ${formData.color === c.name ? 'border-[#0A0A0A] ring-2 ring-offset-2 ring-[#C5A059]' : 'border-white'}`} style={{ backgroundColor: c.hex }} title={c.name} />
-                        ))}
-                        <div className="w-px h-10 bg-gray-200 mx-2"></div>
-                        <div className="relative w-12 h-12 rounded-xl border-2 border-[#C5A059] bg-white flex items-center justify-center overflow-hidden shadow-sm hover:bg-gray-100 transition-colors">
-                            <span className="text-2xl">🎨</span>
-                            <input type="color" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onChange={(e) => setFormData({...formData, color: getNameFromHex(e.target.value)})} />
+                 {/* COLOR ABAJO DEL NOMBRE */}
+                 <div className="space-y-2 col-span-full">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Color</label>
+                    <div className="flex flex-col gap-2">
+                        <div className="flex flex-wrap gap-2 p-3 bg-[#F9F6EE] rounded-xl border border-[#C5A059]/10">
+                            {PRIMARY_PRESETS.map((c) => (
+                                <button key={c.hex} type="button" onClick={() => setFormData({ ...formData, color: c.name })} className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === c.name ? 'ring-2 ring-[#0A0A0A] ring-offset-1 scale-110 shadow-md' : 'border-white hover:scale-105'}`} style={{ backgroundColor: c.hex }} title={c.name} />
+                            ))}
+                            <div className="w-px h-8 bg-[#C5A059]/20 mx-1"></div>
+                            <div className="relative w-8 h-8 rounded-full border-2 border-dashed border-[#C5A059] flex items-center justify-center bg-white overflow-hidden group">
+                                <span className="text-xs">🎨</span>
+                                <input type="color" className="absolute inset-0 opacity-0 cursor-pointer scale-150" onChange={(e) => setFormData({ ...formData, color: getNameFromHex(e.target.value) })} />
+                            </div>
                         </div>
+                        <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] font-bold text-sm" placeholder="Nombre del color" />
                     </div>
-                    <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full p-3 bg-[#F9F6EE] rounded-lg font-bold text-[#0A0A0A]" placeholder="Nombre del color" />
                  </div>
 
                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Precio (Bs)</label>
-                    <input 
-                      required 
-                      type="number" 
-                      step="0.5" 
-                      value={formData.precio} 
-                      onChange={e => setFormData({...formData, precio: e.target.value})} 
-                      onWheel={(e) => e.currentTarget.blur()}
-                      className="w-full p-3 bg-[#F9F6EE] rounded-lg" 
-                    />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio (Bs)</label>
+                    <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" />
                  </div>
 
                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Stock</label>
-                    <input 
-                      required 
-                      type="number" 
-                      value={formData.cantidad} 
-                      onChange={e => setFormData({...formData, cantidad: e.target.value})} 
-                      onWheel={(e) => e.currentTarget.blur()}
-                      className="w-full p-3 bg-[#F9F6EE] rounded-lg" 
-                    />
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cantidad (Stock)</label>
+                    <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" />
                  </div>
 
-                 <div className="col-span-full space-y-2">
-                    <label className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Descripción</label>
-                    <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full p-3 bg-[#F9F6EE] rounded-lg" rows={3} />
+                 <div className="space-y-2 col-span-full">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
+                    <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" rows={3} placeholder="Detalles de la flor..." />
                  </div>
 
                  <div className={`col-span-full p-4 rounded-xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                     <div className="flex flex-col"><span className="text-sm font-bold text-[#0A0A0A]">Disponibilidad</span><span className="text-[10px] text-gray-400">{isStockZero ? "Desactivado por falta de stock." : "¿Visible para ventas?"}</span></div>
                     <label className={`relative inline-flex items-center ${isStockZero ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                         <input type="checkbox" checked={formData.disponible} onChange={e => setFormData({...formData, disponible: e.target.checked})} disabled={isStockZero} className="sr-only peer" />
-                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#25D366] after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#25D366]"></div>
                     </label>
                  </div>
                </div>
-               <button type="submit" disabled={loading || uploading} className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold uppercase tracking-widest hover:bg-[#C5A059] hover:text-white transition-all mt-4">{loading ? "Guardando..." : "Guardar Cambios"}</button>
+
+               <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all mt-4 disabled:opacity-50">
+                 {loading ? "Guardando..." : "Guardar Cambios"}
+               </button>
             </form>
           )}
 
           {activeTab === "ver" && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-in fade-in">
+            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6 animate-in fade-in">
                 {flores.map((flor) => (
-                    <div key={flor.id} onClick={() => setSelectedFlor(flor)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all relative group cursor-pointer ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
-                        <div className="absolute top-1 left-1 md:top-3 md:left-3 z-10 flex flex-col gap-1">
-                            <span className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
-                                Stock: {flor.cantidad}
-                            </span>
-                        </div>
-
+                    <div key={flor.id} onClick={() => setSelectedFlor(flor)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative cursor-pointer ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
+                        <div className="absolute top-1 left-1 md:top-3 md:left-3 z-10 flex flex-col gap-1"><span className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>Stock: {flor.cantidad}</span></div>
                         <div className="relative h-24 md:h-48 bg-gray-100">
                             {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className={`object-cover ${!flor.disponible ? 'grayscale' : ''}`} /> : <div className="flex items-center justify-center h-full text-xl md:text-3xl opacity-20">🌸</div>}
-                            <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 z-10">
-                                <span className={`${flor.disponible ? 'bg-[#25D366]/90' : 'bg-red-500/90'} text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase shadow-sm backdrop-blur-sm`}>
-                                    {flor.disponible ? "Disponible" : "No Disponible"}
-                                </span>
-                            </div>
+                            <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 z-10">{flor.disponible ? <span className="bg-[#25D366]/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">Disponible</span> : <span className="bg-red-500/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">No Disponible</span>}</div>
                         </div>
-
                         <div className="p-2 md:p-4">
-                            <div className="flex flex-col md:flex-row justify-between items-start mb-1 md:mb-2 gap-0.5">
-                                <h3 className="font-serif font-bold text-[10px] md:text-lg text-[#0A0A0A] leading-tight line-clamp-1">{flor.nombre}</h3>
-                                <span className="text-[#C5A059] font-bold text-[9px] md:text-sm bg-[#F9F6EE] px-1.5 py-0.5 rounded">Bs {flor.precio_unitario}</span>
-                            </div>
-                            <p className="text-[9px] md:text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed h-8">
-                                {flor.descripcion || "Sin descripción detallada."}
-                            </p>
-                            <div className="flex items-center gap-1 md:gap-2 pt-1 md:pt-2 border-t border-gray-100">
-                                <div className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200" style={{ backgroundColor: getColorStyle(flor.color) }}></div>
-                                <span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">
-                                  {flor.color || "Sin color"}
-                                </span>
-                            </div>
+                            <div className="flex flex-col md:flex-row justify-between items-start mb-1 md:mb-2 gap-0.5 md:gap-0"><h3 className="font-serif font-bold text-[10px] md:text-lg text-[#0A0A0A] leading-tight line-clamp-1">{flor.nombre}</h3><span className="text-[#C5A059] font-bold text-[9px] md:text-sm bg-[#F9F6EE] px-1.5 py-0.5 md:px-2 md:py-1 rounded whitespace-nowrap">Bs {flor.precio_unitario}</span></div>
+                            <p className="text-[9px] md:text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed h-8">{flor.descripcion || "Sin descripción"}</p>
+                            <div className="flex items-center justify-center md:justify-start pt-1 md:pt-2 border-t border-gray-100"><div className="flex items-center gap-1 md:gap-2"><div className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: getColorStyle(flor.color) }}></div><span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">{flor.color || "Sin color"}</span></div></div>
                         </div>
                     </div>
                 ))}
             </div>
           )}
         </div>
-      </div>
 
-      {selectedFlor && (
+        {selectedFlor && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedFlor(null)}>
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => setSelectedFlor(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-1"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
-                    <div className="relative h-64"><Image src={selectedFlor.foto} alt="P" fill className="object-cover" /></div>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+                    <button onClick={() => setSelectedFlor(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-1 transition-colors"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
+                    <div className="relative h-64 bg-gray-100">{selectedFlor.foto && <Image src={selectedFlor.foto} alt="P" fill className="object-cover" />}</div>
                     <div className="p-6">
-                        <div className="flex justify-between items-start mb-4"><h3 className="font-serif text-2xl text-[#0A0A0A]">{selectedFlor.nombre}</h3><span className="text-[#C5A059] font-bold text-xl">Bs {selectedFlor.precio_unitario}</span></div>
-                        <p className="text-gray-600 text-sm mb-6 leading-relaxed">{selectedFlor.descripcion || "Sin descripción detallada."}</p>
-                        <div className="flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-8">
-                            <span className="bg-gray-100 px-2 py-1 rounded">Color: {selectedFlor.color}</span>
-                            <span className="bg-gray-100 px-2 py-1 rounded">Stock: {selectedFlor.cantidad}</span>
-                            <span className={`px-2 py-1 rounded ${selectedFlor.disponible ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{selectedFlor.disponible ? "Disponible" : "No Disponible"}</span>
+                        <div className="flex justify-between items-start mb-4"><h3 className="font-serif text-2xl text-[#0A0A0A] leading-tight">{selectedFlor.nombre}</h3><span className="text-[#C5A059] font-bold text-xl whitespace-nowrap">Bs {selectedFlor.precio_unitario}</span></div>
+                        <div className="space-y-4 mb-8">
+                            <p className="text-sm text-gray-600 leading-relaxed">{selectedFlor.descripcion || "Sin descripción"}</p>
+                            <div className="flex flex-wrap gap-3 text-xs font-bold uppercase tracking-widest text-gray-400">
+                                <span className="bg-gray-100 px-2 py-1 rounded">Color: {selectedFlor.color}</span>
+                                <span className="bg-gray-100 px-2 py-1 rounded">Stock: {selectedFlor.cantidad}</span>
+                                <span className={`px-2 py-1 rounded ${selectedFlor.disponible ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{selectedFlor.disponible ? "Disponible" : "No Disponible"}</span>
+                            </div>
                         </div>
                         <div className="grid grid-cols-2 gap-4">
-                            <button onClick={() => handleEditClick(selectedFlor)} className="bg-[#0A0A0A] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-colors">✏️ Editar</button>
-                            <button onClick={() => handleDelete(selectedFlor.id)} className="bg-red-50 text-red-500 border border-red-100 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors">🗑️ Eliminar</button>
+                            <button onClick={() => handleEditClick(selectedFlor)} className="bg-[#0A0A0A] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-colors flex items-center justify-center gap-2"><span>✏️</span> Editar</button>
+                            <button onClick={() => handleDelete(selectedFlor.id)} className="bg-red-50 text-red-500 border border-red-100 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"><span>🗑️</span> Eliminar</button>
                         </div>
                     </div>
                 </div>
             </div>
         )}
+      </div>
     </div>
   );
 }
