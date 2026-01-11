@@ -25,10 +25,9 @@ export default function LocationSection() {
           </h2>
         </div>
 
-        {/* IMAGEN Y MAPA */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch h-[500px] lg:h-[450px] mb-10">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-stretch h-auto lg:h-[450px] mb-10">
           
-          <div className="relative rounded-2xl overflow-hidden shadow-lg border border-gray-100 group h-64 lg:h-auto">
+          <div className="relative rounded-2xl overflow-hidden shadow-lg border border-gray-100 group aspect-square lg:aspect-auto w-full">
             <Image 
               src="/portada2.jpg" 
               alt="Fachada Flor de Loto" 
@@ -41,7 +40,7 @@ export default function LocationSection() {
             </div>
           </div>
 
-          <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 h-full relative z-0">
+          <div className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 relative z-0 aspect-square lg:aspect-auto w-full">
              <Map />
           </div>
 
