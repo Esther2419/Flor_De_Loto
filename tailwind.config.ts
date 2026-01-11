@@ -24,6 +24,9 @@ const config: Config = {
         sans: ['var(--font-lato)', 'sans-serif'],
         roman: ['var(--font-cinzel)', 'serif'],
       },
+      transitionTimingFunction: {
+        'pop': 'cubic-bezier(0.34, 1.56, 0.64, 1)',
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
