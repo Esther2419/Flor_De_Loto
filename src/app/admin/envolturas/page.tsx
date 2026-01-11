@@ -18,7 +18,6 @@ type Envoltura = {
   disponible: boolean;
 };
 
-// 1. Colores primarios (Botones rápidos)
 const PRIMARY_PRESETS = [
   { name: 'Rojo', hex: '#EF4444' },
   { name: 'Negro', hex: '#000000' },
@@ -30,7 +29,6 @@ const PRIMARY_PRESETS = [
   { name: 'Violeta', hex: '#8B5CF6' },
 ];
 
-// 2. Referencia extendida para detección automática y paleta
 const COLOR_DETECTION_REF = [
   ...PRIMARY_PRESETS,
   { name: 'Rojo Oscuro', hex: '#7F1D1D' },
