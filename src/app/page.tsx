@@ -4,8 +4,9 @@ import prisma from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import HeroCarousel from "@/components/HeroCarousel";
 import CategoryExplorer from "@/components/CategoryExplorer"; 
-import BrandIntro from "@/components/BrandIntro";  // <--- NUEVO
-import BrandValues from "@/components/BrandValues"; // <--- NUEVO
+import BrandIntro from "@/components/BrandIntro"; 
+import BrandValues from "@/components/BrandValues"; 
+import LocationSection from "@/components/LocationSection"; 
 
 export const dynamic = 'force-dynamic';
 
@@ -38,11 +39,14 @@ export default async function HomePage() {
       <HeroCarousel />
 
       <BrandIntro />
-      <div className="min-h-[400px] border-t border-[#E5A1A6]/20 relative z-10 bg-[#F9F6EE]">
+      
+      <div id="categorias" className="min-h-[400px] border-t border-[#E5A1A6]/20 relative z-10 bg-[#F9F6EE] scroll-mt-24">
         <CategoryExplorer categories={categorias} />
       </div>
 
       <BrandValues />
+
+      <LocationSection />
 
       <footer className="py-12 text-center bg-[#0A0A0A] text-[#C5A059]/60 text-xs tracking-widest uppercase border-t border-[#C5A059]/10">
         <div className="mb-4">
