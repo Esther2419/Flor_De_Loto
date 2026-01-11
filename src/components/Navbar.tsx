@@ -9,9 +9,12 @@ export default function Navbar() {
 
   const menuItems = [
     { name: "INICIO", href: "/" },
-    { name: "CATEGORIAS", href: "/#categorias" }, 
+    { name: "CATEGORIAS", href: "/#categorias" },
     { name: "ENCUENTRANOS", href: "/#encuentranos" },
-    { name: "CONTACTANOS", href: "/contacto" },
+    { 
+      name: "CONTACTANOS", 
+      href: "https://wa.me/59162646545?text=Hola%20Flor%20de%20Loto%20quiero%20contactarme%20para..." 
+    },
   ];
 
   return (
@@ -44,12 +47,13 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* --- MENÚ ESCRITORIO --- */}
           <nav className="hidden lg:flex items-center space-x-8">
             {menuItems.map((item) => (
               <Link
                 key={item.name}
                 href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 className="text-white text-[10px] md:text-xs font-sans font-bold tracking-[0.2em] hover:text-[#D4AF37] transition-colors uppercase py-2 border-b-2 border-transparent hover:border-[#D4AF37]"
               >
                 {item.name}
@@ -71,7 +75,6 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* Menú Desplegable Celulares */}
       {isOpen && (
         <div className="lg:hidden bg-[#050505] border-t border-[#C5A059]/20 absolute w-full left-0 top-20 shadow-xl">
           <div className="px-4 pt-4 pb-6 space-y-2">
@@ -79,6 +82,8 @@ export default function Navbar() {
               <Link
                 key={item.name}
                 href={item.href}
+                target={item.href.startsWith("http") ? "_blank" : undefined}
+                rel={item.href.startsWith("http") ? "noopener noreferrer" : undefined}
                 className="text-white block px-3 py-2 rounded-md text-sm font-medium tracking-widest hover:text-[#D4AF37] hover:bg-white/5 border-l-2 border-transparent hover:border-[#C5A059] transition-all"
                 onClick={() => setIsOpen(false)}
               >
@@ -89,7 +94,6 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* Botón Flotante WhatsApp */}
       <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
         <div className="bg-white text-[#5D4E4E] px-3 py-2 md:px-4 rounded-xl shadow-lg border border-[#E5A1A6]/30 block">
           <p className="text-[10px] md:text-xs font-['Lato'] font-bold whitespace-nowrap">
