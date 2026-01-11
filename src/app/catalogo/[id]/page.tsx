@@ -28,7 +28,11 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
       activo: true 
     },
     include: {
-      envolturas: { select: { nombre: true } },
+      ramo_envolturas: {
+        include: {
+          envolturas: { select: { nombre: true } }
+        }
+      },
       ramo_detalle: {
         include: {
           flores: { select: { nombre: true } }
@@ -44,15 +48,22 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
     foto: c.foto
   }));
 
-  const ramos = ramosRaw.map(r => ({
-    id: r.id.toString(),
-    nombre: r.nombre,
-    precio_base: Number(r.precio_base),
-    foto_principal: r.foto_principal,
-    categoria_id: r.categoria_id ? r.categoria_id.toString() : "0",
-    envoltura: r.envolturas?.nombre || null,
-    flores: r.ramo_detalle.map(d => `${d.cantidad_base} ${d.flores.nombre}`)
-  }));
+  // Mapeo de datos
+  const ramos = ramosRaw.map(r => {
+    const listaEnvolturas = r.ramo_envolturas
+      .map(re => re.envolturas.nombre)
+      .join(", ");
+
+    return {
+      id: r.id.toString(),
+      nombre: r.nombre,
+      precio_base: Number(r.precio_base),
+      foto_principal: r.foto_principal,
+      categoria_id: r.categoria_id ? r.categoria_id.toString() : "0",
+      envoltura: listaEnvolturas || null,
+      flores: r.ramo_detalle.map(d => `${d.cantidad_base} ${d.flores.nombre}`)
+    };
+  });
 
   return (
     <main>
