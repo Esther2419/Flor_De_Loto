@@ -23,7 +23,6 @@ export async function createEnvoltura(formData: any, usuario: string) {
     const cantidad = parseInt(formData.cantidad) || 0;
     const disponible = cantidad > 0 ? (formData.disponible !== false) : false; 
 
-
     const usuarioDb = await prisma.usuarios.findUnique({ where: { email: usuario } });
     const fechaAjustada = new Date(new Date().getTime() - 3 * 60 * 60 * 1000);
 
@@ -87,8 +86,14 @@ export async function deleteEnvoltura(id: string) {
     });
     revalidatePath('/admin/envolturas');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
+    if (error.code === 'P2003') {
+      return { 
+        success: false, 
+        error: "No se puede eliminar la envoltura porque está siendo utilizada en uno o más ramos del catálogo." 
+      };
+    }
     console.error("Error eliminando envoltura:", error);
-    return { success: false, error: "Error al eliminar (probablemente en uso)" };
+    return { success: false, error: "Error al eliminar la envoltura" };
   }
 }
