@@ -8,6 +8,8 @@ interface Ramo {
   id: string;
   nombre: string;
   precio_base: number;
+  es_oferta: boolean;
+  precio_oferta: number | null;
   foto_principal: string | null;
   categoria_id: string;
   envoltura: string | null;
@@ -42,6 +44,12 @@ export default function CatalogoView({
     if (!selectedSubId) return ramos;
     return ramos.filter(r => r.categoria_id === selectedSubId);
   }, [selectedSubId, ramos]);
+
+  // Función para calcular porcentaje de descuento
+  const getDiscountPercent = (base: number, offer: number) => {
+    if (!base || !offer) return 0;
+    return Math.round(((base - offer) / base) * 100);
+  };
 
   return (
     <div className="min-h-screen bg-[#F9F6EE] pb-20">
@@ -119,7 +127,7 @@ export default function CatalogoView({
               <Link 
                 key={ramo.id} 
                 href={`/producto/${ramo.id}`}
-                className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border border-gray-100 flex flex-col h-full"
+                className={`group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 border flex flex-col h-full ${ramo.es_oferta ? 'border-red-100 ring-1 ring-red-50' : 'border-gray-100'}`}
               >
                 <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
                   {ramo.foto_principal ? (
@@ -133,8 +141,28 @@ export default function CatalogoView({
                     <div className="flex items-center justify-center h-full text-gray-300 text-2xl">💐</div>
                   )}
                   
-                  <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-[#C5A059] shadow-sm">
-                    Bs {ramo.precio_base}
+                  {/* BADGE DE OFERTA */}
+                  {ramo.es_oferta && ramo.precio_oferta && (
+                    <div className="absolute top-2 right-2 flex flex-col items-end gap-1 z-10">
+                      <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md animate-pulse uppercase tracking-wider">
+                        Oferta
+                      </span>
+                      <span className="bg-white/90 text-red-500 text-[10px] font-bold px-2 py-0.5 rounded shadow-sm border border-red-100">
+                        -{getDiscountPercent(ramo.precio_base, ramo.precio_oferta)}%
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* PRECIO FLOTANTE */}
+                  <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded text-xs font-bold text-[#C5A059] shadow-sm flex flex-col items-end">
+                    {ramo.es_oferta && ramo.precio_oferta ? (
+                      <>
+                        <span className="text-[9px] text-gray-400 line-through decoration-red-300">Bs {ramo.precio_base}</span>
+                        <span className="text-red-500 text-sm">Bs {ramo.precio_oferta}</span>
+                      </>
+                    ) : (
+                      <span>Bs {ramo.precio_base}</span>
+                    )}
                   </div>
                 </div>
 
