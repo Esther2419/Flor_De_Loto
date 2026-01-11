@@ -58,21 +58,23 @@ export async function createRamo(data: any) {
         foto_principal: data.foto_principal,
         
         categoria_id: data.categoria_id ? BigInt(data.categoria_id) : null,
+
         ramo_detalle: {
-          create: data.detalles.map((d: any) => ({
+          create: (data.detalles || []).map((d: any) => ({
             flor_id: BigInt(d.flor_id),
             cantidad_base: parseInt(d.cantidad)
           }))
         },
+
         ramo_envolturas: {
-          create: data.envolturas.map((e: any) => ({
+          create: (data.envolturas || []).map((e: any) => ({
             envoltura_id: BigInt(e.envoltura_id),
             cantidad: parseInt(e.cantidad)
           }))
         },
 
         ramo_imagenes: {
-          create: data.imagenes_extra.map((url: string) => ({
+          create: (data.imagenes_extra || []).map((url: string) => ({
             url_foto: url
           }))
         },
@@ -104,25 +106,29 @@ export async function updateRamo(id: string, data: any) {
         foto_principal: data.foto_principal,
         
         categoria_id: data.categoria_id ? BigInt(data.categoria_id) : null,
+        
+        // Actualizar Flores
         ramo_detalle: {
           deleteMany: {}, 
-          create: data.detalles.map((d: any) => ({
+          create: (data.detalles || []).map((d: any) => ({
             flor_id: BigInt(d.flor_id),
             cantidad_base: parseInt(d.cantidad)
           }))
         },
 
+        // Actualizar Envolturas
         ramo_envolturas: {
           deleteMany: {},
-          create: data.envolturas.map((e: any) => ({
+          create: (data.envolturas || []).map((e: any) => ({
             envoltura_id: BigInt(e.envoltura_id),
             cantidad: parseInt(e.cantidad)
           }))
         },
 
+        // Actualizar Imágenes
         ramo_imagenes: {
           deleteMany: {}, 
-          create: data.imagenes_extra.map((url: string) => ({
+          create: (data.imagenes_extra || []).map((url: string) => ({
             url_foto: url
           }))
         },
@@ -141,13 +147,17 @@ export async function updateRamo(id: string, data: any) {
 // --- ELIMINAR RAMO ---
 export async function deleteRamo(id: string) {
   try {
-    await prisma.ramo_imagenes.deleteMany({ where: { ramo_id: BigInt(id) } });
-    await prisma.ramos.delete({ where: { id: BigInt(id) } });
+    await prisma.ramo_imagenes.deleteMany({
+      where: { ramo_id: BigInt(id) }
+    });
+    await prisma.ramos.delete({
+      where: { id: BigInt(id) }
+    });
     
     revalidatePath('/admin/ramos');
     return { success: true };
   } catch (error: any) {
     console.error("Error eliminando ramo:", error);
-    return { success: false, error: "No se puede eliminar. Verifica reservas activas." };
+    return { success: false, error: "Error al eliminar. Puede tener reservas asociadas." };
   }
 }

@@ -4,6 +4,8 @@ import prisma from "@/lib/prisma";
 import Navbar from "@/components/Navbar";
 import HeroCarousel from "@/components/HeroCarousel";
 import CategoryExplorer from "@/components/CategoryExplorer"; 
+import BrandIntro from "@/components/BrandIntro";  // <--- NUEVO
+import BrandValues from "@/components/BrandValues"; // <--- NUEVO
 
 export const dynamic = 'force-dynamic';
 
@@ -16,13 +18,12 @@ export default async function HomePage() {
     orderBy: { nombre: 'asc' },
   });
 
-  // [MODIFICADO] Mapeamos los campos nuevos
   const categorias = categoriasRaw.map((cat) => ({
     id: cat.id.toString(),
     nombre: cat.nombre,
     foto: cat.foto,
-    portada: cat.portada,          // <--- Importante
-    descripcion: cat.descripcion,  // <--- Importante
+    portada: cat.portada,
+    descripcion: cat.descripcion,
     children: cat.other_categorias.map((child) => ({
       id: child.id.toString(),
       nombre: child.nombre,
@@ -36,9 +37,12 @@ export default async function HomePage() {
       <Navbar /> 
       <HeroCarousel />
 
-      <div className="min-h-[600px] border-t border-[#E5A1A6]/20 relative z-10">
+      <BrandIntro />
+      <div className="min-h-[400px] border-t border-[#E5A1A6]/20 relative z-10 bg-[#F9F6EE]">
         <CategoryExplorer categories={categorias} />
       </div>
+
+      <BrandValues />
 
       <footer className="py-12 text-center bg-[#0A0A0A] text-[#C5A059]/60 text-xs tracking-widest uppercase border-t border-[#C5A059]/10">
         <div className="mb-4">

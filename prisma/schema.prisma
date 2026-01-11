@@ -54,8 +54,18 @@ model envolturas {
   fecha_actualizacion      DateTime?         @db.Timestamp(6)
   usuario_actualizacion_id BigInt?
   usuarios                 usuarios?         @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_envoltura_audit")
-  ramo_envolturas          ramo_envolturas[]
+  ramo_envolturas          ramo_envolturas[] // RELACIÓN MUCHOS A MUCHOS
   reservas                 reservas[]
+}
+
+// --- NUEVA TABLA INTERMEDIA PARA MUCHAS ENVOLTURAS ---
+model ramo_envolturas {
+  id           BigInt     @id @default(autoincrement())
+  ramo_id      BigInt
+  envoltura_id BigInt
+  cantidad     Int?       @default(1)
+  ramos        ramos      @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ramo_env")
+  envolturas   envolturas @relation(fields: [envoltura_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_env_det")
 }
 
 model ramo_detalle {
@@ -65,15 +75,6 @@ model ramo_detalle {
   cantidad_base Int?   @default(1)
   flores        flores @relation(fields: [flor_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_flor_det")
   ramos         ramos  @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ramo_det")
-}
-
-model ramo_envolturas {
-  id           BigInt     @id @default(autoincrement())
-  ramo_id      BigInt
-  envoltura_id BigInt
-  cantidad     Int?       @default(1)
-  envolturas   envolturas @relation(fields: [envoltura_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_env_det")
-  ramos        ramos      @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ramo_env")
 }
 
 model ramo_imagenes {
@@ -99,7 +100,7 @@ model ramos {
   foto_principal           String?
   ramo_detalle             ramo_detalle[]
   ramo_imagenes            ramo_imagenes[]
-  ramo_envolturas          ramo_envolturas[]
+  ramo_envolturas          ramo_envolturas[] // RELACIÓN MUCHOS A MUCHOS
   categorias               categorias?       @relation(fields: [categoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_categoria")
   usuarios                 usuarios?         @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_audit")
   reservas                 reservas[]
@@ -117,30 +118,30 @@ model reserva_adicionales {
 }
 
 model reservas {
-  id                                                   BigInt                @id @default(autoincrement())
-  usuario_id                                           BigInt?
-  nombre_contacto                                      String                @db.VarChar(150)
-  telefono_contacto                                    String                @db.VarChar(20)
-  correo_contacto                                      String?               @db.VarChar(150)
-  ramo_catalogo_id                                     BigInt?
-  es_personalizado                                     Boolean?              @default(false)
-  foto_referencia_cliente                              String?
-  descripcion_solicitud                                String?
-  envoltura_elegida_id                                 BigInt?
-  precio_envoltura_momento                             Decimal?              @db.Decimal(10, 2)
-  fecha_solicitud                                      DateTime?             @default(now()) @db.Timestamp(6)
-  fecha_entrega                                        DateTime              @db.Date
-  mensaje_dedicatoria                                  String?
-  direccion_entrega                                    String?
-  estado                                               String?               @default("pendiente") @db.VarChar(20)
-  precio_final                                         Decimal?              @db.Decimal(10, 2)
-  fecha_actualizacion                                  DateTime?             @db.Timestamp(6)
-  usuario_actualizacion_id                             BigInt?
-  reserva_adicionales                                  reserva_adicionales[]
-  ramos                                                ramos?                @relation(fields: [ramo_catalogo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_reserva")
-  usuarios_reservas_usuario_actualizacion_idTousuarios usuarios?             @relation("reservas_usuario_actualizacion_idTousuarios", fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_audit")
-  envolturas                                           envolturas?           @relation(fields: [envoltura_elegida_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_envoltura")
-  usuarios_reservas_usuario_idTousuarios               usuarios?             @relation("reservas_usuario_idTousuarios", fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_reserva")
+  id                                               BigInt                @id @default(autoincrement())
+  usuario_id                                       BigInt?
+  nombre_contacto                                  String                @db.VarChar(150)
+  telefono_contacto                                String                @db.VarChar(20)
+  correo_contacto                                  String?               @db.VarChar(150)
+  ramo_catalogo_id                                 BigInt?
+  es_personalizado                                 Boolean?              @default(false)
+  foto_referencia_cliente                          String?
+  descripcion_solicitud                            String?
+  envoltura_elegida_id                             BigInt?
+  precio_envoltura_momento                         Decimal?              @db.Decimal(10, 2)
+  fecha_solicitud                                  DateTime?             @default(now()) @db.Timestamp(6)
+  fecha_entrega                                    DateTime              @db.Date
+  mensaje_dedicatoria                              String?
+  direccion_entrega                                String?
+  estado                                           String?               @default("pendiente") @db.VarChar(20)
+  precio_final                                     Decimal?              @db.Decimal(10, 2)
+  fecha_actualizacion                              DateTime?             @db.Timestamp(6)
+  usuario_actualizacion_id                         BigInt?
+  reserva_adicionales                              reserva_adicionales[]
+  ramos                                            ramos?                @relation(fields: [ramo_catalogo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_reserva")
+  usuarios_reservas_usuario_actualizacion_idTousuarios usuarios?         @relation("reservas_usuario_actualizacion_idTousuarios", fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_audit")
+  envolturas                                       envolturas?           @relation(fields: [envoltura_elegida_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_envoltura")
+  usuarios_reservas_usuario_idTousuarios           usuarios?             @relation("reservas_usuario_idTousuarios", fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_reserva")
 }
 
 model usuarios {
@@ -159,10 +160,4 @@ model usuarios {
   ramos                                                ramos[]
   reservas_reservas_usuario_actualizacion_idTousuarios reservas[]   @relation("reservas_usuario_actualizacion_idTousuarios")
   reservas_reservas_usuario_idTousuarios               reservas[]   @relation("reservas_usuario_idTousuarios")
-}
-
-enum tipo_ramo {
-  mano
-  copa
-  caja
 }
