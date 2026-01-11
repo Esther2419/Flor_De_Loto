@@ -9,11 +9,11 @@ import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./acti
 // --- TIPOS ---
 type AuxData = {
   categorias: { id: string, nombre: string }[];
-  envolturas: { id: string, nombre: string, precio_unitario: number }[];
+  envolturas: { id: string, nombre: string, precio_unitario: number, foto?: string }[];
   flores: { id: string, nombre: string, precio_unitario: number, foto: string, color: string }[];
 };
 
-type DetalleRamo = { flor_id: string; cantidad: number };
+type DetalleItem = { id: string; cantidad: number };
 
 type Ramo = {
   id: string;
@@ -26,25 +26,21 @@ type Ramo = {
   precio_oferta: number | null;
   tipo: string;
   categoria_id: string;
-  envoltura_default_id: string;
   categorias?: { nombre: string };
-  envolturas?: { nombre: string };
   ramo_detalle: { flor_id: string; cantidad_base: number; flores: { nombre: string, foto: string, color: string } }[];
+  ramo_envolturas: { envoltura_id: string; cantidad: number; envolturas: { nombre: string, precio_unitario: number } }[];
   ramo_imagenes: { url_foto: string }[];
 };
 
-// --- FUNCIÓN COLOR ---
 const getColorStyle = (nombreColor: string | null) => {
   if (!nombreColor) return '#ccc';
   if (nombreColor.startsWith('#')) return nombreColor;
-
   const colores: { [key: string]: string } = {
     'rojo': '#EF4444', 'azul': '#3B82F6', 'verde': '#10B981',
     'amarillo': '#e8cf2bff', 'rosa': '#EC4899', 'blanco': '#FFFFFF',
     'negro': '#000000', 'morado': '#8B5CF6', 'naranja': '#F97316',
     'lila': '#C4B5FD', 'cafe': '#8D6E63', 'crema': '#F9F6EE', 'dorado': '#C5A059'
   };
-
   const key = nombreColor.toLowerCase().split(' ')[0];
   return colores[key] || '#C5A059';
 };
@@ -61,7 +57,6 @@ export default function RamosAdminPage() {
     descripcion: "",
     precio_base: "",
     categoria_id: "",
-    envoltura_default_id: "",
     tipo: "mano",
     es_oferta: false,
     precio_oferta: "",
@@ -69,10 +64,12 @@ export default function RamosAdminPage() {
     foto_principal: "",
   });
 
-  const [detalles, setDetalles] = useState<DetalleRamo[]>([]);
+  const [detallesFlores, setDetallesFlores] = useState<DetalleItem[]>([]);
+  const [detallesEnvolturas, setDetallesEnvolturas] = useState<DetalleItem[]>([]);
   const [imagenesExtra, setImagenesExtra] = useState<string[]>([]);
-  
+
   const [showFlorSelector, setShowFlorSelector] = useState(false);
+  const [showEnvolturaSelector, setShowEnvolturaSelector] = useState(false);
 
   const [uploadingPrincipal, setUploadingPrincipal] = useState(false);
   const [uploadingExtra, setUploadingExtra] = useState(false);
@@ -89,7 +86,6 @@ export default function RamosAdminPage() {
     setLoading(false);
   };
 
-  // --- SUBIDA IMÁGENES ---
   const handleUpload = async (file: File, isPrincipal: boolean) => {
     const setter = isPrincipal ? setUploadingPrincipal : setUploadingExtra;
     setter(true);
@@ -97,7 +93,6 @@ export default function RamosAdminPage() {
       const fileExt = file.name.split('.').pop();
       const fileName = `ramo_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
       const { error } = await supabase.storage.from('ramos').upload(fileName, file); 
-
       if (error) throw error;
       const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
 
@@ -114,44 +109,57 @@ export default function RamosAdminPage() {
     }
   };
 
-  // --- GESTIÓN COMPOSICIÓN ---
-  const handleSelectFlor = (florId: string) => {
-    const existe = detalles.find(d => d.flor_id === florId);
+  // --- GESTIÓN DE ITEMS (Flores y Envolturas) ---
+  const handleAddItem = (type: 'flor' | 'envoltura', id: string) => {
+    const list = type === 'flor' ? detallesFlores : detallesEnvolturas;
+    const setList = type === 'flor' ? setDetallesFlores : setDetallesEnvolturas;
+    const closeModal = type === 'flor' ? setShowFlorSelector : setShowEnvolturaSelector;
+
+    const existe = list.find(d => d.id === id);
     if (existe) {
-        const newDetalles = detalles.map(d => d.flor_id === florId ? { ...d, cantidad: d.cantidad + 1 } : d);
-        setDetalles(newDetalles);
+        const newList = list.map(d => d.id === id ? { ...d, cantidad: d.cantidad + 1 } : d);
+        setList(newList);
     } else {
-        setDetalles([...detalles, { flor_id: florId, cantidad: 1 }]);
+        setList([...list, { id: id, cantidad: 1 }]);
     }
-    setShowFlorSelector(false); 
+    closeModal(false);
   };
 
-  const removeDetalle = (index: number) => {
-    const newDetalles = [...detalles];
-    newDetalles.splice(index, 1);
-    setDetalles(newDetalles);
+  const removeItem = (type: 'flor' | 'envoltura', index: number) => {
+    const list = type === 'flor' ? detallesFlores : detallesEnvolturas;
+    const setList = type === 'flor' ? setDetallesFlores : setDetallesEnvolturas;
+    const newList = [...list];
+    newList.splice(index, 1);
+    setList(newList);
   };
 
-  const updateDetalleCantidad = (index: number, nuevaCantidad: number) => {
-    if (nuevaCantidad < 1) return;
-    const newDetalles = [...detalles];
-    newDetalles[index].cantidad = nuevaCantidad;
-    setDetalles(newDetalles);
+  const updateQuantity = (type: 'flor' | 'envoltura', index: number, quantity: number) => {
+    if (quantity < 1) return;
+    const list = type === 'flor' ? detallesFlores : detallesEnvolturas;
+    const setList = type === 'flor' ? setDetallesFlores : setDetallesEnvolturas;
+    const newList = [...list];
+    newList[index].cantidad = quantity;
+    setList(newList);
   };
 
-  const costoEstimado = detalles.reduce((acc, curr) => {
-    const flor = auxData.flores.find(f => f.id === curr.flor_id);
-    return acc + (flor ? flor.precio_unitario * curr.cantidad : 0);
-  }, 0);
+  const costoEstimado = 
+    detallesFlores.reduce((acc, curr) => {
+      const item = auxData.flores.find(f => f.id === curr.id);
+      return acc + (item ? item.precio_unitario * curr.cantidad : 0);
+    }, 0) + 
+    detallesEnvolturas.reduce((acc, curr) => {
+      const item = auxData.envolturas.find(e => e.id === curr.id);
+      return acc + (item ? item.precio_unitario * curr.cantidad : 0);
+    }, 0);
 
-  // --- SUBMIT ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     const payload = {
       ...formData,
-      detalles: detalles.filter(d => d.flor_id),
+      detalles: detallesFlores.map(d => ({ flor_id: d.id, cantidad: d.cantidad })),
+      envolturas: detallesEnvolturas.map(d => ({ envoltura_id: d.id, cantidad: d.cantidad })),
       imagenes_extra: imagenesExtra
     };
 
@@ -176,10 +184,10 @@ export default function RamosAdminPage() {
   const resetForm = () => {
     setFormData({
       id: "", nombre: "", descripcion: "", precio_base: "", categoria_id: "", 
-      envoltura_default_id: "", tipo: "mano", es_oferta: false, precio_oferta: "", 
-      activo: true, foto_principal: ""
+      tipo: "mano", es_oferta: false, precio_oferta: "", activo: true, foto_principal: ""
     });
-    setDetalles([]);
+    setDetallesFlores([]);
+    setDetallesEnvolturas([]);
     setImagenesExtra([]);
   };
 
@@ -190,17 +198,21 @@ export default function RamosAdminPage() {
       descripcion: ramo.descripcion || "",
       precio_base: ramo.precio_base.toString(),
       categoria_id: ramo.categoria_id?.toString() || "",
-      envoltura_default_id: ramo.envoltura_default_id?.toString() || "",
       tipo: ramo.tipo || "mano",
       es_oferta: ramo.es_oferta || false,
       precio_oferta: ramo.precio_oferta?.toString() || "",
-      activo: ramo.activo || true,
+      activo: ramo.activo ?? true, 
       foto_principal: ramo.foto_principal || "",
     });
     
-    setDetalles(ramo.ramo_detalle.map(d => ({
-      flor_id: d.flor_id.toString(),
+    setDetallesFlores(ramo.ramo_detalle.map(d => ({
+      id: d.flor_id.toString(),
       cantidad: d.cantidad_base
+    })));
+
+    setDetallesEnvolturas(ramo.ramo_envolturas.map(e => ({
+      id: e.envoltura_id.toString(),
+      cantidad: e.cantidad
     })));
 
     setImagenesExtra(ramo.ramo_imagenes.map(img => img.url_foto));
@@ -216,13 +228,9 @@ export default function RamosAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#F9F6EE] text-[#0A0A0A] pb-20 relative">
-      
-      {/* NAVBAR */}
       <nav className="bg-[#0A0A0A] text-white p-4 border-b border-[#C5A059] flex items-center justify-between sticky top-0 z-50 shadow-md">
         <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-[#C5A059] hover:text-white transition-colors flex items-center text-xs uppercase tracking-widest">
-            ← Volver
-          </Link>
+          <Link href="/admin" className="text-[#C5A059] hover:text-white transition-colors flex items-center text-xs uppercase tracking-widest">← Volver</Link>
           <div className="h-4 w-px bg-[#C5A059]/30"></div>
           <h1 className="font-serif text-lg italic text-white">Gestión de Ramos</h1>
         </div>
@@ -231,10 +239,8 @@ export default function RamosAdminPage() {
       <div className="max-w-7xl mx-auto p-8">
         <div className="mb-8 text-center">
           <h2 className="font-serif text-4xl text-[#0A0A0A] mb-2">Catálogo de Ramos</h2>
-          <p className="text-gray-500 font-light text-sm">Diseña combinaciones, asigna precios y gestiona la galería.</p>
         </div>
 
-        {/* TABS */}
         <div className="grid grid-cols-2 gap-4 mb-10 max-w-2xl mx-auto">
           <button onClick={() => { setActiveTab("ver"); loadData(); }} className={`p-4 rounded-xl border transition-all ${activeTab === "ver" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>
             <span className="font-bold text-xs uppercase tracking-wider">📋 Ver Catálogo</span>
@@ -245,17 +251,14 @@ export default function RamosAdminPage() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-[#C5A059]/10 p-8 min-h-[500px]">
-          
           {(activeTab === "crear" || activeTab === "editar") && (
             <form onSubmit={handleSubmit} className="max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4">
-               
                <h3 className="font-serif text-2xl text-[#0A0A0A] mb-6 text-center border-b border-[#C5A059]/20 pb-4">
                  {activeTab === "crear" ? "Diseñar Nuevo Ramo" : "Modificar Ramo"}
                </h3>
 
                {/* SECCIÓN FOTOS */}
                <div className="grid grid-cols-1 md:grid-cols-12 gap-6 bg-gray-50 p-6 rounded-xl border border-gray-100">
-                  {/* Principal */}
                   <div className="md:col-span-4 flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2">Foto Principal</span>
                     <div className="relative w-full aspect-[3/4] rounded-xl border-2 border-dashed border-[#C5A059]/30 bg-white overflow-hidden group hover:border-[#C5A059] transition-colors cursor-pointer shadow-sm">
@@ -272,7 +275,6 @@ export default function RamosAdminPage() {
                         )}
                     </div>
                   </div>
-                  {/* Galería */}
                   <div className="md:col-span-8">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 block">Galería Extra ({imagenesExtra.length})</span>
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
@@ -317,13 +319,6 @@ export default function RamosAdminPage() {
                         </div>
                     </div>
                     <div>
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Envoltura / Papel</label>
-                        <select value={formData.envoltura_default_id} onChange={e => setFormData({...formData, envoltura_default_id: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 mt-1 text-sm">
-                        <option value="">-- Sin papel específico --</option>
-                        {auxData.envolturas.map(e => <option key={e.id} value={e.id}>{e.nombre} (Costo: {e.precio_unitario}Bs)</option>)}
-                        </select>
-                    </div>
-                    <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
                         <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 mt-1" rows={4} placeholder="Descripción romántica..." />
                     </div>
@@ -345,60 +340,64 @@ export default function RamosAdminPage() {
                         </div>
                     </div>
 
-                    {/* COMPOSICIÓN FLORAL MEJORADA (CON +/-) */}
+                    {/* COMPOSICIÓN FLORAL */}
                     <div className="border-2 border-dashed border-[#C5A059]/20 rounded-xl p-5 relative">
-                        <span className="absolute -top-2.5 left-4 bg-white px-2 text-[10px] font-bold uppercase text-[#C5A059]">Composición Floral</span>
-                        
-                        <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-                            {/* Lista de flores agregadas */}
-                            {detalles.map((detalle, index) => {
-                              const florInfo = auxData.flores.find(f => f.id === detalle.flor_id);
+                        <span className="absolute -top-2.5 left-4 bg-white px-2 text-[10px] font-bold uppercase text-[#C5A059]">Flores (Composición)</span>
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                            {detallesFlores.map((detalle, index) => {
+                              const item = auxData.flores.find(f => f.id === detalle.id);
                               return (
-                                <div key={index} className="flex gap-3 items-center bg-white p-2 rounded-lg shadow-sm border border-gray-100 animate-in slide-in-from-left-2">
-                                    {/* Miniatura Flor */}
-                                    <div className="w-10 h-10 rounded-full border border-gray-200 relative overflow-hidden flex-shrink-0">
-                                      {florInfo?.foto ? <Image src={florInfo.foto} alt="" fill className="object-cover" /> : <span className="flex items-center justify-center h-full text-xs">🌸</span>}
+                                <div key={index} className="flex gap-3 items-center bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="w-8 h-8 rounded-full border border-gray-200 relative overflow-hidden flex-shrink-0">
+                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" /> : <span className="flex items-center justify-center h-full text-xs">🌸</span>}
                                     </div>
-                                    
-                                    <div className="flex-1">
-                                      <p className="text-xs font-bold text-gray-700 line-clamp-1">{florInfo?.nombre || "Flor eliminada"}</p>
-                                      <p className="text-[10px] text-gray-400">Bs {florInfo?.precio_unitario} c/u</p>
+                                    <div className="flex-1 text-xs">
+                                      <p className="font-bold text-gray-700">{item?.nombre}</p>
+                                      <p className="text-gray-400">Bs {item?.precio_unitario}</p>
                                     </div>
-                                    
-                                    {/* CONTROLADOR DE CANTIDAD CON BOTONES (+ -) */}
-                                    <div className="flex items-center bg-gray-50 rounded-lg border border-gray-200">
-                                        <button 
-                                            type="button" 
-                                            onClick={() => updateDetalleCantidad(index, detalle.cantidad - 1)}
-                                            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-[#0A0A0A] transition-colors rounded-l-lg"
-                                        >
-                                            -
-                                        </button>
-                                        <div className="w-8 text-center text-sm font-bold text-[#0A0A0A]">
-                                            {detalle.cantidad}
-                                        </div>
-                                        <button 
-                                            type="button" 
-                                            onClick={() => updateDetalleCantidad(index, detalle.cantidad + 1)}
-                                            className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-gray-200 hover:text-[#0A0A0A] transition-colors rounded-r-lg"
-                                        >
-                                            +
-                                        </button>
+                                    <div className="flex items-center bg-gray-50 rounded border">
+                                        <button type="button" onClick={() => updateQuantity('flor', index, detalle.cantidad - 1)} className="px-2 hover:bg-gray-200">-</button>
+                                        <span className="text-xs font-bold px-1">{detalle.cantidad}</span>
+                                        <button type="button" onClick={() => updateQuantity('flor', index, detalle.cantidad + 1)} className="px-2 hover:bg-gray-200">+</button>
                                     </div>
-
-                                    <button type="button" onClick={() => removeDetalle(index)} className="text-red-400 hover:text-red-600 p-1 ml-2" title="Quitar flor">×</button>
+                                    <button type="button" onClick={() => removeItem('flor', index)} className="text-red-400 hover:text-red-600 pl-2">×</button>
                                 </div>
                               );
                             })}
+                            <button type="button" onClick={() => setShowFlorSelector(true)} className="w-full py-2 border border-[#C5A059] border-dashed rounded-lg text-[#C5A059] text-xs font-bold uppercase hover:bg-[#C5A059] hover:text-white transition-colors">+ Añadir Flor</button>
+                        </div>
+                    </div>
 
-                            <button type="button" onClick={() => setShowFlorSelector(true)} className="w-full py-2 border border-[#C5A059] border-dashed rounded-lg text-[#C5A059] text-xs font-bold uppercase hover:bg-[#C5A059] hover:text-white transition-colors flex items-center justify-center gap-2">
-                              <span>+</span> Añadir Flor
-                            </button>
+                    {/* COMPOSICIÓN DE ENVOLTURA (NUEVO) */}
+                    <div className="border-2 border-dashed border-gray-300 rounded-xl p-5 relative">
+                        <span className="absolute -top-2.5 left-4 bg-white px-2 text-[10px] font-bold uppercase text-gray-400">Envoltura / Papel</span>
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
+                            {detallesEnvolturas.map((detalle, index) => {
+                              const item = auxData.envolturas.find(e => e.id === detalle.id);
+                              return (
+                                <div key={index} className="flex gap-3 items-center bg-white p-2 rounded-lg shadow-sm border border-gray-100">
+                                    <div className="w-8 h-8 rounded-full border border-gray-200 relative overflow-hidden flex-shrink-0 bg-gray-50">
+                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" /> : <span className="flex items-center justify-center h-full text-xs">🎁</span>}
+                                    </div>
+                                    <div className="flex-1 text-xs">
+                                      <p className="font-bold text-gray-700">{item?.nombre}</p>
+                                      <p className="text-gray-400">Bs {item?.precio_unitario}</p>
+                                    </div>
+                                    <div className="flex items-center bg-gray-50 rounded border">
+                                        <button type="button" onClick={() => updateQuantity('envoltura', index, detalle.cantidad - 1)} className="px-2 hover:bg-gray-200">-</button>
+                                        <span className="text-xs font-bold px-1">{detalle.cantidad}</span>
+                                        <button type="button" onClick={() => updateQuantity('envoltura', index, detalle.cantidad + 1)} className="px-2 hover:bg-gray-200">+</button>
+                                    </div>
+                                    <button type="button" onClick={() => removeItem('envoltura', index)} className="text-red-400 hover:text-red-600 pl-2">×</button>
+                                </div>
+                              );
+                            })}
+                            <button type="button" onClick={() => setShowEnvolturaSelector(true)} className="w-full py-2 border border-gray-400 border-dashed rounded-lg text-gray-500 text-xs font-bold uppercase hover:bg-gray-800 hover:text-white transition-colors">+ Añadir Material</button>
                         </div>
-                        
-                        <div className="mt-2 text-right text-[10px] text-gray-400">
-                            Costo aprox. flores: <span className="font-bold text-gray-600">{costoEstimado.toFixed(2)} Bs</span>
-                        </div>
+                    </div>
+
+                    <div className="text-right text-[10px] text-gray-400">
+                        Costo Materiales: <span className="font-bold text-gray-600">{costoEstimado.toFixed(2)} Bs</span>
                     </div>
 
                     <div className="flex items-center gap-2 pt-2">
@@ -414,7 +413,7 @@ export default function RamosAdminPage() {
             </form>
           )}
 
-          {/* --- VISTA LISTA DE RAMOS --- */}
+          {/* VISTA LISTA DE RAMOS */}
           {activeTab === "ver" && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 animate-in fade-in">
                {ramos.map((ramo) => (
@@ -459,30 +458,20 @@ export default function RamosAdminPage() {
           )}
         </div>
 
-        {/* --- MODAL SELECTOR DE FLORES --- */}
+        {/* MODAL FLORES */}
         {showFlorSelector && (
           <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
-              
               <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
                 <h3 className="font-serif text-xl italic">Seleccionar Flor</h3>
                 <button onClick={() => setShowFlorSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
               </div>
-
               <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
                   {auxData.flores.map((flor) => (
-                    <div 
-                      key={flor.id} 
-                      onClick={() => handleSelectFlor(flor.id)}
-                      className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-[#C5A059] hover:scale-105 transition-all group"
-                    >
+                    <div key={flor.id} onClick={() => handleAddItem('flor', flor.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-[#C5A059] hover:scale-105 transition-all group">
                       <div className="relative aspect-square bg-gray-100">
-                        {flor.foto ? (
-                          <Image src={flor.foto} alt={flor.nombre} fill className="object-cover" />
-                        ) : (
-                          <div className="flex items-center justify-center h-full text-2xl">🌸</div>
-                        )}
+                        {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-2xl">🌸</div>}
                         <div className="absolute top-2 right-2 w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: getColorStyle(flor.color) }}></div>
                       </div>
                       <div className="p-3 text-center">
@@ -493,7 +482,33 @@ export default function RamosAdminPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
 
+        {/* MODAL ENVOLTURAS*/}
+        {showEnvolturaSelector && (
+          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+              <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
+                <h3 className="font-serif text-xl italic">Seleccionar Material</h3>
+                <button onClick={() => setShowEnvolturaSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
+              </div>
+              <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                  {auxData.envolturas.map((env) => (
+                    <div key={env.id} onClick={() => handleAddItem('envoltura', env.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-gray-500 hover:scale-105 transition-all group">
+                      <div className="relative aspect-square bg-gray-50">
+                        {env.foto ? <Image src={env.foto} alt={env.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-2xl">🎁</div>}
+                      </div>
+                      <div className="p-3 text-center">
+                        <h4 className="font-bold text-sm text-[#0A0A0A] line-clamp-1">{env.nombre}</h4>
+                        <p className="text-xs text-gray-500 font-bold mt-1">Bs {env.precio_unitario}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

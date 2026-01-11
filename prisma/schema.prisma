@@ -25,36 +25,36 @@ model categorias {
 }
 
 model flores {
-  id                       BigInt    @id @default(autoincrement())
-  nombre                   String    @db.VarChar(100)
+  id                       BigInt                @id @default(autoincrement())
+  nombre                   String                @db.VarChar(100)
   descripcion              String?
-  color                    String?   @db.VarChar(50)
+  color                    String?               @db.VarChar(50)
   foto                     String?
-  precio_unitario          Decimal   @db.Decimal(10, 2)
-  disponible               Boolean?  @default(true)
-  cantidad                 Int       @default(0)
-  fecha_creacion           DateTime? @default(now()) @db.Timestamp(6)
-  fecha_actualizacion      DateTime? @db.Timestamp(6)
+  precio_unitario          Decimal               @db.Decimal(10, 2)
+  disponible               Boolean?              @default(true)
+  cantidad                 Int                   @default(0)
+  fecha_creacion           DateTime?             @default(now()) @db.Timestamp(6)
+  fecha_actualizacion      DateTime?             @db.Timestamp(6)
   usuario_actualizacion_id BigInt?
-  usuarios                 usuarios? @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_flor_audit")
+  usuarios                 usuarios?             @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_flor_audit")
   ramo_detalle             ramo_detalle[]
   reserva_adicionales      reserva_adicionales[]
 }
 
 model envolturas {
-  id                       BigInt     @id @default(autoincrement())
-  nombre                   String     @db.VarChar(100)
-  color                    String?    @db.VarChar(50)
-  diseno                   String?    @db.VarChar(100)
+  id                       BigInt            @id @default(autoincrement())
+  nombre                   String            @db.VarChar(100)
+  color                    String?           @db.VarChar(50)
+  diseno                   String?           @db.VarChar(100)
   foto                     String?
-  precio_unitario          Decimal    @default(0) @db.Decimal(10, 2)
-  disponible               Boolean?   @default(true)
-  cantidad                 Int        @default(0)
-  fecha_creacion           DateTime?  @default(now()) @db.Timestamp(6)
-  fecha_actualizacion      DateTime?  @db.Timestamp(6)
+  precio_unitario          Decimal           @default(0) @db.Decimal(10, 2)
+  disponible               Boolean?          @default(true)
+  cantidad                 Int               @default(0)
+  fecha_creacion           DateTime?         @default(now()) @db.Timestamp(6)
+  fecha_actualizacion      DateTime?         @db.Timestamp(6)
   usuario_actualizacion_id BigInt?
-  usuarios                 usuarios?  @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_envoltura_audit")
-  ramos                    ramos[]
+  usuarios                 usuarios?         @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_envoltura_audit")
+  ramo_envolturas          ramo_envolturas[]
   reservas                 reservas[]
 }
 
@@ -67,6 +67,15 @@ model ramo_detalle {
   ramos         ramos  @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ramo_det")
 }
 
+model ramo_envolturas {
+  id           BigInt     @id @default(autoincrement())
+  ramo_id      BigInt
+  envoltura_id BigInt
+  cantidad     Int?       @default(1)
+  envolturas   envolturas @relation(fields: [envoltura_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_env_det")
+  ramos        ramos      @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_ramo_env")
+}
+
 model ramo_imagenes {
   id       BigInt @id @default(autoincrement())
   ramo_id  BigInt
@@ -75,25 +84,24 @@ model ramo_imagenes {
 }
 
 model ramos {
-  id                       BigInt          @id @default(autoincrement())
-  nombre                   String          @db.VarChar(150)
+  id                       BigInt            @id @default(autoincrement())
+  nombre                   String            @db.VarChar(150)
   descripcion              String?
-  precio_base              Decimal         @db.Decimal(10, 2)
+  precio_base              Decimal           @db.Decimal(10, 2)
   categoria_id             BigInt?
-  envoltura_default_id     BigInt?
-  activo                   Boolean?        @default(true)
-  fecha_creacion           DateTime?       @default(now()) @db.Timestamp(6)
-  fecha_actualizacion      DateTime?       @db.Timestamp(6)
+  activo                   Boolean?          @default(true)
+  fecha_creacion           DateTime?         @default(now()) @db.Timestamp(6)
+  fecha_actualizacion      DateTime?         @db.Timestamp(6)
   usuario_actualizacion_id BigInt?
-  tipo                     String?         @db.VarChar
-  es_oferta                Boolean?        @default(false)
-  precio_oferta            Decimal?        @db.Decimal(10, 2)
+  tipo                     String?           @db.VarChar
+  es_oferta                Boolean?          @default(false)
+  precio_oferta            Decimal?          @db.Decimal(10, 2)
   foto_principal           String?
   ramo_detalle             ramo_detalle[]
   ramo_imagenes            ramo_imagenes[]
-  categorias               categorias?     @relation(fields: [categoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_categoria")
-  usuarios                 usuarios?       @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_audit")
-  envolturas               envolturas?     @relation(fields: [envoltura_default_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_envoltura")
+  ramo_envolturas          ramo_envolturas[]
+  categorias               categorias?       @relation(fields: [categoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_categoria")
+  usuarios                 usuarios?         @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_audit")
   reservas                 reservas[]
 }
 

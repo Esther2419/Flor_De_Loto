@@ -15,7 +15,7 @@ function serialize(data: any) {
 export async function getAuxData() {
   const [categorias, envolturas, flores] = await Promise.all([
     prisma.categorias.findMany({ select: { id: true, nombre: true }, orderBy: { nombre: 'asc' } }),
-    prisma.envolturas.findMany({ where: { disponible: true }, select: { id: true, nombre: true, precio_unitario: true }, orderBy: { nombre: 'asc' } }),
+    prisma.envolturas.findMany({ where: { disponible: true }, select: { id: true, nombre: true, precio_unitario: true, foto: true }, orderBy: { nombre: 'asc' } }),
     prisma.flores.findMany({ 
       where: { disponible: true }, 
       select: { id: true, nombre: true, precio_unitario: true, foto: true, color: true }, 
@@ -31,7 +31,9 @@ export async function getRamos() {
     orderBy: { id: 'desc' },
     include: {
       categorias: { select: { nombre: true } },
-      envolturas: { select: { nombre: true } },
+      ramo_envolturas: {
+        include: { envolturas: { select: { nombre: true, precio_unitario: true } } }
+      },
       ramo_detalle: {
         include: { flores: { select: { nombre: true, foto: true, color: true } } }
       },
@@ -56,12 +58,16 @@ export async function createRamo(data: any) {
         foto_principal: data.foto_principal,
         
         categoria_id: data.categoria_id ? BigInt(data.categoria_id) : null,
-        envoltura_default_id: data.envoltura_default_id ? BigInt(data.envoltura_default_id) : null,
-
         ramo_detalle: {
           create: data.detalles.map((d: any) => ({
             flor_id: BigInt(d.flor_id),
             cantidad_base: parseInt(d.cantidad)
+          }))
+        },
+        ramo_envolturas: {
+          create: data.envolturas.map((e: any) => ({
+            envoltura_id: BigInt(e.envoltura_id),
+            cantidad: parseInt(e.cantidad)
           }))
         },
 
@@ -98,13 +104,19 @@ export async function updateRamo(id: string, data: any) {
         foto_principal: data.foto_principal,
         
         categoria_id: data.categoria_id ? BigInt(data.categoria_id) : null,
-        envoltura_default_id: data.envoltura_default_id ? BigInt(data.envoltura_default_id) : null,
-
         ramo_detalle: {
           deleteMany: {}, 
           create: data.detalles.map((d: any) => ({
             flor_id: BigInt(d.flor_id),
             cantidad_base: parseInt(d.cantidad)
+          }))
+        },
+
+        ramo_envolturas: {
+          deleteMany: {},
+          create: data.envolturas.map((e: any) => ({
+            envoltura_id: BigInt(e.envoltura_id),
+            cantidad: parseInt(e.cantidad)
           }))
         },
 
@@ -129,13 +141,8 @@ export async function updateRamo(id: string, data: any) {
 // --- ELIMINAR RAMO ---
 export async function deleteRamo(id: string) {
   try {
-    await prisma.ramo_imagenes.deleteMany({
-      where: { ramo_id: BigInt(id) }
-    });
-
-    await prisma.ramos.delete({
-      where: { id: BigInt(id) }
-    });
+    await prisma.ramo_imagenes.deleteMany({ where: { ramo_id: BigInt(id) } });
+    await prisma.ramos.delete({ where: { id: BigInt(id) } });
     
     revalidatePath('/admin/ramos');
     return { success: true };
