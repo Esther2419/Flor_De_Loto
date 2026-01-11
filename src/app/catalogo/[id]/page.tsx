@@ -30,12 +30,12 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
     include: {
       ramo_envolturas: {
         include: {
-          envolturas: { select: { nombre: true } }
+          envolturas: { select: { nombre: true, foto: true } }
         }
       },
       ramo_detalle: {
         include: {
-          flores: { select: { nombre: true } }
+          flores: { select: { nombre: true, foto: true } }
         }
       }
     },
@@ -49,20 +49,25 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
   }));
 
   const ramos = ramosRaw.map(r => {
-    const listaEnvolturas = r.ramo_envolturas
-      .map(re => re.envolturas.nombre)
-      .join(", ");
-
     return {
       id: r.id.toString(),
       nombre: r.nombre,
+      descripcion: r.descripcion,
       precio_base: Number(r.precio_base),
       es_oferta: r.es_oferta ?? false,
       precio_oferta: r.precio_oferta ? Number(r.precio_oferta) : null,
       foto_principal: r.foto_principal,
       categoria_id: r.categoria_id ? r.categoria_id.toString() : "0",
-      envoltura: listaEnvolturas || null,
-      flores: r.ramo_detalle.map(d => `${d.cantidad_base} ${d.flores.nombre}`)
+      
+      envolturas: r.ramo_envolturas.map(re => ({
+        nombre: re.envolturas.nombre,
+        foto: re.envolturas.foto
+      })),
+
+      flores: r.ramo_detalle.map(d => ({
+        texto: `${d.cantidad_base} ${d.flores.nombre}`,
+        foto: d.flores.foto
+      }))
     };
   });
 
