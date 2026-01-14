@@ -23,8 +23,39 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "Flor de Loto | Floristería Boutique",
-  description: "Arreglos florales exclusivos.",
+  metadataBase: new URL('https://www.floreriaflordeloto.com'),
+  title: {
+    default: "Flor de Loto | Floristería Boutique en Cochabamba",
+    template: "%s | Flor de Loto"
+  },
+  description: "Arreglos florales exclusivos, ramos de rosas y regalos personalizados en Cochabamba, Bolivia. La mejor calidad para tus momentos especiales.",
+  keywords: ["Florería", "Cochabamba", "Flores", "Ramos", "Regalos", "Flor de Loto", "Bolivia", "Rosas", "Arreglos Florales", "Envío a domicilio"],
+  authors: [{ name: "Flor de Loto" }],
+  openGraph: {
+    title: "Flor de Loto | Floristería Boutique",
+    description: "Expresa tus sentimientos con los arreglos florales más exclusivos de Cochabamba.",
+    url: 'https://www.floreriaflordeloto.com',
+    siteName: 'Florería Flor de Loto',
+    images: [
+      {
+        url: '/portada.jpg',
+        width: 1200,
+        height: 630,
+        alt: 'Flor de Loto Floristería',
+      },
+    ],
+    locale: 'es_BO',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: "Flor de Loto | Floristería Boutique",
+    description: "Arreglos florales exclusivos en Cochabamba.",
+    images: ['/portada.jpg'],
+  },
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
@@ -35,7 +66,6 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className={`${playfair.variable} ${lato.variable} ${cinzel.variable} bg-crema text-gris font-sans antialiased`}>
-        {/* [NUEVO] Envolvemos la app con el proveedor del carrito */}
         <CartProvider>
           {children}
         </CartProvider>
