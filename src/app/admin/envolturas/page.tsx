@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { getSession } from "next-auth/react";
 import { createEnvoltura, getEnvolturas, deleteEnvoltura, updateEnvoltura } from "./actions";
 
+export const runtime = 'edge';
+
 type Envoltura = {
   id: string;
   nombre: string;

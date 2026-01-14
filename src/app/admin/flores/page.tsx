@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { getSession } from "next-auth/react";
 import { createFlor, getFlores, deleteFlor, updateFlor } from "./actions";
 
+export const runtime = 'edge';
+
 type Flor = {
   id: string;
   nombre: string;

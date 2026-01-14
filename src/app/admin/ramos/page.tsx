@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
 
+export const runtime = 'edge';
+
 // --- TIPOS ---
 type AuxData = {
   categorias: { id: string, nombre: string }[];

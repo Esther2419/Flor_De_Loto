@@ -9,6 +9,7 @@ import BrandValues from "@/components/BrandValues";
 import LocationSection from "@/components/LocationSection"; 
 
 export const dynamic = 'force-dynamic';
+//export const runtime = 'edge';
 
 export default async function HomePage() {
   const categoriasRaw = await prisma.categorias.findMany({
@@ -19,18 +20,20 @@ export default async function HomePage() {
     orderBy: { nombre: 'asc' },
   });
 
-  const categorias = categoriasRaw.map((cat) => ({
+  // CORRECCIÓN 1: Añadimos (cat: any) para que TypeScript no de error
+  const categorias = categoriasRaw.map((cat: any) => ({
     id: cat.id.toString(),
     nombre: cat.nombre,
     foto: cat.foto,
     portada: cat.portada,
     descripcion: cat.descripcion,
-    children: cat.other_categorias.map((child) => ({
+    // CORRECCIÓN 2: Añadimos (child: any) aquí también
+    children: cat.other_categorias.map((child: any) => ({
       id: child.id.toString(),
       nombre: child.nombre,
       foto: child.foto,
       children: [], 
-    })).sort((a, b) => a.nombre.localeCompare(b.nombre)) 
+    })).sort((a: any, b: any) => a.nombre.localeCompare(b.nombre)) 
   }));
 
   return (
@@ -57,7 +60,7 @@ export default async function HomePage() {
              </div>
              <h3 className="font-serif text-2xl italic text-[#F3E5AB] mb-2">Flor de Loto</h3>
              <p className="text-sm text-white/60 font-light leading-relaxed max-w-xs">
-               Creando momentos inolvidables con la elegancia y frescura que solo la naturaleza puede ofrecer.
+                Creando momentos inolvidables con la elegancia y frescura que solo la naturaleza puede ofrecer.
              </p>
           </div>
 

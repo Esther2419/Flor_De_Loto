@@ -3,11 +3,24 @@ import Navbar from "@/components/Navbar";
 import CatalogoView from "@/components/CatalogoView"; 
 import { notFound } from "next/navigation";
 
+// Configuraciones para Cloudflare Pages
 export const dynamic = 'force-dynamic';
+//export const runtime = 'edge';
 
-export default async function CatalogoPage({ params }: { params: { id: string } }) {
-  const categoryId = params.id;
+/**
+ * En Next.js 15, 'params' es una Promesa.
+ * Debemos definirla como tal y usar 'await' para obtener los datos.
+ */
+export default async function CatalogoPage({ 
+  params 
+}: { 
+  params: Promise<{ id: string }> 
+}) {
+  // 1. Resolvemos la promesa de los parámetros
+  const resolvedParams = await params;
+  const categoryId = resolvedParams.id;
 
+  // 2. Consulta a la base de datos usando Prisma
   const categoria = await prisma.categorias.findUnique({
     where: { id: BigInt(categoryId) },
     include: {
@@ -17,11 +30,14 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
     }
   });
 
+  // Si la categoría de flores no existe, enviamos a 404
   if (!categoria) return notFound();
 
-  const subCategoryIds = categoria.other_categorias.map(c => c.id);
+  // 3. Procesamos las subcategorías (Añadimos tipos 'any' para evitar errores de TS)
+  const subCategoryIds = categoria.other_categorias.map((c: any) => c.id);
   const allCategoryIds = [BigInt(categoryId), ...subCategoryIds];
 
+  // 4. Obtenemos los ramos de la florería
   const ramosRaw = await prisma.ramos.findMany({
     where: {
       categoria_id: { in: allCategoryIds },
@@ -42,13 +58,15 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
     orderBy: { id: 'desc' }
   });
 
-  const subcategorias = categoria.other_categorias.map(c => ({
+  // 5. Formateamos subcategorías para la vista
+  const subcategorias = categoria.other_categorias.map((c: any) => ({
     id: c.id.toString(),
     nombre: c.nombre,
     foto: c.foto
   }));
 
-  const ramos = ramosRaw.map(r => {
+  // 6. Formateamos los ramos (Mapeo con tipos 'any' para el Build exitoso)
+  const ramos = ramosRaw.map((r: any) => {
     return {
       id: r.id.toString(),
       nombre: r.nombre,
@@ -59,18 +77,19 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
       foto_principal: r.foto_principal,
       categoria_id: r.categoria_id ? r.categoria_id.toString() : "0",
       
-      envolturas: r.ramo_envolturas.map(re => ({
+      envolturas: r.ramo_envolturas.map((re: any) => ({
         nombre: re.envolturas.nombre,
         foto: re.envolturas.foto
       })),
 
-      flores: r.ramo_detalle.map(d => ({
+      flores: r.ramo_detalle.map((d: any) => ({
         texto: `${d.cantidad_base} ${d.flores.nombre}`,
         foto: d.flores.foto
       }))
     };
   });
 
+  // 7. Renderizado de la página
   return (
     <main>
       <Navbar />

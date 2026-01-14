@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { createCategoria, getCategorias, deleteCategoria, updateCategoria } from "./actions";
 
+export const runtime = 'edge';
+
 type Categoria = {
   id: string;
   nombre: string;
