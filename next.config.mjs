@@ -15,13 +15,11 @@ const nextConfig = {
   
 webpack: (config, { isServer }) => {
     if (isServer) {
-      // Esto evita que Next.js intente cargar el motor de Prisma 
-      // durante la fase de "Collecting page data"
       config.externals.push('@prisma/client');
     }
-    config.resolve.fallback = { crypto: false };
+    // Esto desactiva la optimización que está fallando en el build de Cloudflare
+    config.optimization.minimize = false; 
     return config;
   },
 };
-
 export default nextConfig;
