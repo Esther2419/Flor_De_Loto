@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import AddToCartButton from "./AddToCartButton";
 
 interface DetalleConFoto {
   texto: string;
@@ -175,6 +176,14 @@ export default function CatalogoView({
                        </div>
                      )}
                   </div>
+      
+                  <AddToCartButton 
+                    id={ramo.id}
+                    nombre={ramo.nombre}
+                    precio={ramo.es_oferta && ramo.precio_oferta ? ramo.precio_oferta : ramo.precio_base}
+                    foto={ramo.foto_principal}
+                    className="mt-3"
+                  />
                 </div>
               </div>
             ))}
@@ -183,7 +192,6 @@ export default function CatalogoView({
 
       </div>
 
-      {/* --- MODAL DETALLE DE PRODUCTO --- */}
       {selectedRamo && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setSelectedRamo(null)}>
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95" onClick={(e) => e.stopPropagation()}>
@@ -215,6 +223,17 @@ export default function CatalogoView({
                 ) : (
                   <span className="text-3xl font-bold text-[#C5A059]">Bs {selectedRamo.precio_base}</span>
                 )}
+              </div>
+
+              <div className="mb-8">
+                <AddToCartButton 
+                  id={selectedRamo.id}
+                  nombre={selectedRamo.nombre}
+                  precio={selectedRamo.es_oferta && selectedRamo.precio_oferta ? selectedRamo.precio_oferta : selectedRamo.precio_base}
+                  foto={selectedRamo.foto_principal}
+                  className="w-full py-4 text-sm"
+                  onAfterAdd={() => setSelectedRamo(null)} 
+                />
               </div>
 
               <div className="space-y-6 mb-8">

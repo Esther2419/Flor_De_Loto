@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Lato, Cinzel } from "next/font/google";
 import "./globals.css";
+import { CartProvider } from "@/context/CartContext";
 
 const playfair = Playfair_Display({ 
   subsets: ["latin"], 
@@ -33,9 +34,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      {}
       <body className={`${playfair.variable} ${lato.variable} ${cinzel.variable} bg-crema text-gris font-sans antialiased`}>
-        {children}
+        {/* [NUEVO] Envolvemos la app con el proveedor del carrito */}
+        <CartProvider>
+          {children}
+        </CartProvider>
       </body>
     </html>
   );
