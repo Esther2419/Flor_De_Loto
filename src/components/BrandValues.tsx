@@ -1,5 +1,4 @@
 import React from 'react';
-//Valores de la marca: Frescura, Diseño de Autor, Atención Personal
 export default function BrandValues() {
   return (
     <section className="py-16 px-6 bg-white border-t border-[#C5A059]/10">

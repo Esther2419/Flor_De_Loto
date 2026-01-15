@@ -14,6 +14,7 @@ export default function Navbar() {
   const menuItems = [
     { name: "INICIO", href: "/" },
     { name: "CATEGORIAS", href: "/#categorias" },
+    { name: "RAMOS", href: "/#ramos" },
     { name: "ENCUENTRANOS", href: "/#encuentranos" },
     { 
       name: "CONTACTANOS", 
@@ -114,6 +115,7 @@ export default function Navbar() {
           </div>
         )}
 
+        {/* Botón Flotante WhatsApp */}
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 pointer-events-none">
           <div className="bg-white text-[#5D4E4E] px-3 py-2 md:px-4 rounded-xl shadow-lg border border-[#E5A1A6]/30 block pointer-events-auto">
             <p className="text-[10px] md:text-xs font-['Lato'] font-bold whitespace-nowrap">
@@ -133,7 +135,6 @@ export default function Navbar() {
         </div>
       </header>
       
-      {/* [NUEVO] Componente Sidebar del carrito */}
       <CartSidebar /> 
     </>
   );
