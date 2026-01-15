@@ -83,7 +83,7 @@ export default function HeroCarousel() {
   };
 
   return (
-    <div className="relative h-[50vh] w-full overflow-hidden bg-negro group"
+    <div className="relative h-[35vh] w-full overflow-hidden bg-negro group"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -118,14 +118,17 @@ export default function HeroCarousel() {
                 : "translate-y-8 opacity-0"
             } absolute w-full`}
           >
-            <h2 className="font-serif text-4xl md:text-6xl text-[#F3E5AB] drop-shadow-md tracking-wide italic mb-2">
+            <h2 className="font-serif text-3xl md:text-5xl text-[#F3E5AB] drop-shadow-md tracking-wide italic mb-2">
               {slide.title}
             </h2>
-            <p className="text-white/90 font-sans tracking-[0.2em] text-sm md:text-base uppercase mb-4">
+            
+            <p className="text-white/90 font-sans tracking-[0.2em] text-xs md:text-sm uppercase mb-4">
               {slide.subtitle}
             </p>
+            
             <div className="w-16 h-[1px] bg-[#C5A059] mx-auto mb-4" />
-            <p className="text-white/80 font-serif text-lg italic max-w-lg mx-auto">
+            
+            <p className="text-white/80 font-serif text-base italic max-w-lg mx-auto">
               {slide.desc}
             </p>
           </div>
