@@ -24,16 +24,16 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
   const visibleRamos = ramos.slice(0, visibleCount);
 
   return (
-    <section id="ramos" className="pt-8 pb-16 px-4 bg-white scroll-mt-20">
+    <section id="ramos" className="pt-0 -mt-4 pb-16 px-4 bg-white scroll-mt-20 relative z-10">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-8">
-          <span className="text-xs font-sans tracking-[0.3em] text-[#C5A059] uppercase mb-2 block">
+          <span className="text-xs font-sans tracking-[0.3em] text-[#C5A059] uppercase mb-0 block">
             Catálogo Completo
           </span>
           <h2 className="font-serif text-2xl md:text-3xl text-[#0A0A0A] italic drop-shadow-sm">
             Nuestros Ramos
           </h2>
-          <div className="w-12 h-0.5 bg-[#C5A059] mx-auto rounded-full mt-3" />
+          <div className="w-12 h-0.5 bg-[#C5A059] mx-auto rounded-full mt-2" />
         </div>
 
         {ramos.length === 0 ? (

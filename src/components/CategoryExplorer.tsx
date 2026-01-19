@@ -28,7 +28,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2 md:px-4 py-4 md:py-8 relative group/section">
+    <div className="w-full max-w-7xl mx-auto px-2 md:px-4 pt-1 pb-4 md:pt-2 md:pb-8 relative group/section">
       
       {/* --- TÍTULO --- */}
       <div className="text-center mb-2 md:mb-6">
