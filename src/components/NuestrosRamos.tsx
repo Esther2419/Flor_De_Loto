@@ -24,16 +24,16 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
   const visibleRamos = ramos.slice(0, visibleCount);
 
   return (
-    <section id="ramos" className="py-16 px-4 bg-white scroll-mt-20">
+    <section id="ramos" className="pt-8 pb-16 px-4 bg-white scroll-mt-20">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12">
-          <span className="text-xs font-sans tracking-[0.3em] text-[#C5A059] uppercase mb-3 block">
+        <div className="text-center mb-8">
+          <span className="text-xs font-sans tracking-[0.3em] text-[#C5A059] uppercase mb-2 block">
             Catálogo Completo
           </span>
-          <h2 className="font-serif text-3xl md:text-4xl text-[#0A0A0A] italic drop-shadow-sm">
+          <h2 className="font-serif text-2xl md:text-3xl text-[#0A0A0A] italic drop-shadow-sm">
             Nuestros Ramos
           </h2>
-          <div className="w-16 h-1 bg-[#C5A059] mx-auto rounded-full mt-4" />
+          <div className="w-12 h-0.5 bg-[#C5A059] mx-auto rounded-full mt-3" />
         </div>
 
         {ramos.length === 0 ? (
@@ -79,7 +79,7 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
                   </div>
 
                   {/* Info */}
-                  <div className="p-4 flex flex-col gap-2">
+                  <div className="p-3 flex flex-col gap-1">
                     <h3 className="font-serif text-sm font-bold text-[#0A0A0A] line-clamp-2 min-h-[2.5em] leading-tight group-hover:text-[#C5A059] transition-colors">
                       {ramo.nombre}
                     </h3>
@@ -87,11 +87,11 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
                     <div className="flex items-baseline gap-2 mt-1">
                       {ramo.es_oferta && ramo.precio_oferta ? (
                         <>
-                          <span className="text-red-500 font-bold text-lg">Bs {ramo.precio_oferta}</span>
-                          <span className="text-gray-400 text-xs line-through">Bs {ramo.precio_base}</span>
+                          <span className="text-red-500 font-bold text-base">Bs {ramo.precio_oferta}</span>
+                          <span className="text-gray-400 text-[10px] line-through">Bs {ramo.precio_base}</span>
                         </>
                       ) : (
-                        <span className="text-[#C5A059] font-bold text-lg">Bs {ramo.precio_base}</span>
+                        <span className="text-[#C5A059] font-bold text-base">Bs {ramo.precio_base}</span>
                       )}
                     </div>
 

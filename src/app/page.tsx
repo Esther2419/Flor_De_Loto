@@ -53,7 +53,7 @@ export default async function HomePage() {
       <Navbar /> 
       <HeroCarousel />
 
-      <div id="categorias" className="min-h-[400px] border-t border-[#E5A1A6]/20 relative z-10 bg-[#F9F6EE] scroll-mt-24">
+      <div id="categorias" className="border-t border-[#E5A1A6]/20 relative z-10 bg-white scroll-mt-24">
         <CategoryExplorer categories={categorias} />
       </div>
 
