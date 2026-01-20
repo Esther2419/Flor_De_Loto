@@ -11,9 +11,7 @@ export default function AdminPage() {
         </div>
       </div>
 
-      {/* Rejilla de Tarjetas Estadísticas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">Ventas Totales</h3>

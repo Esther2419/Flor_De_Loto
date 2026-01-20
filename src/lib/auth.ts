@@ -25,16 +25,12 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-
         const usuario = await prisma.usuarios.findUnique({
           where: { email: credentials.email }
         });
-
         if (!usuario) throw new Error("Usuario no encontrado");
-
         const passwordMatch = await bcrypt.compare(credentials.password, usuario.password);
         if (!passwordMatch) throw new Error("Contraseña incorrecta");
-
         return {
           id: usuario.id.toString(),
           name: usuario.nombre_completo,
