@@ -10,6 +10,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "zznzssvlcelqzsnyatfc.supabase.co",
       },
+      // AGREGAR ESTO: Permite cargar el icono de Google
+      {
+        protocol: "https",
+        hostname: "www.google.com",
+      },
     ],
   },
 };
