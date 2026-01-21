@@ -3,6 +3,7 @@ import { Playfair_Display, Lato, Cinzel } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import CartSidebar from "@/components/CartSidebar";
+import { ToastProvider } from "@/context/ToastContext";
 
 const playfair = Playfair_Display({ 
   subsets: ["latin"], 
@@ -37,9 +38,10 @@ export default function RootLayout({
     <html lang="es">
       <body className={`${playfair.variable} ${lato.variable} ${cinzel.variable} bg-crema text-gris font-sans antialiased`}>
         <Providers>
-          <CartSidebar />
-          
-          {children}
+          <ToastProvider>
+            <CartSidebar />
+            {children}
+          </ToastProvider>
         </Providers>
       </body>
     </html>

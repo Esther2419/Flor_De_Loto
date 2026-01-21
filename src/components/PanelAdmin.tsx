@@ -16,7 +16,8 @@ import {
   Loader2,
   Lock,
   Mail,
-  AlertCircle
+  AlertCircle,
+  ClipboardList
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -148,6 +149,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
 
   const menuItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
     { name: "Ramos", href: "/admin/ramos", icon: Package },
     { name: "Flores", href: "/admin/flores", icon: Flower2 },
     { name: "Categorías", href: "/admin/categorias", icon: Layers },

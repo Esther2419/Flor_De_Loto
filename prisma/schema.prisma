@@ -104,6 +104,9 @@ model ramos {
   categorias               categorias?       @relation(fields: [categoria_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_categoria")
   usuarios                 usuarios?         @relation(fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_audit")
   reservas                 reservas[]
+  
+  // Relación con el carrito
+  carrito_detalle          carrito_detalle[]
 }
 
 model reserva_adicionales {
@@ -118,30 +121,30 @@ model reserva_adicionales {
 }
 
 model reservas {
-  id                                                   BigInt                @id @default(autoincrement())
-  usuario_id                                           BigInt?
-  nombre_contacto                                      String                @db.VarChar(150)
-  telefono_contacto                                    String                @db.VarChar(20)
-  correo_contacto                                      String?               @db.VarChar(150)
-  ramo_catalogo_id                                     BigInt?
-  es_personalizado                                     Boolean?              @default(false)
-  foto_referencia_cliente                              String?
-  descripcion_solicitud                                String?
-  envoltura_elegida_id                                 BigInt?
-  precio_envoltura_momento                             Decimal?              @db.Decimal(10, 2)
-  fecha_solicitud                                      DateTime?             @default(now()) @db.Timestamp(6)
-  fecha_entrega                                        DateTime              @db.Date
-  mensaje_dedicatoria                                  String?
-  direccion_entrega                                    String?
-  estado                                               String?               @default("pendiente") @db.VarChar(20)
-  precio_final                                         Decimal?              @db.Decimal(10, 2)
-  fecha_actualizacion                                  DateTime?             @db.Timestamp(6)
-  usuario_actualizacion_id                             BigInt?
-  reserva_adicionales                                  reserva_adicionales[]
-  ramos                                                ramos?                @relation(fields: [ramo_catalogo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_reserva")
-  usuarios_reservas_usuario_actualizacion_idTousuarios usuarios?             @relation("reservas_usuario_actualizacion_idTousuarios", fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_audit")
-  envolturas                                           envolturas?           @relation(fields: [envoltura_elegida_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_envoltura")
-  usuarios_reservas_usuario_idTousuarios               usuarios?             @relation("reservas_usuario_idTousuarios", fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_reserva")
+  id                                               BigInt                @id @default(autoincrement())
+  usuario_id                                       BigInt?
+  nombre_contacto                                  String                @db.VarChar(150)
+  telefono_contacto                                String                @db.VarChar(20)
+  correo_contacto                                  String?               @db.VarChar(150)
+  ramo_catalogo_id                                 BigInt?
+  es_personalizado                                 Boolean?              @default(false)
+  foto_referencia_cliente                          String?
+  descripcion_solicitud                            String?
+  envoltura_elegida_id                             BigInt?
+  precio_envoltura_momento                         Decimal?              @db.Decimal(10, 2)
+  fecha_solicitud                                  DateTime?             @default(now()) @db.Timestamp(6)
+  fecha_entrega                                    DateTime              @db.Date
+  mensaje_dedicatoria                              String?
+  direccion_entrega                                String?
+  estado                                           String?               @default("pendiente") @db.VarChar(20)
+  precio_final                                     Decimal?              @db.Decimal(10, 2)
+  fecha_actualizacion                              DateTime?             @db.Timestamp(6)
+  usuario_actualizacion_id                         BigInt?
+  reserva_adicionales                              reserva_adicionales[]
+  ramos                                            ramos?                @relation(fields: [ramo_catalogo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_reserva")
+  usuarios_reservas_usuario_actualizacion_idTousuarios usuarios?         @relation("reservas_usuario_actualizacion_idTousuarios", fields: [usuario_actualizacion_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_audit")
+  envolturas                                       envolturas?           @relation(fields: [envoltura_elegida_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_reserva_envoltura")
+  usuarios_reservas_usuario_idTousuarios           usuarios?             @relation("reservas_usuario_idTousuarios", fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_reserva")
 }
 
 model usuarios {
@@ -161,6 +164,9 @@ model usuarios {
   ramos                                                ramos[]
   reservas_reservas_usuario_actualizacion_idTousuarios reservas[]   @relation("reservas_usuario_actualizacion_idTousuarios")
   reservas_reservas_usuario_idTousuarios               reservas[]   @relation("reservas_usuario_idTousuarios")
+  
+  // Relación con el carrito
+  carrito                                              carrito[]
 }
 
 model configuracion {
@@ -171,6 +177,7 @@ model configuracion {
   updated_at       DateTime? @default(now()) @db.Timestamptz(6)
 }
 
+// AQUÍ ESTABA EL ERROR: Faltaba el campo personalizacion
 model detalle_pedidos {
   id              BigInt  @id @default(autoincrement())
   pedido_id       BigInt
@@ -178,6 +185,10 @@ model detalle_pedidos {
   cantidad        Int     @default(1)
   precio_unitario Decimal @db.Decimal
   subtotal        Decimal @db.Decimal
+  
+  // CAMPO AGREGADO:
+  personalizacion Json?   @db.JsonB 
+  
   pedidos         pedidos @relation(fields: [pedido_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_pedido_cabecera")
   ramos           ramos   @relation(fields: [ramo_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_ramo_detalle")
 }
@@ -194,6 +205,25 @@ model pedidos {
   estado            String?           @default("pendiente") @db.VarChar
   detalle_pedidos   detalle_pedidos[]
   usuarios          usuarios?         @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_pedido")
+}
+
+// MODELOS DE CARRITO (Asegúrate que también estén)
+model carrito {
+  id                  BigInt            @id @default(autoincrement())
+  usuario_id          BigInt
+  fecha_actualizacion DateTime?         @default(now()) @db.Timestamp(6)
+  usuarios            usuarios          @relation(fields: [usuario_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  carrito_detalle     carrito_detalle[]
+}
+
+model carrito_detalle {
+  id              BigInt  @id @default(autoincrement())
+  carrito_id      BigInt
+  ramo_id         BigInt
+  cantidad        Int     @default(1)
+  personalizacion Json?   @db.JsonB
+  carrito         carrito @relation(fields: [carrito_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  ramos           ramos   @relation(fields: [ramo_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 }
 
 enum tipo_ramo {

@@ -7,16 +7,20 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
-import { Send, User, Phone, Clock, UserCheck, AlertTriangle } from "lucide-react";
+import { Send, User, Phone, Clock, UserCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { createOrderAction } from "@/app/actions/orders";
+import { useToast } from "@/context/ToastContext"; 
 
 export default function ReservarPage() {
   const { data: session, status } = useSession();
-  const { items, total } = useCart();
+  const { items, total, clearCart } = useCart();
   const router = useRouter();
+  const { toast } = useToast();
 
   const [tiendaAbierta, setTiendaAbierta] = useState<boolean>(true);
   const [horario, setHorario] = useState({ min: "09:00", max: "19:00" });
   const [formData, setFormData] = useState({ whatsapp: "", quienRecoge: "", horaRecojo: "" });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login?callbackUrl=/reservar");
@@ -44,10 +48,39 @@ export default function ReservarPage() {
 
   if (status === "loading" || !session) return <div className="min-h-screen bg-[#050505]" />;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!tiendaAbierta) return;
-    alert("¡Reserva confirmada! Te esperamos hoy.");
+    if (!tiendaAbierta) {
+      toast("La tienda está cerrada, no se pueden recibir pedidos.", "error");
+      return;
+    }
+    
+    setIsSubmitting(true);
+
+    try {
+      const result = await createOrderAction({
+        nombre_contacto: session.user?.name || "Cliente",
+        telefono_contacto: formData.whatsapp,
+        fecha_entrega: new Date().toISOString(),
+        quien_recoge: formData.quienRecoge,
+        hora_recojo: formData.horaRecojo,
+        total: total,
+        items: items
+      });
+
+      if (result.success) {
+        clearCart();
+        toast(`¡Pedido #${result.orderId} confirmado con éxito!`, "success");
+        router.push("/"); 
+      } else {
+        toast(result.message || "Error al procesar el pedido", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      toast("Ocurrió un error inesperado al enviar el pedido.", "error");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -85,9 +118,18 @@ export default function ReservarPage() {
                   <input type="time" required min={horario.min} max={horario.max} onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
                   <p className="text-[10px] text-[#C5A059] font-bold italic mt-2">* Horario de hoy: {horario.min} a {horario.max}</p>
                 </div>
-                <button disabled={!tiendaAbierta} className={`w-full py-6 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all ${tiendaAbierta ? "bg-[#C5A059] text-white hover:bg-[#b38f4d]" : "bg-gray-300 text-gray-500"}`}>
-                  {tiendaAbierta ? `Confirmar Pedido • Bs ${total}` : "Tienda Cerrada"}
-                  <Send size={16} />
+                <button 
+                  disabled={!tiendaAbierta || isSubmitting} 
+                  className={`w-full py-6 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all ${tiendaAbierta ? "bg-[#C5A059] text-white hover:bg-[#b38f4d]" : "bg-gray-300 text-gray-500"}`}
+                >
+                  {isSubmitting ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <>
+                      {tiendaAbierta ? `Confirmar Pedido • Bs ${total}` : "Tienda Cerrada"}
+                      <Send size={16} />
+                    </>
+                  )}
                 </button>
               </form>
             </div>
@@ -100,6 +142,13 @@ export default function ReservarPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold uppercase truncate">{item.nombre}</p>
                     <p className="text-xs text-[#C5A059]">Bs {item.precio} x {item.cantidad}</p>
+                    {item.personalizacion && (
+                      <div className="mt-1 flex flex-wrap gap-1">
+                         <span className="px-1.5 py-0.5 bg-[#C5A059]/10 text-[#C5A059] text-[9px] rounded font-bold uppercase tracking-wider">
+                           Personalizado
+                         </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

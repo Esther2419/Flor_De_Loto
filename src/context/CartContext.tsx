@@ -1,6 +1,14 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { useSession } from "next-auth/react";
+import { 
+  getCartAction, 
+  syncCartAction, 
+  addToCartAction, 
+  removeFromCartAction, 
+  updateQuantityAction 
+} from "@/app/actions/cart";
 
 export interface CartItem {
   id: string;
@@ -8,6 +16,7 @@ export interface CartItem {
   precio: number;
   foto: string | null;
   cantidad: number;
+  personalizacion?: any;
 }
 
 interface CartContextType {
@@ -25,45 +34,68 @@ interface CartContextType {
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export function CartProvider({ children }: { children: ReactNode }) {
+  const { data: session, status } = useSession();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    const savedCart = localStorage.getItem("flor-de-loto-cart");
-    if (savedCart) {
-      setItems(JSON.parse(savedCart));
+    const loadCart = async () => {
+      if (status === "authenticated") {
+        const localCart = JSON.parse(localStorage.getItem("flor-de-loto-cart") || "[]");
+        
+        if (localCart.length > 0) {
+          const syncedItems = await syncCartAction(localCart);
+          if (syncedItems) {
+            setItems(syncedItems);
+            localStorage.removeItem("flor-de-loto-cart"); 
+          }
+        } else {
+          const dbItems = await getCartAction();
+          if (dbItems) setItems(dbItems);
+        }
+      } else if (status === "unauthenticated") {
+        const savedCart = localStorage.getItem("flor-de-loto-cart");
+        if (savedCart) setItems(JSON.parse(savedCart));
+      }
+      setIsLoaded(true);
+    };
+
+    if (status !== "loading") {
+      loadCart();
     }
-    setIsLoaded(true);
-  }, []);
+  }, [status]);
 
   useEffect(() => {
-    if (isLoaded) {
+    if (isLoaded && status === "unauthenticated") {
       localStorage.setItem("flor-de-loto-cart", JSON.stringify(items));
     }
-  }, [items, isLoaded]);
+  }, [items, isLoaded, status]);
 
-  const addToCart = (product: Omit<CartItem, "cantidad">) => {
+  const addToCart = async (product: Omit<CartItem, "cantidad">) => {
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
       if (existingItem) {
         return currentItems.map((item) =>
-          item.id === product.id
-            ? { ...item, cantidad: item.cantidad + 1 }
-            : item
+          item.id === product.id ? { ...item, cantidad: item.cantidad + 1 } : item
         );
       }
       return [...currentItems, { ...product, cantidad: 1 }];
     });
-    // [MODIFICADO] Ya NO abrimos el carrito automáticamente
-    // setIsCartOpen(true); 
+
+    if (status === "authenticated") {
+      await addToCartAction({ ...product, cantidad: 1 });
+    }
   };
 
-  const removeFromCart = (id: string) => {
+  const removeFromCart = async (id: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
+    if (status === "authenticated") {
+      await removeFromCartAction(id);
+    }
   };
 
-  const updateQuantity = (id: string, delta: number) => {
+  const updateQuantity = async (id: string, delta: number) => {
     setItems((currentItems) => 
       currentItems.map((item) => {
         if (item.id === id) {
@@ -73,6 +105,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item;
       })
     );
+    if (status === "authenticated") {
+      await updateQuantityAction(id, delta);
+    }
   };
 
   const clearCart = () => setItems([]);
@@ -84,17 +119,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   return (
     <CartContext.Provider
-      value={{
-        items,
-        addToCart,
-        removeFromCart,
-        updateQuantity,
-        clearCart,
-        total,
-        count,
-        isCartOpen,
-        toggleCart,
-      }}
+      value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, count, isCartOpen, toggleCart }}
     >
       {children}
     </CartContext.Provider>

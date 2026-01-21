@@ -123,7 +123,7 @@ export default function CustomizationModal({ ramo, isOpen, onClose, onConfirm }:
         <div className="flex gap-4">
           <button onClick={onClose} className="flex-1 py-4 text-xs font-bold uppercase text-zinc-400 hover:text-zinc-800 transition-colors">Cancelar</button>
           <button onClick={handleAgregar} className="flex-[2] py-4 text-xs bg-[#050505] text-[#D4AF37] border border-[#D4AF37] font-bold uppercase rounded-2xl hover:bg-[#D4AF37] hover:text-black transition-all shadow-lg">
-            Confirmar e Integrar al Ramo
+            Confirmar
           </button>
         </div>
       </div>
