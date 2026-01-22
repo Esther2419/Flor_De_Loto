@@ -1,6 +1,7 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { useEffect, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -14,13 +15,47 @@ const icon = L.icon({
   shadowSize: [41, 41],
 });
 
+function MapInteractionHandler() {
+  const map = useMap();
+  const [isActive, setIsActive] = useState(false);
+
+  useEffect(() => {
+    if (isActive) {
+      map.dragging.enable();
+      map.scrollWheelZoom.enable();
+      map.touchZoom.enable();
+      map.doubleClickZoom.enable();
+    } else {
+      map.dragging.disable();
+      map.scrollWheelZoom.disable();
+      map.touchZoom.disable();
+      map.doubleClickZoom.disable();
+    }
+  }, [isActive, map]);
+
+  useEffect(() => {
+    const enableMap = () => setIsActive(true);
+    
+    const container = map.getContainer();
+    container.addEventListener('click', enableMap);
+    container.addEventListener('touchstart', enableMap, { passive: true });
+
+    return () => {
+      container.removeEventListener('click', enableMap);
+      container.removeEventListener('touchstart', enableMap);
+    };
+  }, [map]);
+
+  return null;
+}
+
 export default function Map() {
   const position: [number, number] = [-17.373308, -66.142852]; 
-
+  
   const googleMapsUrl = "https://maps.app.goo.gl/q1TXwMcgscaMPTYV8";
 
   return (
-    <div className="flex flex-col h-full w-full bg-gray-50">
+    <div className="flex flex-col h-full w-full bg-gray-50 relative group">
       
       <div className="flex-1 relative z-0">
         <MapContainer 
@@ -28,6 +63,10 @@ export default function Map() {
           zoom={18} 
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
+          scrollWheelZoom={false}
+          dragging={false}
+          doubleClickZoom={false}
+          touchZoom={false}
         >
           <TileLayer
             attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
@@ -42,7 +81,13 @@ export default function Map() {
               </div>
             </Popup>
           </Marker>
-        </MapContainer>
+
+          <MapInteractionHandler />
+          </MapContainer>
+
+        <div className="absolute top-2 right-2 z-[400] pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 px-2 py-1 rounded text-[10px] text-black font-sans uppercase tracking-widest shadow-sm">
+          Click para mover
+        </div>
       </div>
 
       <a 
