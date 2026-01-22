@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { getSession } from "next-auth/react";
 import { createEnvoltura, getEnvolturas, deleteEnvoltura, updateEnvoltura } from "./actions";
+import { Gift, Plus, LayoutGrid } from "lucide-react";
 
 type Envoltura = {
   id: string;
@@ -168,46 +169,55 @@ export default function EnvolturasAdminPage() {
   const isStockZero = (parseInt(formData.cantidad) || 0) === 0;
 
   return (
-    <div className="min-h-screen bg-[#F9F6EE] text-[#0A0A0A] pb-20">
-      <nav className="bg-[#0A0A0A] text-white p-4 border-b border-[#C5A059] flex items-center justify-between sticky top-0 z-50 shadow-md">
-        <div className="flex items-center gap-4">
-          <Link href="/admin" className="text-[#C5A059] hover:text-white transition-colors flex items-center text-xs uppercase tracking-widest">← Volver al Panel</Link>
-          <div className="h-4 w-px bg-[#C5A059]/30"></div>
-          <h1 className="font-serif text-lg italic text-white">Administración de Envolturas</h1>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      
+      {/* HEADER TIPO PEDIDOS */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-6">
+        <div>
+          <h2 className="text-2xl font-serif italic text-gray-800">Inventario de Envolturas</h2>
+          <p className="text-sm text-gray-500">Papeles, cajas, cintas y detalles.</p>
         </div>
-      </nav>
-
-      <div className="max-w-7xl mx-auto p-8">
-        <div className="mb-8 text-center">
-          <h2 className="font-serif text-4xl text-[#0A0A0A] mb-2">Catálogo de Envolturas</h2>
-          <p className="text-gray-500 font-light text-sm">Papeles, cajas, cintas y detalles de presentación.</p>
+        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
+           <button 
+             onClick={() => setActiveTab("ver")} 
+             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
+           >
+             <LayoutGrid size={14} className="inline mr-2 -mt-0.5" />
+             Ver Todo
+           </button>
+           <button 
+             onClick={() => { setActiveTab("crear"); resetForm(); }} 
+             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "crear" ? "bg-[#C5A059] text-white shadow-md" : "text-gray-400 hover:text-gray-600"}`}
+           >
+             <Plus size={14} className="inline mr-2 -mt-0.5" />
+             Añadir Material
+           </button>
         </div>
+      </div>
 
-        <div className="grid grid-cols-2 gap-4 mb-10 max-w-2xl mx-auto">
-          <button onClick={() => setActiveTab("ver")} className={`p-4 rounded-xl border transition-all ${activeTab === "ver" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>📋 Ver Inventario</button>
-          <button onClick={() => { setActiveTab("crear"); resetForm(); }} className={`p-4 rounded-xl border transition-all ${activeTab === "crear" ? "bg-[#0A0A0A] text-white shadow-lg" : "bg-white hover:border-[#C5A059]"}`}>✨ Añadir Material</button>
-        </div>
+      {(activeTab === "crear" || activeTab === "editar") && (
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="font-serif italic text-xl text-gray-800">{activeTab === "crear" ? "Registrar Nuevo Material" : "Editar Envoltura"}</h3>
+                <button onClick={() => setActiveTab('ver')} className="text-xs text-red-400 hover:text-red-500 font-bold uppercase">Cancelar</button>
+            </div>
 
-        <div className="bg-white rounded-2xl shadow-sm border border-[#C5A059]/10 p-8 min-h-[500px]">
-          {(activeTab === "crear" || activeTab === "editar") && (
-            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-               <h3 className="font-serif text-2xl text-[#0A0A0A] mb-6 text-center border-b border-[#C5A059]/20 pb-4">{activeTab === "crear" ? "Registrar Nuevo Material" : "Editar Envoltura"}</h3>
-
+            <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="col-span-full flex flex-col items-center justify-center border-2 border-dashed border-[#C5A059]/30 rounded-xl p-8 bg-[#F9F6EE] hover:bg-white transition-colors cursor-pointer relative group">
+                 <div className="col-span-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 bg-gray-50 hover:bg-white hover:border-[#C5A059] transition-colors cursor-pointer relative group">
                     <input type="file" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept="image/*" />
                     {uploading ? <span className="text-xs font-bold text-[#C5A059] animate-pulse">Analizando imagen...</span> : formData.foto ? <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg"><Image src={formData.foto} alt="Preview" fill className="object-cover" /></div> : <div className="text-center"><span className="text-4xl mb-2 block">🎁</span><span className="text-xs text-gray-400 uppercase tracking-widest">Subir Foto</span></div>}
                  </div>
 
                  <div className="space-y-2 col-span-full">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</label>
-                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" placeholder="Ej: Papel Kraft" />
+                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej: Papel Kraft" />
                  </div>
 
                  <div className="space-y-2 col-span-full">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Color</label>
                     <div className="flex flex-col gap-2">
-                        <div className="flex flex-wrap gap-1.5 p-2 bg-[#F9F6EE] rounded-lg border border-[#C5A059]/10">
+                        <div className="flex flex-wrap gap-1.5 p-2 bg-gray-50 rounded-lg border border-gray-100">
                             {PRIMARY_PRESETS.map((c) => (
                                 <button key={c.hex} type="button" onClick={() => setFormData({ ...formData, color: c.name })} className={`w-6 h-6 rounded-full border transition-all ${formData.color === c.name ? 'ring-1 ring-[#0A0A0A] ring-offset-1 scale-110' : 'border-white shadow-sm hover:scale-105'}`} style={{ backgroundColor: c.hex }} title={c.name} />
                             ))}
@@ -216,23 +226,23 @@ export default function EnvolturasAdminPage() {
                                 <input type="color" className="absolute inset-0 opacity-0 cursor-pointer scale-150" onChange={(e) => setFormData({ ...formData, color: getNameFromHex(e.target.value) })} />
                             </div>
                         </div>
-                        <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] font-bold text-sm" placeholder="Ej: Rojo, Dorado" />
+                        <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] font-bold text-sm outline-none" placeholder="Ej: Rojo, Dorado" />
                     </div>
                  </div>
                  
                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Diseño / Acabado</label>
-                    <input type="text" value={formData.diseno} onChange={e => setFormData({...formData, diseno: e.target.value})} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" placeholder="Ej: Lunares, Metalizado" />
+                    <input type="text" value={formData.diseno} onChange={e => setFormData({...formData, diseno: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej: Lunares, Metalizado" />
                  </div>
 
                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio (Bs)</label>
-                    <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" placeholder="0.00" />
+                    <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="0.00" />
                  </div>
 
                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cantidad (Stock)</label>
-                    <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-[#F9F6EE] border-none rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059]" placeholder="0" />
+                    <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="0" />
                  </div>
 
                  <div className={`col-span-full p-4 rounded-xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
@@ -248,31 +258,41 @@ export default function EnvolturasAdminPage() {
                  {loading ? "Guardando..." : "Guardar Cambios"}
                </button>
             </form>
-          )}
+        </div>
+      )}
 
-          {activeTab === "ver" && (
-            <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-2 md:gap-6 animate-in fade-in">
-                {envolturas.map((env) => (
-                    <div key={env.id} onClick={() => setSelectedEnvoltura(env)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all group relative cursor-pointer ${!env.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
-                        <div className="absolute top-1 left-1 md:top-3 md:left-3 z-10 flex flex-col gap-1"><span className={`px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm ${env.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>Stock: {env.cantidad}</span></div>
-                        <div className="relative h-24 md:h-48 bg-gray-100">
-                            {env.foto ? <Image src={env.foto} alt={env.nombre} fill className={`object-cover ${!env.disponible ? 'grayscale' : ''}`} /> : <div className="flex items-center justify-center h-full text-xl md:text-3xl opacity-20">🎁</div>}
-                            <div className="absolute bottom-1 right-1 md:bottom-2 md:right-2 z-10">{env.disponible ? <span className="bg-[#25D366]/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">Disponible</span> : <span className="bg-red-500/90 text-white px-1.5 py-0.5 md:px-2 md:py-1 rounded text-[8px] md:text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">No Disponible</span>}</div>
+      {activeTab === "ver" && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6 animate-in fade-in">
+            {envolturas.map((env) => (
+                <div key={env.id} onClick={() => setSelectedEnvoltura(env)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${!env.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
+                    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm ${env.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
+                            Stock: {env.cantidad}
+                        </span>
+                    </div>
+                    <div className="relative h-40 md:h-48 bg-gray-50">
+                        {env.foto ? <Image src={env.foto} alt={env.nombre} fill className={`object-cover ${!env.disponible ? 'grayscale' : ''}`} /> : <div className="flex items-center justify-center h-full text-3xl opacity-20">🎁</div>}
+                        <div className="absolute bottom-2 right-2 z-10">{env.disponible ? <span className="bg-[#25D366]/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">Disponible</span> : <span className="bg-red-500/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm backdrop-blur-sm">Agotado</span>}</div>
+                    </div>
+                    <div className="p-4">
+                        <div className="flex flex-col mb-2">
+                             <h3 className="font-serif font-bold text-lg text-[#0A0A0A] leading-tight line-clamp-1">{env.nombre}</h3>
+                             <span className="text-[#C5A059] font-bold text-sm">Bs {env.precio_unitario}</span>
                         </div>
-                        <div className="p-2 md:p-4">
-                            <div className="flex flex-col md:flex-row justify-between items-start mb-1 md:mb-2 gap-0.5 md:gap-0"><h3 className="font-serif font-bold text-[10px] md:text-lg text-[#0A0A0A] leading-tight line-clamp-1">{env.nombre}</h3><span className="text-[#C5A059] font-bold text-[9px] md:text-sm bg-[#F9F6EE] px-1.5 py-0.5 md:px-2 md:py-1 rounded whitespace-nowrap">Bs {env.precio_unitario}</span></div>
-                            <p className="text-[9px] md:text-xs text-gray-600 line-clamp-2 mb-2 leading-relaxed">{env.diseno ? `Diseño: ${env.diseno}` : "Sin diseño específico"}</p>
-                            <div className="flex items-center justify-center md:justify-start pt-1 md:pt-2 border-t border-gray-100"><div className="flex items-center gap-1 md:gap-2"><div className="w-2 h-2 md:w-3 md:h-3 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: getColorStyle(env.color) }}></div><span className="text-[8px] md:text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">{env.color || "Sin color"}</span></div></div>
+                        <p className="text-[10px] text-gray-500 line-clamp-1 mb-2">{env.diseno ? env.diseno : "Estándar"}</p>
+                        <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-50">
+                            <div className="w-3 h-3 rounded-full border border-gray-200 shadow-sm" style={{ backgroundColor: getColorStyle(env.color) }}></div>
+                            <span className="text-[10px] text-gray-400 uppercase tracking-wider font-bold truncate">{env.color || "Sin color"}</span>
                         </div>
                     </div>
-                ))}
-            </div>
-          )}
+                </div>
+            ))}
         </div>
+      )}
 
         {selectedEnvoltura && (
             <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedEnvoltura(null)}>
-                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative" onClick={e => e.stopPropagation()}>
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
                     <button onClick={() => setSelectedEnvoltura(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-1 transition-colors"><svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg></button>
                     <div className="relative h-64 bg-gray-100">{selectedEnvoltura.foto && <Image src={selectedEnvoltura.foto} alt={selectedEnvoltura.nombre} fill className="object-cover" />}</div>
                     <div className="p-6">
@@ -290,7 +310,6 @@ export default function EnvolturasAdminPage() {
                 </div>
             </div>
         )}
-      </div>
     </div>
   );
 }
