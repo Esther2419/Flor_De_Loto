@@ -58,12 +58,9 @@ export default async function HomePage() {
       </div>
 
       <NuestrosRamos ramos={ramos} />
-
-      <BrandIntro />
-
-      <BrandValues />
-
       <LocationSection />
+      <BrandIntro />
+      <BrandValues />
 
       <footer className="bg-[#050505] text-[#C5A059] border-t border-[#C5A059]/20 pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
@@ -87,7 +84,7 @@ export default async function HomePage() {
               </p>
               <p>
                 <strong className="block text-[#C5A059]">Teléfono:</strong>
-                +591 62646545
+                +591 79783761
               </p>
               <p>
                 <strong className="block text-[#C5A059]">Horarios de Atención:</strong>
@@ -105,7 +102,7 @@ export default async function HomePage() {
               <li><Link href="/#encuentranos" className="hover:text-[#C5A059] transition-colors">Ubicación</Link></li>
               <li>
                 <a 
-                  href="https://wa.me/59162646545?text=Hola%20Flor%20de%20Loto%20quiero%20contactarme%20para..." 
+                  href="https://wa.me/59179783761?text=Hola%20Flor%20de%20Loto%20quiero%20contactarme%20para..." 
                   target="_blank" 
                   rel="noopener noreferrer" 
                   className="hover:text-[#C5A059] transition-colors"

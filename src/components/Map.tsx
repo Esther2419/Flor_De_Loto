@@ -15,8 +15,9 @@ const icon = L.icon({
 });
 
 export default function Map() {
-  const position: [number, number] = [-17.373299, -66.142855]; 
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${position[0]},${position[1]}`;
+  const position: [number, number] = [-17.373308, -66.142852]; 
+
+  const googleMapsUrl = "https://maps.app.goo.gl/q1TXwMcgscaMPTYV8";
 
   return (
     <div className="flex flex-col h-full w-full bg-gray-50">
@@ -24,16 +25,22 @@ export default function Map() {
       <div className="flex-1 relative z-0">
         <MapContainer 
           center={position} 
-          zoom={17} 
+          zoom={18} 
           style={{ height: "100%", width: "100%" }}
           zoomControl={false}
         >
           <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           <Marker position={position} icon={icon}>
-            <Popup>Flor de Loto</Popup>
+            <Popup>
+              <div className="text-center font-sans">
+                <span className="font-bold text-[#C5A059] block mb-1">Flor de Loto</span>
+                <span className="text-xs text-gray-600 block">Av. General Galindo</span>
+                <span className="text-[10px] text-gray-400 uppercase tracking-wider">(JVG4+MRH)</span>
+              </div>
+            </Popup>
           </Marker>
         </MapContainer>
       </div>

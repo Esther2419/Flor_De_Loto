@@ -39,7 +39,7 @@ export default function Navbar() {
     { name: "ENCUENTRANOS", href: "/#encuentranos" },
     { 
       name: "CONTACTANOS", 
-      href: "https://wa.me/59162646545?text=Hola%20Flor%20de%20Loto%20quiero%20contactarme%20para..." 
+      href: "https://wa.me/59179783761?text=Hola%20Flor%20de%20Loto%20quiero%20contactarme%20para..." 
     },
   ];
 
