@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect } from "react";
-import { ShoppingCart, User, LogOut, LayoutDashboard } from "lucide-react";
+import { ShoppingCart, User, LogOut, LayoutDashboard, Menu, X } from "lucide-react";
 import { useCart } from "@/context/CartContext";
 import { useSession, signOut } from "next-auth/react";
 import { supabase } from "@/lib/supabase";
@@ -51,6 +51,7 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
           <div className="flex justify-between items-center h-full">
             
+            {/* LOGO */}
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative w-12 h-12 md:w-14 md:h-14 transition-transform duration-500 group-hover:scale-105">
                 <Image src="/LogoSinLetra.png" alt="Logo" fill className="object-contain" />
@@ -68,6 +69,7 @@ export default function Navbar() {
             </Link>
 
             <div className="flex items-center gap-4 md:gap-8">
+              {/* MENÚ DE ESCRITORIO */}
               <nav className="hidden lg:flex items-center space-x-8">
                 {menuItems.map((item) => (
                   <Link key={item.name} href={item.href} className="text-white text-[10px] font-bold tracking-[0.2em] hover:text-[#D4AF37] transition-colors uppercase py-2">
@@ -76,7 +78,8 @@ export default function Navbar() {
                 ))}
               </nav>
 
-              <div className="flex items-center gap-5">
+              <div className="flex items-center gap-3 md:gap-5">
+                {/* BOTÓN CARRITO */}
                 <button onClick={toggleCart} className="relative text-white hover:text-[#D4AF37] p-1">
                   <ShoppingCart className="w-6 h-6" />
                   {count > 0 && (
@@ -86,20 +89,25 @@ export default function Navbar() {
                   )}
                 </button>
 
-                <div className="flex items-center gap-4 border-l border-[#C5A059]/30 pl-5">
+                {/* SECCIÓN DE USUARIO */}
+                <div className="flex items-center gap-4 border-l border-[#C5A059]/30 pl-3 md:pl-5">
                   {session ? (
                     <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-end">
-                        <span className="text-white text-[10px] font-bold uppercase tracking-widest truncate max-w-[120px]">
-                          {session.user?.name}
-                        </span>
-                        {session.user?.role === "admin" && (
-                          <Link href="/admin" className="text-[#D4AF37] text-[8px] font-bold flex items-center gap-1 mt-1 uppercase">
-                            <LayoutDashboard size={10} /> PANEL
-                          </Link>
-                        )}
-                      </div>
-                      <button onClick={() => signOut({ callbackUrl: "/" })} className="text-white hover:text-red-500">
+                      
+                      {/* Solo mostramos botón de PANEL si es admin */}
+                      {session.user?.role === "admin" && (
+                        <Link href="/admin" className="text-[#D4AF37] text-[9px] md:text-[10px] font-bold flex items-center gap-1 uppercase hover:text-white transition-colors border border-[#D4AF37]/30 px-2 py-1 rounded hover:bg-[#D4AF37]/10">
+                          <LayoutDashboard size={14} /> 
+                          <span className="hidden sm:inline">PANEL</span>
+                        </Link>
+                      )}
+                      
+                      {/* Botón de Salir */}
+                      <button 
+                        onClick={() => signOut({ callbackUrl: "/" })} 
+                        className="text-white hover:text-red-500 transition-colors"
+                        title="Cerrar Sesión"
+                      >
                         <LogOut size={20} />
                       </button>
                     </div>
@@ -112,17 +120,35 @@ export default function Navbar() {
                 </div>
               </div>
 
+              {/* BOTÓN MENU MÓVIL */}
               <div className="lg:hidden">
-                <button onClick={() => setIsOpen(!isOpen)} className="text-white">
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-                  </svg>
+                <button onClick={() => setIsOpen(!isOpen)} className="text-white p-1">
+                  {isOpen ? <X size={24} /> : <Menu size={24} />}
                 </button>
               </div>
             </div>
           </div>
         </div>
       </header>
+
+      {/* MENÚ MÓVIL DESPLEGABLE (Agregado para que funcione en celulares) */}
+      {isOpen && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/95 backdrop-blur-xl pt-24 px-6 animate-in fade-in slide-in-from-top-10 duration-200">
+          <nav className="flex flex-col space-y-6">
+            {menuItems.map((item) => (
+              <Link 
+                key={item.name} 
+                href={item.href} 
+                onClick={() => setIsOpen(false)}
+                className="text-white text-lg font-bold tracking-[0.2em] hover:text-[#D4AF37] transition-colors uppercase border-b border-white/10 pb-2"
+              >
+                {item.name}
+              </Link>
+            ))}
+          </nav>
+        </div>
+      )}
+
       <CartSidebar /> 
     </>
   );
