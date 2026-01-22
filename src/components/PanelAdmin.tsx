@@ -17,7 +17,9 @@ import {
   Lock,
   Mail,
   AlertCircle,
-  ClipboardList
+  ClipboardList,
+  Menu,
+  X
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -29,6 +31,8 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -157,16 +161,38 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 flex font-sans">
-      <aside className="w-64 bg-[#0A0A0A] text-white hidden md:flex flex-col flex-shrink-0 border-r border-white/5">
-        <div className="h-20 flex items-center justify-center border-b border-white/10">
-          <div className="text-center">
+    <div className="min-h-screen bg-gray-50 flex font-sans relative">
+      
+      {/* Overlay oscuro para móvil cuando el menú está abierto */}
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      {/* Sidebar Responsivo */}
+      <aside className={`
+        fixed md:sticky top-0 z-50 h-screen md:h-screen
+        w-64 bg-[#0A0A0A] text-white flex flex-col flex-shrink-0 border-r border-white/5
+        transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
+        <div className="h-20 flex items-center justify-between px-4 border-b border-white/10 bg-[#0A0A0A]">
+          <div className="text-center w-full md:w-auto">
             <h2 className="text-2xl font-serif italic text-[#C5A059]">Flor de Loto</h2>
             <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">Admin Panel</p>
           </div>
+          {/* Botón cerrar solo visible en móvil */}
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden text-gray-400 hover:text-white absolute right-4"
+          >
+            <X size={24} />
+          </button>
         </div>
 
-        <nav className="flex-1 py-6 px-3 space-y-1">
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
           {menuItems.map((item) => {
             const isActive = pathname === item.href;
             const Icon = item.icon;
@@ -174,6 +200,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al hacer clic en móvil
                 className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
                   ${isActive ? "bg-[#C5A059] text-black shadow-lg" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
               >
@@ -184,7 +211,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10 bg-black/20">
+        <div className="p-4 border-t border-white/10 bg-black/20 mt-auto">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full bg-[#C5A059]/10 flex items-center justify-center text-[#C5A059] border border-[#C5A059]/20">
               <User size={18} />
@@ -198,22 +225,32 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
       </aside>
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-gray-200 h-20 flex items-center justify-between px-6 sticky top-0 z-30">
-          <div>
-            <h1 className="text-xl font-bold text-gray-800">
-              Bienvenido, <span className="text-[#C5A059]">{session.user?.name || "Administrador"}</span> 👋
-            </h1>
-            <p className="text-[11px] text-gray-400 uppercase tracking-widest mt-0.5">Gestión de Floristería</p>
+        <header className="bg-white border-b border-gray-200 h-20 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-sm md:shadow-none">
+          <div className="flex items-center gap-3">
+            {/* Botón Hamburguesa para Móvil */}
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden text-gray-600 hover:text-[#C5A059] transition-colors p-1"
+            >
+              <Menu size={24} />
+            </button>
+
+            <div>
+              <h1 className="text-lg md:text-xl font-bold text-gray-800 leading-tight">
+                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 👋
+              </h1>
+              <p className="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest hidden sm:block">Gestión de Floristería</p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3 md:gap-4">
             <div className="hidden lg:block text-right">
               <p className="text-xs font-bold text-gray-700">{session.user?.email}</p>
               <span className="text-[10px] text-green-500 font-bold uppercase">Sesión Activa</span>
             </div>
             <button 
               onClick={() => signOut({ callbackUrl: '/' })}
-              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-4 py-2.5 rounded-lg transition-all font-semibold"
+              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-3 md:px-4 py-2 md:py-2.5 rounded-lg transition-all font-semibold"
             >
               <LogOut size={18} />
               <span className="hidden sm:inline">Salir</span>
@@ -221,7 +258,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
           </div>
         </header>
 
-        <main className="flex-1 overflow-auto p-6 md:p-8">
+        <main className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
              {children || (
                <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center">

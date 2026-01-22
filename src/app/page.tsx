@@ -59,8 +59,8 @@ export default async function HomePage() {
 
       <NuestrosRamos ramos={ramos} />
       <LocationSection />
-      <BrandIntro />
       <BrandValues />
+      <BrandIntro />
 
       <footer className="bg-[#050505] text-[#C5A059] border-t border-[#C5A059]/20 pt-16 pb-8">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
