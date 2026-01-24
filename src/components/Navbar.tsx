@@ -45,7 +45,7 @@ export default function Navbar() {
 
   return (
     <>
-      <header className={`bg-[#050505] border-b-2 sticky top-0 z-50 shadow-md h-20 transition-all duration-500 ${
+      <header className={`bg-[#050505] border-b-2 sticky top-0 z-50 shadow-md h-16 md:h-20 transition-all duration-500 ${
         tiendaAbierta ? "border-[#C5A059]/30" : "border-red-600 shadow-[0_0_15px_rgba(220,38,38,0.4)]"
       }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full">
@@ -53,14 +53,14 @@ export default function Navbar() {
             
             {/* LOGO */}
             <Link href="/" className="flex items-center gap-2 md:gap-3 group">
-              <div className="relative w-10 h-10 md:w-14 md:h-14 transition-transform duration-500 group-hover:scale-105">
+              <div className="relative w-8 h-8 md:w-14 md:h-14 transition-transform duration-500 group-hover:scale-105">
                 <Image src="/LogoSinLetra.png" alt="Logo" fill className="object-contain" />
               </div>
               <div className="flex flex-col">
-                <h1 className="font-serif italic font-bold text-lg md:text-3xl leading-none bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] bg-clip-text text-transparent group-hover:animate-shine">
+                <h1 className="font-serif italic font-bold text-base md:text-3xl leading-none bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] bg-clip-text text-transparent group-hover:animate-shine">
                   Flor de Loto
                 </h1>
-                <span className={`text-[7px] md:text-[10px] uppercase tracking-[0.35em] font-bold ${
+                <span className={`text-[6px] md:text-[10px] uppercase tracking-[0.35em] font-bold ${
                   tiendaAbierta ? "text-[#D4AF37]" : "text-red-500"
                 }`}>
                   {tiendaAbierta ? "Floristería" : "TIENDA CERRADA"}
@@ -68,7 +68,7 @@ export default function Navbar() {
               </div>
             </Link>
 
-            <div className="flex items-center gap-4 md:gap-8">
+            <div className="flex items-center gap-3 md:gap-8">
               {/* MENÚ DE ESCRITORIO */}
               <nav className="hidden lg:flex items-center space-x-8">
                 {menuItems.map((item) => (
@@ -78,42 +78,39 @@ export default function Navbar() {
                 ))}
               </nav>
 
-              <div className="flex items-center gap-3 md:gap-5">
-                {/* BOTÓN CARRITO */}
+              <div className="flex items-center gap-2 md:gap-5">
                 <button onClick={toggleCart} className="relative text-white hover:text-[#D4AF37] p-1">
-                  <ShoppingCart className="w-6 h-6" />
+                  <ShoppingCart className="w-5 h-5 md:w-6 md:h-6" />
                   {count > 0 && (
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white">
+                    <span className="absolute -top-1 -right-1 flex h-3 w-3 md:h-4 md:w-4 items-center justify-center rounded-full bg-red-600 text-[8px] md:text-[10px] font-bold text-white">
                       {count}
                     </span>
                   )}
                 </button>
 
                 {/* SECCIÓN DE USUARIO */}
-                <div className="flex items-center gap-4 border-l border-[#C5A059]/30 pl-3 md:pl-5">
+                <div className="flex items-center gap-2 md:gap-4 border-l border-[#C5A059]/30 pl-2 md:pl-5">
                   {session ? (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 md:gap-3">
                       
-                      {/* Solo mostramos botón de PANEL si es admin */}
                       {session.user?.role === "admin" && (
                         <Link href="/admin" className="text-[#D4AF37] text-[9px] md:text-[10px] font-bold flex items-center gap-1 uppercase hover:text-white transition-colors border border-[#D4AF37]/30 px-2 py-1 rounded hover:bg-[#D4AF37]/10">
-                          <LayoutDashboard size={14} /> 
+                          <LayoutDashboard className="w-3 h-3 md:w-4 md:h-4" /> 
                           <span className="hidden sm:inline">PANEL</span>
                         </Link>
                       )}
                       
-                      {/* Botón de Salir */}
                       <button 
                         onClick={() => signOut({ callbackUrl: "/" })} 
                         className="text-white hover:text-red-500 transition-colors"
                         title="Cerrar Sesión"
                       >
-                        <LogOut size={20} />
+                        <LogOut className="w-5 h-5 md:w-6 md:h-6" />
                       </button>
                     </div>
                   ) : (
-                    <Link href="/login" className="flex items-center gap-2 text-white hover:text-[#D4AF37] group">
-                      <User className="w-6 h-6 group-hover:scale-110" />
+                    <Link href="/login" className="flex items-center gap-1 md:gap-2 text-white hover:text-[#D4AF37] group">
+                      <User className="w-5 h-5 md:w-6 md:h-6 group-hover:scale-110" />
                       <span className="hidden sm:block text-[10px] font-bold tracking-widest">INGRESAR</span>
                     </Link>
                   )}
@@ -123,7 +120,7 @@ export default function Navbar() {
               {/* BOTÓN MENU MÓVIL */}
               <div className="lg:hidden">
                 <button onClick={() => setIsOpen(!isOpen)} className="text-white p-1">
-                  {isOpen ? <X size={24} /> : <Menu size={24} />}
+                  {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
                 </button>
               </div>
             </div>
