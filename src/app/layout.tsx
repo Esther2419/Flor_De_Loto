@@ -25,8 +25,33 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "Flor de Loto | Floristería Boutique",
-  description: "Arreglos florales exclusivos en Cochabamba.",
+  title: {
+    default: "Flor de Loto | Floristería en Cochabamba",
+    template: "%s | Flor de Loto"
+  },
+  description: "La mejor floristería en Cochabamba. Arreglos florales exclusivos, ramos de rosas, tulipanes y regalos personalizados con entrega a domicilio. Frescura y elegancia garantizada.",
+  
+  icons: {
+    icon: '/LogoSinLetra.png',
+    apple: '/LogoSinLetra.png',
+    shortcut: '/LogoSinLetra.png',
+  },
+
+  openGraph: {
+    title: "Flor de Loto | Floristería Boutique",
+    description: "Arreglos florales exclusivos y frescos en Cochabamba.",
+    url: 'https://www.floreriaflordeloto.com',
+    siteName: 'Flor de Loto',
+    images: [
+      {
+        url: '/LogoSinLetra.png',
+        width: 800,
+        height: 800,
+      },
+    ],
+    locale: 'es_BO',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
