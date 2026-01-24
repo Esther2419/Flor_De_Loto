@@ -52,15 +52,15 @@ export default function Navbar() {
           <div className="flex justify-between items-center h-full">
             
             {/* LOGO */}
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative w-12 h-12 md:w-14 md:h-14 transition-transform duration-500 group-hover:scale-105">
+            <Link href="/" className="flex items-center gap-2 md:gap-3 group">
+              <div className="relative w-10 h-10 md:w-14 md:h-14 transition-transform duration-500 group-hover:scale-105">
                 <Image src="/LogoSinLetra.png" alt="Logo" fill className="object-contain" />
               </div>
               <div className="flex flex-col">
-                <h1 className="font-serif italic font-bold text-2xl md:text-3xl leading-none bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] bg-clip-text text-transparent group-hover:animate-shine">
+                <h1 className="font-serif italic font-bold text-lg md:text-3xl leading-none bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] bg-clip-text text-transparent group-hover:animate-shine">
                   Flor de Loto
                 </h1>
-                <span className={`text-[8px] md:text-[10px] uppercase tracking-[0.35em] font-bold ${
+                <span className={`text-[7px] md:text-[10px] uppercase tracking-[0.35em] font-bold ${
                   tiendaAbierta ? "text-[#D4AF37]" : "text-red-500"
                 }`}>
                   {tiendaAbierta ? "Floristería" : "TIENDA CERRADA"}
@@ -131,7 +131,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* MENÚ MÓVIL DESPLEGABLE (Agregado para que funcione en celulares) */}
+      {/* MENÚ MÓVIL DESPLEGABLE */}
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black/95 backdrop-blur-xl pt-24 px-6 animate-in fade-in slide-in-from-top-10 duration-200">
           <nav className="flex flex-col space-y-6">
