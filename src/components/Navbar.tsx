@@ -147,7 +147,7 @@ export default function Navbar() {
         </div>
       </header>
 
-      {/* PANEL DE BÚSQUEDA (LETRAS PEQUEÑAS) */}
+      {/* PANEL DE BÚSQUEDA ACTUALIZADO */}
       {isSearchOpen && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md animate-in fade-in duration-300 flex flex-col items-center pt-16 md:pt-20 px-6 overflow-hidden">
           <button onClick={() => setIsSearchOpen(false)} className="absolute top-6 right-6 text-white/40 hover:text-white p-2"><X size={28} /></button>
@@ -173,27 +173,54 @@ export default function Navbar() {
             <div className="flex-1 overflow-y-auto pb-20 custom-scrollbar">
               {searchResults && searchTerm.length >= 2 && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* COLUMNA RAMOS */}
                   <div className="space-y-4">
                     <p className="text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] border-b border-[#C5A059]/10 pb-1">Catálogo de Ramos</p>
                     {searchResults.ramos.map(r => (
-                      <Link key={r.id} href={`/catalogo?q=${r.nombre}`} onClick={() => setIsSearchOpen(false)} className="flex items-center gap-3 p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all group">
-                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0"><Image src={r.foto_principal || "/portada.jpg"} alt="" fill className="object-cover" /></div>
-                        <div className="flex-1"><p className="text-[11px] font-bold text-white uppercase truncate">{r.nombre}</p><p className="text-[10px] text-[#C5A059]">Bs {r.es_oferta ? r.precio_oferta : r.precio_base}</p></div>
-                        <ChevronRight size={14} className="text-white/10" />
+                      <Link 
+                        key={r.id} 
+                        href={`/detalles/ramo/${r.id}`} 
+                        onClick={() => setIsSearchOpen(false)} 
+                        className="flex items-center gap-3 p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all group"
+                      >
+                        <div className="relative w-12 h-12 rounded-lg overflow-hidden shrink-0">
+                          <Image src={r.foto_principal || "/portada.jpg"} alt="" fill className="object-cover" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-[11px] font-bold text-white uppercase truncate">{r.nombre}</p>
+                          <p className="text-[10px] text-[#C5A059]">Bs {r.es_oferta ? r.precio_oferta : r.precio_base}</p>
+                        </div>
+                        <ChevronRight size={14} className="text-white/10 group-hover:text-[#C5A059] transition-colors" />
                       </Link>
                     ))}
+                    {searchResults.ramos.length === 0 && <p className="text-[10px] text-zinc-600 italic">No se encontraron ramos.</p>}
                   </div>
 
+                  {/* COLUMNA FLORES E INSUMOS */}
                   <div className="space-y-4">
                     <p className="text-[9px] font-bold text-[#C5A059] uppercase tracking-[0.3em] border-b border-[#C5A059]/10 pb-1">Flores e Insumos</p>
                     <div className="grid grid-cols-1 gap-2">
                       {[...searchResults.flores, ...searchResults.envolturas].map(item => (
-                        <div key={`${item.type}-${item.id}`} className="flex items-center gap-3 p-2 bg-white/5 rounded-xl">
-                          <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/5"><Image src={item.foto || "/LogoSinLetra.png"} alt="" fill className="object-cover" /></div>
-                          <div className="flex-1"><p className="text-[10px] font-bold text-white uppercase truncate">{item.nombre}</p><p className="text-[9px] text-gray-500 italic">{item.color || 'Unico'}</p></div>
-                          {item.type === 'flor' ? <Flower2 size={12} className="text-white/5" /> : <Gift size={12} className="text-white/5" />}
-                        </div>
+                        <Link 
+                          key={`${item.type}-${item.id}`} 
+                          href={`/detalles/${item.type}/${item.id}`}
+                          onClick={() => setIsSearchOpen(false)}
+                          className="flex items-center gap-3 p-2 bg-white/5 rounded-xl hover:bg-white/10 transition-all group"
+                        >
+                          <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0 border border-white/5">
+                            <Image src={item.foto || "/LogoSinLetra.png"} alt="" fill className="object-cover" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="text-[10px] font-bold text-white uppercase truncate">{item.nombre}</p>
+                            <p className="text-[9px] text-gray-500 italic">{item.color || 'Unico'}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {item.type === 'flor' ? <Flower2 size={12} className="text-white/20 group-hover:text-[#C5A059]" /> : <Gift size={12} className="text-white/20 group-hover:text-[#C5A059]" />}
+                            <ChevronRight size={12} className="text-white/5" />
+                          </div>
+                        </Link>
                       ))}
+                      {(searchResults.flores.length + searchResults.envolturas.length) === 0 && <p className="text-[10px] text-zinc-600 italic">No hay insumos que coincidan.</p>}
                     </div>
                   </div>
                 </div>
@@ -203,7 +230,7 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* MENÚ MÓVIL (Letras pequeñas) */}
+      {/* MENÚ MÓVIL */}
       {isOpen && (
         <div className="lg:hidden fixed inset-0 z-40 bg-black/95 backdrop-blur-xl pt-20 px-6 animate-in fade-in slide-in-from-top-10 overflow-y-auto">
           <nav className="flex flex-col space-y-6">

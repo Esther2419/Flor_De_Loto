@@ -11,33 +11,37 @@ interface AddToCartProps {
   nombre: string;
   precio: number;
   foto: string | null;
+  type?: string;
   className?: string;
   onAfterAdd?: () => void;
 }
 
-export default function AddToCartButton({ id, nombre, precio, foto, className, onAfterAdd }: AddToCartProps) {
+export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo", className, onAfterAdd }: AddToCartProps) {
   const { addToCart } = useCart();
   const [isAnimating, setIsAnimating] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [showCheck, setShowCheck] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleOpenModal = (e: React.MouseEvent<HTMLButtonElement>) => {
+  const handleAction = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    const rect = e.currentTarget.getBoundingClientRect();
-    setStartPos({ x: rect.left, y: rect.top });
-    setIsModalOpen(true);
+
+    if (type === 'ramo') {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setStartPos({ x: rect.left, y: rect.top });
+      setIsModalOpen(true);
+    } else {
+      executeAddToCart(nombre, precio);
+    }
   };
 
-  const handleConfirm = (customData: any) => {
+  const executeAddToCart = (finalNombre: string, finalPrecio: number) => {
     setIsAnimating(true);
-    
     addToCart({ 
-      id: `${id}-custom-${Date.now()}`, 
-      nombre: `${nombre} (Personalizado)`, 
-      precio: precio, 
+      id: `${id}-${type}-${Date.now()}`, 
+      nombre: finalNombre, 
+      precio: finalPrecio, 
       foto: foto 
     });
 
@@ -49,10 +53,14 @@ export default function AddToCartButton({ id, nombre, precio, foto, className, o
     }, 800);
   };
 
+  const handleConfirmModal = (customData: any) => {
+    executeAddToCart(`${nombre} (Personalizado)`, precio);
+  };
+
   return (
     <>
       <button
-        onClick={handleOpenModal}
+        onClick={handleAction}
         disabled={showCheck}
         className={`relative z-10 overflow-hidden bg-[#050505] text-[#D4AF37] border border-[#D4AF37] hover:bg-[#D4AF37] hover:text-[#050505] py-2 px-4 rounded-full flex items-center justify-center gap-2 transition-all duration-300 text-xs font-bold uppercase tracking-wider ${
           showCheck ? "bg-[#D4AF37] text-[#050505]" : ""
@@ -66,17 +74,19 @@ export default function AddToCartButton({ id, nombre, precio, foto, className, o
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />
-            <span>Agregar</span>
+            <span>{type === 'ramo' ? 'Personalizar y Agregar' : 'Agregar al Carrito'}</span>
           </>
         )}
       </button>
 
-      <CustomizationModal 
-        ramo={{ id, nombre, precio_base: precio, foto_principal: foto }}
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleConfirm}
-      />
+      {type === 'ramo' && (
+        <CustomizationModal 
+          ramo={{ id, nombre, precio_base: precio, foto_principal: foto }}
+          isOpen={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          onConfirm={handleConfirmModal}
+        />
+      )}
 
       {isAnimating && foto && (
         <div
