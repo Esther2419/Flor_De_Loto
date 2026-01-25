@@ -9,9 +9,7 @@ export const authOptions: NextAuthOptions = {
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
-      authorization: {
-        params: { prompt: "select_account" },
-      },
+      authorization: { params: { prompt: "select_account" } },
     }),
     CredentialsProvider({
       name: "Credentials",
@@ -53,7 +51,7 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               nombre_completo: user.name,
               rol: "cliente",
-              password: "",
+              password: "", // Los usuarios de Google no tienen contraseña local
             }
           });
         }

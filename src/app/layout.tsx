@@ -25,6 +25,11 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NODE_ENV === "production" 
+      ? "https://www.floreriaflordeloto.com" 
+      : "http://localhost:3000"
+  ),
   title: {
     default: "Flor de Loto | Floristería en Cochabamba",
     template: "%s | Flor de Loto"
