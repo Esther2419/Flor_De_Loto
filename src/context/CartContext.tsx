@@ -16,7 +16,7 @@ export interface CartItem {
   precio: number;
   foto: string | null;
   cantidad: number;
-  personalizacion?: any;
+  personalizacion?: any; 
 }
 
 interface CartContextType {
@@ -43,16 +43,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const loadCart = async () => {
       if (status === "authenticated") {
         const localCart = JSON.parse(localStorage.getItem("flor-de-loto-cart") || "[]");
-        
         if (localCart.length > 0) {
           const syncedItems = await syncCartAction(localCart);
           if (syncedItems) {
-            setItems(syncedItems);
+            setItems(syncedItems as CartItem[]);
             localStorage.removeItem("flor-de-loto-cart"); 
           }
         } else {
           const dbItems = await getCartAction();
-          if (dbItems) setItems(dbItems);
+          if (dbItems) setItems(dbItems as CartItem[]);
         }
       } else if (status === "unauthenticated") {
         const savedCart = localStorage.getItem("flor-de-loto-cart");
@@ -73,18 +72,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isLoaded, status]);
 
   const addToCart = async (product: Omit<CartItem, "cantidad">) => {
+    // Si tiene personalización, generamos un ID único para no agrupar ramos con distintas notas
+    const cartItemId = product.personalizacion 
+      ? `${product.id}-custom-${Date.now()}` 
+      : product.id;
+
     setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === product.id);
-      if (existingItem) {
+      const existingItem = currentItems.find((item) => item.id === cartItemId);
+      if (existingItem && !product.personalizacion) {
         return currentItems.map((item) =>
-          item.id === product.id ? { ...item, cantidad: item.cantidad + 1 } : item
+          item.id === cartItemId ? { ...item, cantidad: item.cantidad + 1 } : item
         );
       }
-      return [...currentItems, { ...product, cantidad: 1 }];
+      return [...currentItems, { ...product, id: cartItemId, cantidad: 1 }];
     });
 
     if (status === "authenticated") {
-      await addToCartAction({ ...product, cantidad: 1 });
+      await addToCartAction({ ...product, id: cartItemId, cantidad: 1 });
     }
   };
 
@@ -111,9 +115,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCart = () => setItems([]);
-
   const toggleCart = () => setIsCartOpen(!isCartOpen);
-
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
   const count = items.reduce((acc, item) => acc + item.cantidad, 0);
 

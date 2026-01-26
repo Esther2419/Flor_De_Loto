@@ -4,7 +4,6 @@ import { useCart } from "@/context/CartContext";
 import { ShoppingCart, Check } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
-import CustomizationModal from "./CustomizationModal";
 
 interface AddToCartProps {
   id: string;
@@ -14,35 +13,27 @@ interface AddToCartProps {
   type?: string;
   className?: string;
   onAfterAdd?: () => void;
+  personalizacion?: any;
 }
 
-export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo", className, onAfterAdd }: AddToCartProps) {
+export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo", className, onAfterAdd, personalizacion }: AddToCartProps) {
   const { addToCart } = useCart();
   const [isAnimating, setIsAnimating] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [showCheck, setShowCheck] = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleAction = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    e.stopPropagation();
-
-    if (type === 'ramo') {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setStartPos({ x: rect.left, y: rect.top });
-      setIsModalOpen(true);
-    } else {
-      executeAddToCart(nombre, precio);
-    }
-  };
-
-  const executeAddToCart = (finalNombre: string, finalPrecio: number) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setStartPos({ x: rect.left, y: rect.top });
+    
     setIsAnimating(true);
     addToCart({ 
-      id: `${id}-${type}-${Date.now()}`, 
-      nombre: finalNombre, 
-      precio: finalPrecio, 
-      foto: foto 
+      id: personalizacion ? `${id}-custom-${Date.now()}` : id, 
+      nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
+      precio: precio, 
+      foto: foto,
+      personalizacion: personalizacion 
     });
 
     setShowCheck(true);
@@ -51,10 +42,6 @@ export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo
       setShowCheck(false);
       if (onAfterAdd) onAfterAdd();
     }, 800);
-  };
-
-  const handleConfirmModal = (customData: any) => {
-    executeAddToCart(`${nombre} (Personalizado)`, precio);
   };
 
   return (
@@ -67,26 +54,17 @@ export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo
         } ${className}`}
       >
         {showCheck ? (
-          <div className="animate-in zoom-in duration-300 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <Check className="w-4 h-4" />
             <span>Agregado</span>
           </div>
         ) : (
           <>
             <ShoppingCart className="w-4 h-4" />
-            <span>{type === 'ramo' ? 'Personalizar y Agregar' : 'Agregar al Carrito'}</span>
+            <span>Agregar al Carrito</span>
           </>
         )}
       </button>
-
-      {type === 'ramo' && (
-        <CustomizationModal 
-          ramo={{ id, nombre, precio_base: precio, foto_principal: foto }}
-          isOpen={isModalOpen}
-          onClose={() => setIsModalOpen(false)}
-          onConfirm={handleConfirmModal}
-        />
-      )}
 
       {isAnimating && foto && (
         <div
