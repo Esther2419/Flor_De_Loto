@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import AddToCartButton from "./AddToCartButton";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 interface Ramo {
   id: string;
@@ -16,6 +17,14 @@ interface Ramo {
 
 export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
   const [visibleCount, setVisibleCount] = useState(15);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleCardClick = (id: string) => {
+    if (loadingId) return;
+    setLoadingId(id);
+    router.push(`/detalles/ramo/${id}`);
+  };
 
   const handleShowMore = () => {
     setVisibleCount((prev) => prev + 15);
@@ -46,7 +55,8 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
               {visibleRamos.map((ramo) => (
                 <div 
                   key={ramo.id} 
-                  className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}
+                  onClick={() => handleCardClick(ramo.id)}
+                  className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block cursor-pointer ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}
                 >
                   {/* Imagen */}
                   <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
@@ -84,7 +94,7 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
                       {ramo.nombre}
                     </h3>
                     
-                    <div className="flex items-baseline gap-1.5 mt-0.5">
+                    <div className="flex items-baseline gap-1.5 mt-2">
                       {ramo.es_oferta && ramo.precio_oferta ? (
                         <>
                           <span className="text-red-500 font-bold text-sm">Bs {ramo.precio_oferta}</span>
@@ -96,14 +106,19 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
                     </div>
 
                     {ramo.activo && (
-                      <div className="mt-1.5 scale-95 origin-left w-full">
-                        <AddToCartButton 
-                          id={ramo.id}
-                          nombre={ramo.nombre}
-                          precio={ramo.es_oferta && ramo.precio_oferta ? ramo.precio_oferta : ramo.precio_base}
-                          foto={ramo.foto_principal}
-                        />
-                      </div>
+                      <button 
+                        className="w-full mt-2 bg-[#050505] text-[#D4AF37] border border-[#D4AF37] py-1.5 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-[#D4AF37] hover:text-[#050505] transition-colors flex items-center justify-center gap-2"
+                        disabled={loadingId === ramo.id}
+                      >
+                        {loadingId === ramo.id ? (
+                          <>
+                            <Loader2 className="animate-spin w-3 h-3" />
+                            <span>Cargando</span>
+                          </>
+                        ) : (
+                          "Comprar"
+                        )}
+                      </button>
                     )}
                   </div>
                 </div>
