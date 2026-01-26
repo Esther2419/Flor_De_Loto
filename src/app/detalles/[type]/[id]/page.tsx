@@ -10,7 +10,6 @@ export default async function DetallePage({ params }: { params: { type: string, 
 
   let data: any = null;
 
-  // Carga de datos según el tipo de producto
   if (type === 'ramo') {
     data = await prisma.ramos.findUnique({ 
       where: { id: numericId },
@@ -31,8 +30,15 @@ export default async function DetallePage({ params }: { params: { type: string, 
   const foto = data.foto_principal || data.foto;
   const descripcion = data.descripcion || `Selección de alta calidad: ${data.nombre}.`;
 
-  const floresRaw = data.ramo_detalle?.map((d: any) => ({ ...d.flores, cantidad: d.cantidad || 1 })) || [];
-  const envolturasRaw = data.ramo_envolturas?.map((e: any) => ({ ...e.envolturas, cantidad: e.cantidad || 1 })) || [];
+  const floresRaw = data.ramo_detalle?.map((d: any) => ({ 
+    ...d.flores, 
+    cantidad: d.cantidad_base || 1 
+  })) || [];
+
+  const envolturasRaw = data.ramo_envolturas?.map((e: any) => ({ 
+    ...e.envolturas, 
+    cantidad: e.cantidad || 1 
+  })) || [];
 
   const agruparItems = (items: any[]) => {
     const agrupados = items.reduce((acc: any, item: any) => {
@@ -43,11 +49,11 @@ export default async function DetallePage({ params }: { params: { type: string, 
       }
       return acc;
     }, {});
-    return Object.values(agrupados);
+    return Object.values(agruparItems);
   };
 
-  const flores = agruparItems(floresRaw);
-  const envolturas = agruparItems(envolturasRaw);
+  const flores = floresRaw; 
+  const envolturas = envolturasRaw;
 
   return (
     <main className="min-h-screen bg-white">
