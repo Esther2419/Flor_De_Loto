@@ -7,7 +7,7 @@ import { authOptions } from "@/lib/auth";
 interface OrderData {
   nombre_contacto: string;
   telefono_contacto: string;
-  fecha_entrega: string; 
+  fecha_entrega: string;
   quien_recoge: string;
   hora_recojo: string;
   total: number;
@@ -37,17 +37,19 @@ export async function createOrderAction(data: OrderData) {
 
   try {
     const pedido = await prisma.$transaction(async (tx) => {
-      const infoRecojo = `Recoge: ${data.quien_recoge} a las ${data.hora_recojo}`;
+      const fechaExacta = new Date(data.fecha_entrega);
+      const [horas, minutos] = data.hora_recojo.split(':').map(Number);
+      fechaExacta.setHours(horas, minutos, 0, 0);
 
       const nuevoPedido = await tx.pedidos.create({
         data: {
           usuario_id: usuario.id,
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
-          fecha_entrega: new Date(),
+          fecha_entrega: fechaExacta,
+          nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
-          estado: "pendiente",
-          direccion_entrega: infoRecojo 
+          estado: "pendiente"
         }
       });
 
@@ -64,6 +66,7 @@ export async function createOrderAction(data: OrderData) {
         });
       }
 
+      // Limpiar carrito tras pedido exitoso
       const carrito = await tx.carrito.findFirst({ where: { usuario_id: usuario.id } });
       if (carrito) {
         await tx.carrito_detalle.deleteMany({ where: { carrito_id: carrito.id } });

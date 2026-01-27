@@ -62,6 +62,7 @@ export default function ReservarPage() {
     setIsSubmitting(true);
 
     try {
+      // Enviamos la fecha actual como base, la hora la maneja el action
       const result = await createOrderAction({
         nombre_contacto: session.user?.name || "Cliente",
         telefono_contacto: formData.whatsapp,
@@ -75,7 +76,8 @@ export default function ReservarPage() {
       if (result.success) {
         clearCart();
         toast(`¡Pedido #${result.orderId} confirmado con éxito!`, "success");
-        router.push("/"); 
+        // REDIRECCIÓN A MIS PEDIDOS
+        router.push("/mis-pedidos"); 
       } else {
         toast(result.message || "Error al procesar el pedido", "error");
       }

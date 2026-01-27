@@ -44,14 +44,15 @@ export default async function AdminPedidosPage() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}
+                  Creado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}
                 </p>
               </div>
               <div className="text-right">
                  <p className="text-sm font-bold text-gray-800">{pedido.nombre_contacto}</p>
                  <p className="text-xs text-gray-500">{pedido.telefono_contacto}</p>
-                 <div className="mt-2 text-xs bg-gray-50 p-2 rounded text-gray-600 inline-block max-w-xs text-left">
-                    <span className="font-bold">Entrega/Recojo:</span> {pedido.direccion_entrega}
+                 <div className="mt-2 text-xs bg-gray-50 p-2 rounded text-gray-600 inline-block max-w-xs text-left border border-gray-100">
+                    <p><span className="font-bold">Recoge:</span> {pedido.nombre_receptor}</p>
+                    <p className="mt-1"><span className="font-bold">Para el:</span> {format(new Date(pedido.fecha_entrega), "dd/MM/yyyy HH:mm")}</p>
                  </div>
               </div>
             </div>
