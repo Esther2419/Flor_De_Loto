@@ -7,13 +7,13 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Navbar from "@/components/Navbar";
 import { supabase } from "@/lib/supabase";
-import { Send, User, Phone, Clock, UserCheck, AlertTriangle, Loader2 } from "lucide-react";
+import { Send, User, Phone, Clock, UserCheck, AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { createOrderAction } from "@/app/actions/orders";
 import { useToast } from "@/context/ToastContext"; 
 
 export default function ReservarPage() {
   const { data: session, status } = useSession();
-  const { items, total, clearCart } = useCart();
+  const { items, total, clearCart, removeFromCart } = useCart();
   const router = useRouter();
   const { toast } = useToast();
 
@@ -50,6 +50,10 @@ export default function ReservarPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (items.length === 0) {
+      toast("No hay productos en tu pedido.", "error");
+      return;
+    }
     if (!tiendaAbierta) {
       toast("La tienda está cerrada, no se pueden recibir pedidos.", "error");
       return;
@@ -106,12 +110,12 @@ export default function ReservarPage() {
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Phone size={12}/> WhatsApp</label>
-                    <input type="tel" required onChange={(e) => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
+                    <input type="tel" required placeholder="70000000" onChange={(e) => setFormData({...formData, whatsapp: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><UserCheck size={12}/> Persona que recoge</label>
-                  <input type="text" required onChange={(e) => setFormData({...formData, quienRecoge: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
+                  <input type="text" required placeholder="Nombre de quien retira el pedido" onChange={(e) => setFormData({...formData, quienRecoge: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Clock size={12}/> Hora de Recojo (Hoy)</label>
@@ -119,8 +123,8 @@ export default function ReservarPage() {
                   <p className="text-[10px] text-[#C5A059] font-bold italic mt-2">* Horario de hoy: {horario.min} a {horario.max}</p>
                 </div>
                 <button 
-                  disabled={!tiendaAbierta || isSubmitting} 
-                  className={`w-full py-6 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all ${tiendaAbierta ? "bg-[#C5A059] text-white hover:bg-[#b38f4d]" : "bg-gray-300 text-gray-500"}`}
+                  disabled={!tiendaAbierta || isSubmitting || items.length === 0} 
+                  className={`w-full py-6 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all ${tiendaAbierta && items.length > 0 ? "bg-[#C5A059] text-white hover:bg-[#b38f4d]" : "bg-gray-300 text-gray-500"}`}
                 >
                   {isSubmitting ? (
                     <Loader2 size={16} className="animate-spin" />
@@ -136,22 +140,42 @@ export default function ReservarPage() {
 
             <div className="bg-white/50 backdrop-blur-md p-8 rounded-[2.5rem] border border-white h-fit">
               <h3 className="font-serif italic text-2xl text-gris mb-6">Tu pedido</h3>
-              {items.map((item) => (
-                <div key={item.id} className="flex items-center gap-4 py-3 border-b border-white">
-                  <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0"><Image src={item.foto || "/portada.jpg"} alt={item.nombre} fill className="object-cover" /></div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold uppercase truncate">{item.nombre}</p>
-                    <p className="text-xs text-[#C5A059]">Bs {item.precio} x {item.cantidad}</p>
-                    {item.personalizacion && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                         <span className="px-1.5 py-0.5 bg-[#C5A059]/10 text-[#C5A059] text-[9px] rounded font-bold uppercase tracking-wider">
-                           Personalizado
-                         </span>
-                      </div>
-                    )}
+              <div className="space-y-1">
+                {items.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-400 italic">No hay productos en el carrito</p>
+                    <button onClick={() => router.push('/')} className="text-xs text-[#C5A059] font-bold underline mt-2 uppercase tracking-widest">Ir a la tienda</button>
                   </div>
-                </div>
-              ))}
+                ) : (
+                  items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 py-3 border-b border-white group">
+                      <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 shadow-sm">
+                        <Image src={item.foto || "/portada.jpg"} alt={item.nombre} fill className="object-cover" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-start">
+                          <p className="text-sm font-bold uppercase truncate pr-2">{item.nombre}</p>
+                          <button 
+                            onClick={() => removeFromCart(item.id)}
+                            className="text-gray-300 hover:text-red-500 transition-colors"
+                            title="Eliminar del pedido"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-[#C5A059]">Bs {item.precio} x {item.cantidad}</p>
+                        {item.personalizacion && (
+                          <div className="mt-1">
+                             <span className="px-1.5 py-0.5 bg-[#C5A059]/10 text-[#C5A059] text-[9px] rounded font-bold uppercase tracking-wider">
+                               Personalizado
+                             </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
               <div className="pt-6 flex justify-between text-xl font-bold text-gris">
                 <span className="font-serif italic text-2xl">Total</span>
                 <span className="text-[#C5A059]">Bs {total}</span>
