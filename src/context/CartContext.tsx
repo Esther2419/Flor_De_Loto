@@ -72,7 +72,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isLoaded, status]);
 
   const addToCart = async (product: Omit<CartItem, "cantidad">) => {
-    // Si tiene personalización, generamos un ID único para no agrupar ramos con distintas notas
     const cartItemId = product.personalizacion 
       ? `${product.id}-custom-${Date.now()}` 
       : product.id;
@@ -116,6 +115,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const clearCart = () => setItems([]);
   const toggleCart = () => setIsCartOpen(!isCartOpen);
+  
+  // Cálculos derivados del estado
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
   const count = items.reduce((acc, item) => acc + item.cantidad, 0);
 

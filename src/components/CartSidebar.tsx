@@ -8,7 +8,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 export default function CartSidebar() {
-  const { items, isCartOpen, toggleCart, updateQuantity, removeFromCart, total } = useCart();
+  const { items, isCartOpen, toggleCart, updateQuantity, removeFromCart, total, count } = useCart();
   const { data: session } = useSession();
   const router = useRouter();
 
@@ -16,7 +16,6 @@ export default function CartSidebar() {
 
   const handleConfirmarPedido = () => {
     toggleCart();
-    
     if (!session) {
       router.push("/login?callbackUrl=/reservar");
     } else {
@@ -26,7 +25,7 @@ export default function CartSidebar() {
 
   return (
     <>
-      {/* Overlay de fondo */}
+      {/* Overlay */}
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] transition-opacity"
         onClick={toggleCart}
@@ -44,7 +43,7 @@ export default function CartSidebar() {
             <div>
               <h2 className="font-serif italic text-xl text-gris">Tu Carrito</h2>
               <p className="text-[10px] uppercase tracking-widest text-gray-400">
-                {items.length} {items.length === 1 ? 'Producto' : 'Productos'} seleccionado(s)
+                {count} {count === 1 ? 'Producto' : 'Productos'} seleccionado(s)
               </p>
             </div>
           </div>
