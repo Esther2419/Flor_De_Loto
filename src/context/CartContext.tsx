@@ -21,7 +21,7 @@ export interface CartItem {
 
 interface CartContextType {
   items: CartItem[];
-  addToCart: (product: Omit<CartItem, "cantidad">) => void;
+  addToCart: (product: Omit<CartItem, "cantidad">) => Promise<void>;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
@@ -76,6 +76,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       ? `${product.id}-custom-${Date.now()}` 
       : product.id;
 
+    // Actualización local inmediata
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === cartItemId);
       if (existingItem && !product.personalizacion) {
@@ -86,6 +87,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return [...currentItems, { ...product, id: cartItemId, cantidad: 1 }];
     });
 
+    // Sincronización con base de datos
     if (status === "authenticated") {
       await addToCartAction({ ...product, id: cartItemId, cantidad: 1 });
     }
@@ -116,7 +118,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const clearCart = () => setItems([]);
   const toggleCart = () => setIsCartOpen(!isCartOpen);
   
-  // Cálculos derivados del estado
   const total = items.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
   const count = items.reduce((acc, item) => acc + item.cantidad, 0);
 
