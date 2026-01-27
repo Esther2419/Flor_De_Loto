@@ -1,6 +1,8 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
+import { useToast } from "@/context/ToastContext";
+import { useRouter } from "next/navigation";
 import { ShoppingCart, Check } from "lucide-react";
 import { useState } from "react";
 import Image from "next/image";
@@ -17,17 +19,23 @@ interface AddToCartProps {
 }
 
 export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo", className, onAfterAdd, personalizacion }: AddToCartProps) {
-  const { addToCart } = useCart();
+  const { addToCart } = useCart(); //
+  const { toast } = useToast(); //
+  const router = useRouter();
   const [isAnimating, setIsAnimating] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [showCheck, setShowCheck] = useState(false);
 
   const handleAction = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
+    
+    // Captura posición para la animación
     const rect = e.currentTarget.getBoundingClientRect();
     setStartPos({ x: rect.left, y: rect.top });
     
     setIsAnimating(true);
+
+    // Agrega al carrito usando la lógica de tu contexto
     addToCart({ 
       id: personalizacion ? `${id}-custom-${Date.now()}` : id, 
       nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
@@ -37,9 +45,17 @@ export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo
     });
 
     setShowCheck(true);
+
+    // Espera a que termine la animación (800ms) para notificar y redirigir
     setTimeout(() => {
       setIsAnimating(false);
       setShowCheck(false);
+      
+      toast("¡Ramo agregado! Revise su carrito para finalizar el pedido.", "success");
+      
+      // Redirige al homepage
+      router.push("/");
+
       if (onAfterAdd) onAfterAdd();
     }, 800);
   };
@@ -66,6 +82,7 @@ export default function AddToCartButton({ id, nombre, precio, foto, type = "ramo
         )}
       </button>
 
+      {/* Animación de la imagen volando al carrito */}
       {isAnimating && foto && (
         <div
           className="fixed z-[9999] pointer-events-none rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-xl animate-fly-to-cart"
