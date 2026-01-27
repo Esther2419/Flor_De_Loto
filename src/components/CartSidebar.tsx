@@ -25,7 +25,7 @@ export default function CartSidebar() {
 
   return (
     <>
-      {/* Overlay */}
+      {/* Overlay de fondo */}
       <div 
         className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100] transition-opacity"
         onClick={toggleCart}
@@ -97,21 +97,30 @@ export default function CartSidebar() {
                   </div>
 
                   <div className="flex items-center justify-between mt-2">
-                    <div className="flex items-center border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
-                      <button 
-                        onClick={() => updateQuantity(item.id, -1)}
-                        className="p-1.5 hover:bg-white text-gray-500 transition-colors"
-                      >
-                        <Minus size={14} />
-                      </button>
-                      <span className="w-8 text-center text-xs font-bold">{item.cantidad}</span>
-                      <button 
-                        onClick={() => updateQuantity(item.id, 1)}
-                        className="p-1.5 hover:bg-white text-gray-500 transition-colors"
-                      >
-                        <Plus size={14} />
-                      </button>
-                    </div>
+                    {/* MODIFICACIÓN: Si NO es personalizado, mostramos los controles +- */}
+                    {!item.personalizacion ? (
+                      <div className="flex items-center border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
+                        <button 
+                          onClick={() => updateQuantity(item.id, -1)}
+                          className="p-1.5 hover:bg-white text-gray-500 transition-colors"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span className="w-8 text-center text-xs font-bold">{item.cantidad}</span>
+                        <button 
+                          onClick={() => updateQuantity(item.id, 1)}
+                          className="p-1.5 hover:bg-white text-gray-500 transition-colors"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      /* Si ES personalizado, solo mostramos la cantidad fija (1) */
+                      <div className="text-xs font-medium text-gray-400">
+                        Cantidad: <span className="font-bold text-gris">{item.cantidad}</span>
+                      </div>
+                    )}
+                    
                     <p className="text-sm font-bold text-gris">
                       Bs {item.precio * item.cantidad}
                     </p>
