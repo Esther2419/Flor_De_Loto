@@ -6,6 +6,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
 import { Package, Plus, LayoutGrid, Search } from "lucide-react";
+// IMPORTACIÓN DE LA LIBRERÍA DE COMPRESIÓN
+import imageCompression from 'browser-image-compression';
 
 // --- TIPOS ---
 type AuxData = {
@@ -91,9 +93,20 @@ export default function RamosAdminPage() {
     const setter = isPrincipal ? setUploadingPrincipal : setUploadingExtra;
     setter(true);
     try {
-      const fileExt = file.name.split('.').pop();
+      // LOGICA DE COMPRESIÓN ANTES DE SUBIR
+      const options = {
+        maxSizeMB: 1,           // Máximo 1MB
+        maxWidthOrHeight: 1200, // Máximo 1200px
+        useWebWorker: true,
+      };
+      
+      const compressedFile = await imageCompression(file, options);
+
+      const fileExt = compressedFile.name.split('.').pop();
       const fileName = `ramo_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const { error } = await supabase.storage.from('ramos').upload(fileName, file); 
+      
+      // SUBIR ARCHIVO COMPRIMIDO
+      const { error } = await supabase.storage.from('ramos').upload(fileName, compressedFile); 
       if (error) throw error;
       const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
 
@@ -261,45 +274,45 @@ export default function RamosAdminPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-8">
-               {/* SECCIÓN FOTOS */}
-               <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                {/* SECCIÓN FOTOS */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   <div className="md:col-span-4 flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2">Foto Principal</span>
                     <div className="relative w-full aspect-[3/4] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group hover:border-[#C5A059] transition-colors cursor-pointer">
                         <input type="file" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], true)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" accept="image/*" />
                         {uploadingPrincipal ? (
-                           <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-xs">SUBIENDO...</div>
+                            <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-xs">SUBIENDO...</div>
                         ) : formData.foto_principal ? (
-                           <Image src={formData.foto_principal} alt="Main" fill className="object-cover" />
+                            <Image src={formData.foto_principal} alt="Main" fill className="object-cover" />
                         ) : (
-                           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300 group-hover:text-[#C5A059]">
-                              <span className="text-4xl">📷</span>
-                              <span className="text-[10px] mt-2 font-bold uppercase">Subir</span>
-                           </div>
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300 group-hover:text-[#C5A059]">
+                               <span className="text-4xl">📷</span>
+                               <span className="text-[10px] mt-2 font-bold uppercase">Subir</span>
+                            </div>
                         )}
                     </div>
                   </div>
                   <div className="md:col-span-8">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 block">Galería Extra ({imagenesExtra.length})</span>
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                       {imagenesExtra.map((img, idx) => (
-                         <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group shadow-sm bg-white">
-                            <Image src={img} alt="" fill className="object-cover" />
-                            <button type="button" onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
-                         </div>
-                       ))}
-                       <div className="relative aspect-square rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-[#C5A059] cursor-pointer transition-colors bg-white">
-                          <input type="file" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
-                          <span className="text-3xl text-gray-300 group-hover:text-[#C5A059]">+</span>
-                          {uploadingExtra && <span className="absolute text-[8px] bottom-1 text-[#C5A059] font-bold">...</span>}
-                       </div>
+                        {imagenesExtra.map((img, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group shadow-sm bg-white">
+                             <Image src={img} alt="" fill className="object-cover" />
+                             <button type="button" onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                          </div>
+                        ))}
+                        <div className="relative aspect-square rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-[#C5A059] cursor-pointer transition-colors bg-white">
+                           <input type="file" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                           <span className="text-3xl text-gray-300 group-hover:text-[#C5A059]">+</span>
+                           {uploadingExtra && <span className="absolute text-[8px] bottom-1 text-[#C5A059] font-bold">...</span>}
+                        </div>
                     </div>
                   </div>
-               </div>
+                </div>
 
-               {/* SECCIÓN DATOS */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                 <div className="space-y-5">
+                {/* SECCIÓN DATOS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-5">
                     <div>
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre del Ramo</label>
                         <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 mt-1 focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej. Amor Eterno" />
@@ -326,9 +339,9 @@ export default function RamosAdminPage() {
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
                         <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 mt-1 outline-none" rows={4} placeholder="Descripción romántica..." />
                     </div>
-                 </div>
+                  </div>
 
-                 <div className="space-y-6">
+                  <div className="space-y-6">
                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio de Venta (Bs)</label>
                         <input required type="number" step="0.5" value={formData.precio_base} onChange={e => setFormData({...formData, precio_base: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-white border border-gray-200 rounded-lg p-3 mt-1 font-bold text-xl text-[#C5A059] outline-none" placeholder="0.00" />
@@ -408,12 +421,12 @@ export default function RamosAdminPage() {
                         <input type="checkbox" id="activo" checked={formData.activo} onChange={e => setFormData({...formData, activo: e.target.checked})} className="w-4 h-4 text-green-500 rounded cursor-pointer" />
                         <label htmlFor="activo" className="text-sm text-gray-600 cursor-pointer select-none">Ramo visible en catálogo</label>
                     </div>
-                 </div>
-               </div>
+                  </div>
+                </div>
 
-               <button disabled={loading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-lg disabled:opacity-50">
-                 {loading ? "Procesando..." : (activeTab === "crear" ? "Crear Ramo" : "Guardar Cambios")}
-               </button>
+                <button disabled={loading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-lg disabled:opacity-50">
+                  {loading ? "Procesando..." : (activeTab === "crear" ? "Crear Ramo" : "Guardar Cambios")}
+                </button>
             </form>
         </div>
       )}

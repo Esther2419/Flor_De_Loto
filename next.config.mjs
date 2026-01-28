@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
+    // ESTA ES LA CORRECCIÓN: Desactiva el procesamiento de Vercel para no agotar el límite
+    unoptimized: true, 
     remotePatterns: [
       {
         protocol: "https",
