@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Ramo {
   id: string;
@@ -16,7 +16,9 @@ interface Ramo {
 }
 
 export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
-  const [visibleCount, setVisibleCount] = useState(15);
+  // Mostramos 12 inicialmente para que las filas se vean completas (2 filas de 6)
+  const INITIAL_COUNT = 12; 
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const router = useRouter();
 
@@ -26,14 +28,11 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
     router.push(`/detalles/ramo/${id}`);
   };
 
-  const handleShowMore = () => {
-    setVisibleCount((prev) => prev + 15);
-  };
-
+  const isExpanded = visibleCount >= ramos.length;
   const visibleRamos = ramos.slice(0, visibleCount);
 
   return (
-    <section id="ramos" className="pt-0 -mt-2 pb-8 px-2 md:px-4 bg-white scroll-mt-20 relative z-10">
+    <section id="ramos" className="pt-0 -mt-2 pb-12 px-2 md:px-4 bg-white scroll-mt-20 relative z-10">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-6">
           <span className="text-[10px] font-sans tracking-[0.2em] text-[#C5A059] uppercase mb-0 block">
@@ -51,91 +50,92 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
-              {visibleRamos.map((ramo) => (
-                <div 
-                  key={ramo.id} 
-                  onClick={() => handleCardClick(ramo.id)}
-                  className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block cursor-pointer ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}
-                >
-                  {/* Imagen */}
-                  <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
-                    {ramo.foto_principal ? (
-                      <Image 
-                        src={ramo.foto_principal} 
-                        alt={ramo.nombre} 
-                        fill 
-                        sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
-                        className={`object-cover transition-transform duration-700 ${ramo.activo ? 'group-hover:scale-110' : 'grayscale'}`} 
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-gray-300 text-xl">💐</div>
-                    )}
-
-                    {/* Badge No Disponible */}
-                    {!ramo.activo && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
-                        <span className="bg-black/70 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/20">
-                          Agotado
-                        </span>
-                      </div>
-                    )}
-
-                    {/* Badge Oferta */}
-                    {ramo.activo && ramo.es_oferta && (
-                      <div className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider z-10">
-                        Oferta
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="p-2 flex flex-col gap-0.5">
-                    <h3 className="font-serif text-xs font-bold text-[#0A0A0A] line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-[#C5A059] transition-colors">
-                      {ramo.nombre}
-                    </h3>
-                    
-                    <div className="flex items-baseline gap-1.5 mt-2">
-                      {ramo.es_oferta && ramo.precio_oferta ? (
-                        <>
-                          <span className="text-red-500 font-bold text-sm">Bs {ramo.precio_oferta}</span>
-                          <span className="text-gray-400 text-[9px] line-through">Bs {ramo.precio_base}</span>
-                        </>
+            <div className="relative">
+              {/* Grid de Ramos */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
+                {visibleRamos.map((ramo) => (
+                  <div 
+                    key={ramo.id} 
+                    onClick={() => handleCardClick(ramo.id)}
+                    className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block cursor-pointer ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}
+                  >
+                    {/* Imagen del Ramo */}
+                    <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+                      {ramo.foto_principal ? (
+                        <Image 
+                          src={ramo.foto_principal} 
+                          alt={ramo.nombre} 
+                          fill 
+                          sizes="(max-width: 768px) 50vw, (max-width: 1200px) 25vw, 16vw"
+                          className={`object-cover transition-transform duration-700 ${ramo.activo ? 'group-hover:scale-110' : 'grayscale'}`} 
+                        />
                       ) : (
-                        <span className="text-[#C5A059] font-bold text-sm">Bs {ramo.precio_base}</span>
+                        <div className="flex items-center justify-center h-full text-gray-300 text-xl">💐</div>
+                      )}
+
+                      {!ramo.activo && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                          <span className="bg-black/70 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/20">
+                            Agotado
+                          </span>
+                        </div>
+                      )}
+
+                      {ramo.activo && ramo.es_oferta && (
+                        <div className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider z-10">
+                          Oferta
+                        </div>
                       )}
                     </div>
 
-                    {ramo.activo && (
-                      <button 
-                        className="w-full mt-2 bg-[#050505] text-[#D4AF37] border border-[#D4AF37] py-1.5 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-[#D4AF37] hover:text-[#050505] transition-colors flex items-center justify-center gap-2"
-                        disabled={loadingId === ramo.id}
-                      >
-                        {loadingId === ramo.id ? (
+                    <div className="p-2 flex flex-col gap-0.5">
+                      <h3 className="font-serif text-xs font-bold text-[#0A0A0A] line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-[#C5A059] transition-colors">
+                        {ramo.nombre}
+                      </h3>
+                      
+                      <div className="flex items-baseline gap-1.5 mt-2">
+                        {ramo.es_oferta && ramo.precio_oferta ? (
                           <>
-                            <Loader2 className="animate-spin w-3 h-3" />
-                            <span>Cargando</span>
+                            <span className="text-red-500 font-bold text-sm">Bs {ramo.precio_oferta}</span>
+                            <span className="text-gray-400 text-[9px] line-through">Bs {ramo.precio_base}</span>
                           </>
                         ) : (
-                          "Comprar"
+                          <span className="text-[#C5A059] font-bold text-sm">Bs {ramo.precio_base}</span>
                         )}
-                      </button>
-                    )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+
+              {/* EFECTO DE CORTE (FADE): Solo se muestra si hay más ramos por cargar */}
+              {!isExpanded && (
+                <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-white via-white/90 to-transparent z-20 pointer-events-none" />
+              )}
             </div>
 
-            {/* Botón Ver Más */}
-            {visibleCount < ramos.length && (
-              <div className="flex justify-center mt-8">
+            {/* CONTROLES: Ver más / Ver menos */}
+            <div className="flex flex-col items-center mt-8 relative z-30">
+              {!isExpanded ? (
                 <button 
-                  onClick={handleShowMore}
-                  className="bg-transparent border border-[#C5A059] text-[#C5A059] hover:bg-[#C5A059] hover:text-white px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-300 shadow-sm hover:shadow-md"
+                  onClick={() => setVisibleCount(prev => prev + 12)}
+                  className="group flex flex-col items-center gap-1 bg-white border border-[#C5A059] text-[#C5A059] hover:bg-[#C5A059] hover:text-white px-10 py-3 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] transition-all duration-300 shadow-lg"
                 >
                   Ver más diseños
+                  <ChevronDown className="w-4 h-4 animate-bounce group-hover:animate-none" />
                 </button>
-              </div>
-            )}
+              ) : (
+                ramos.length > INITIAL_COUNT && (
+                  <button 
+                    onClick={() => setVisibleCount(INITIAL_COUNT)}
+                    className="flex flex-col items-center gap-1 text-gray-400 hover:text-[#C5A059] px-6 py-2 text-[10px] font-bold uppercase tracking-[0.2em] transition-all"
+                  >
+                    <ChevronUp className="w-4 h-4" />
+                    Ver menos
+                  </button>
+                )
+              )}
+            </div>
           </>
         )}
       </div>

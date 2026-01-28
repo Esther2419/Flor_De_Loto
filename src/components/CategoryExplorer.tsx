@@ -55,10 +55,10 @@ export default function CategoryExplorer({ categories }: { categories: Category[
           </svg>
         </button>
 
-        {/* Se eliminó 'touch-pan-y' para permitir el scroll horizontal en móviles */}
+        {/* CORRECCIÓN: gap-4 y px-4 para visualización móvil mejorada */}
         <div 
           ref={scrollContainerRef}
-          className="flex gap-2 md:gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory px-4 md:px-12 scrollbar-hide scroll-smooth items-center justify-start md:justify-center" 
+          className="flex gap-4 md:gap-6 overflow-x-auto overflow-y-hidden pb-4 snap-x snap-mandatory px-4 md:px-12 scrollbar-hide scroll-smooth items-center justify-start md:justify-center" 
         >
           {categories.map((cat) => (
             <Link 
@@ -127,7 +127,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
               </div>
             </Link>
           ))}
-          <div className="w-2 flex-none" />
+          <div className="w-4 flex-none" />
         </div>
         
         {/* Flecha Derecha (Solo desktop) */}
