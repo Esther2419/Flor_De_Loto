@@ -40,7 +40,6 @@ export default async function MisPedidosPage() {
           <p className="text-gray-400 text-[10px] uppercase tracking-[0.3em] mt-2">Gestiona y revisa tus pedidos</p>
         </div>
 
-        {/* Aviso de Prioridad WhatsApp */}
         <div className="bg-[#C5A059]/10 border border-[#C5A059]/20 p-5 rounded-[1.5rem] flex gap-4 items-start shadow-sm mb-8">
           <AlertCircle className="text-[#C5A059] shrink-0 mt-0.5" size={22} />
           <p className="text-sm text-gris/80 leading-relaxed">
@@ -88,7 +87,8 @@ export default async function MisPedidosPage() {
                       <div className="flex items-center gap-2">
                         <Clock size={14} />
                         <span className="text-xs font-medium">
-                          Hora: {format(new Date(pedido.fecha_entrega), "HH:mm")}
+                           {/* HORA MODIFICADA A AM/PM */}
+                           Hora: {format(new Date(pedido.fecha_entrega), "hh:mm aa")}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -99,7 +99,6 @@ export default async function MisPedidosPage() {
                       </div>
                     </div>
 
-                    {/* Detalle de productos */}
                     <div className="pt-4 border-t border-gray-50">
                       <p className="text-[10px] font-bold uppercase text-gray-300 tracking-widest mb-2">Productos:</p>
                       {pedido.detalle_pedidos.map((detalle) => (

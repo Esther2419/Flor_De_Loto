@@ -10,6 +10,7 @@ import { supabase } from "@/lib/supabase";
 import { Send, User, Phone, Clock, UserCheck, AlertTriangle, Loader2, Trash2 } from "lucide-react";
 import { createOrderAction } from "@/app/actions/orders";
 import { useToast } from "@/context/ToastContext"; 
+import { format } from "date-fns";
 
 export default function ReservarPage() {
   const { data: session, status } = useSession();
@@ -21,6 +22,15 @@ export default function ReservarPage() {
   const [horario, setHorario] = useState({ min: "09:00", max: "19:00" });
   const [formData, setFormData] = useState({ whatsapp: "", quienRecoge: "", horaRecojo: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Función auxiliar para formatear strings de hora "HH:mm" a AM/PM
+  const formatTimeStr = (timeStr: string) => {
+    try {
+      return format(new Date(`2000-01-01T${timeStr}`), "hh:mm aa");
+    } catch {
+      return timeStr;
+    }
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login?callbackUrl=/reservar");
@@ -62,7 +72,6 @@ export default function ReservarPage() {
     setIsSubmitting(true);
 
     try {
-      // Enviamos la fecha actual como base, la hora la maneja el action
       const result = await createOrderAction({
         nombre_contacto: session.user?.name || "Cliente",
         telefono_contacto: formData.whatsapp,
@@ -76,7 +85,6 @@ export default function ReservarPage() {
       if (result.success) {
         clearCart();
         toast(`¡Pedido #${result.orderId} confirmado con éxito!`, "success");
-        // REDIRECCIÓN A MIS PEDIDOS
         router.push("/mis-pedidos"); 
       } else {
         toast(result.message || "Error al procesar el pedido", "error");
@@ -122,7 +130,10 @@ export default function ReservarPage() {
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 flex items-center gap-2"><Clock size={12}/> Hora de Recojo (Hoy)</label>
                   <input type="time" required min={horario.min} max={horario.max} onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})} className="w-full p-4 border border-gray-100 rounded-2xl outline-none focus:border-[#C5A059]" />
-                  <p className="text-[10px] text-[#C5A059] font-bold italic mt-2">* Horario de hoy: {horario.min} a {horario.max}</p>
+                  {/* HORA MODIFICADA A AM/PM EN EL TEXTO INFORMATIVO */}
+                  <p className="text-[10px] text-[#C5A059] font-bold italic mt-2">
+                    * Horario de hoy: {formatTimeStr(horario.min)} a {formatTimeStr(horario.max)}
+                  </p>
                 </div>
                 <button 
                   disabled={!tiendaAbierta || isSubmitting || items.length === 0} 

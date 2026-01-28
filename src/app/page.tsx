@@ -91,8 +91,8 @@ export default async function HomePage() {
               </div>
               <div>
                 <strong className="block text-[#C5A059]">Horarios:</strong>
-                Lun - Sáb: 07:00 - 21:00 <br/>
-                Dom: 08:00 - 18:00
+                Lun - Sáb: 07:00 am - 21:00 pm <br/>
+                Dom: 08:00 am - 18:00 pm
               </div>
             </div>
           </div>

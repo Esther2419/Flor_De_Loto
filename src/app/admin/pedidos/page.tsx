@@ -44,7 +44,8 @@ export default async function AdminPedidosPage() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  Creado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}
+                  {/* HORA MODIFICADA A AM/PM */}
+                  Creado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
                 </p>
               </div>
               <div className="text-right">
@@ -52,7 +53,8 @@ export default async function AdminPedidosPage() {
                  <p className="text-xs text-gray-500">{pedido.telefono_contacto}</p>
                  <div className="mt-2 text-xs bg-gray-50 p-2 rounded text-gray-600 inline-block max-w-xs text-left border border-gray-100">
                     <p><span className="font-bold">Recoge:</span> {pedido.nombre_receptor}</p>
-                    <p className="mt-1"><span className="font-bold">Para el:</span> {format(new Date(pedido.fecha_entrega), "dd/MM/yyyy HH:mm")}</p>
+                    {/* HORA MODIFICADA A AM/PM */}
+                    <p className="mt-1"><span className="font-bold">Para el:</span> {format(new Date(pedido.fecha_entrega), "dd/MM/yyyy hh:mm aa")}</p>
                  </div>
               </div>
             </div>
