@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { Loader2, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
 
 interface Ramo {
   id: string;
@@ -16,13 +16,13 @@ interface Ramo {
 }
 
 export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
-  // Mostramos 12 inicialmente para que las filas se vean completas (2 filas de 6)
   const INITIAL_COUNT = 12; 
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const router = useRouter();
 
-  const handleCardClick = (id: string) => {
+  const handleAction = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
     if (loadingId) return;
     setLoadingId(id);
     router.push(`/detalles/ramo/${id}`);
@@ -51,15 +51,13 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
         ) : (
           <>
             <div className="relative">
-              {/* Grid de Ramos */}
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
                 {visibleRamos.map((ramo) => (
                   <div 
                     key={ramo.id} 
-                    onClick={() => handleCardClick(ramo.id)}
+                    onClick={(e) => handleAction(e, ramo.id)}
                     className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block cursor-pointer ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}
                   >
-                    {/* Imagen del Ramo */}
                     <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
                       {ramo.foto_principal ? (
                         <Image 
@@ -103,18 +101,32 @@ export default function NuestrosRamos({ ramos }: { ramos: Ramo[] }) {
                           <span className="text-[#C5A059] font-bold text-sm">Bs {ramo.precio_base}</span>
                         )}
                       </div>
+
+                      {/* BOTÓN COMPRAR: Integrado de la rama WhatsApp */}
+                      <button
+                        onClick={(e) => handleAction(e, ramo.id)}
+                        disabled={!ramo.activo || loadingId === ramo.id}
+                        className="mt-2 w-full py-2 bg-[#0A0A0A] text-white text-[9px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-2 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200 disabled:text-gray-400"
+                      >
+                        {loadingId === ramo.id ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <>
+                            <ShoppingBag className="w-3 h-3" />
+                            Comprar
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* EFECTO DE CORTE (FADE): Solo se muestra si hay más ramos por cargar */}
               {!isExpanded && (
                 <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-white via-white/90 to-transparent z-20 pointer-events-none" />
               )}
             </div>
 
-            {/* CONTROLES: Ver más / Ver menos */}
             <div className="flex flex-col items-center mt-8 relative z-30">
               {!isExpanded ? (
                 <button 

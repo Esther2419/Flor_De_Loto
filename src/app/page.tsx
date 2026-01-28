@@ -8,6 +8,7 @@ import BrandIntro from "@/components/BrandIntro";
 import BrandValues from "@/components/BrandValues"; 
 import LocationSection from "@/components/LocationSection"; 
 import NuestrosRamos from "@/components/NuestrosRamos";
+import NuestrasFlores from "@/components/NuestrasFlores";
 
 export const dynamic = 'force-dynamic';
 
@@ -34,6 +35,19 @@ export default async function HomePage() {
     })).sort((a, b) => a.nombre.localeCompare(b.nombre)) 
   }));
 
+  const floresRaw = await prisma.flores.findMany({
+    orderBy: { nombre: 'asc' },
+  });
+
+  const flores = floresRaw.map(f => ({
+    id: f.id.toString(),
+    nombre: f.nombre,
+    precio_unitario: Number(f.precio_unitario),
+    foto: f.foto,
+    disponible: f.disponible ?? false, 
+    color: f.color
+  }));
+
   const ramosRaw = await prisma.ramos.findMany({
     orderBy: { fecha_creacion: 'desc' },
   });
@@ -58,14 +72,14 @@ export default async function HomePage() {
       </div>
 
       <NuestrosRamos ramos={ramos} />
+      <NuestrasFlores flores={flores} />
+      
       <LocationSection />
       <BrandValues />
       <BrandIntro />
 
+      {/* Tu Footer original completo */}
       <footer className="bg-[#050505] text-[#C5A059] border-t border-[#C5A059]/20 pt-8 md:pt-16 pb-4 md:pb-8">
-        
-        {/* CAMBIO: grid-cols-3 en todo momento (para que se vea igual que en PC)
-            y gap-2 en móvil para que entren las columnas pe causa */}
         <div className="max-w-7xl mx-auto px-2 md:px-6 grid grid-cols-3 gap-2 md:gap-12 mb-6 md:mb-12">
           
           <div className="flex flex-col items-start text-left">
@@ -97,7 +111,6 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* Columna 3: Explorar */}
           <div className="text-left">
             <h4 className="font-bold text-[10px] md:text-xs uppercase tracking-[0.1em] md:tracking-[0.2em] text-white mb-2 md:mb-6">Explorar</h4>
             <ul className="space-y-1 md:space-y-2 text-[9px] md:text-sm text-white/70 mb-4 md:mb-8">
