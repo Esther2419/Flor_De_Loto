@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
-import { Package, Plus, LayoutGrid, Search, Camera, Check, X, ZoomIn } from "lucide-react";
+import { Package, Plus, LayoutGrid, Search, Camera, Check, X, ZoomIn, Trash2 } from "lucide-react";
 import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
@@ -50,7 +50,7 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<File> =>
   return new Promise((resolve) => {
     canvas.toBlob((blob) => {
       resolve(new File([blob!], "temp.webp", { type: "image/webp" }));
-    }, 'image/webp', 0.9);
+    }, 'image/webp', 0.8);
   });
 };
 
@@ -103,7 +103,20 @@ export default function RamosAdminPage() {
     setLoading(false);
   };
 
-  // INICIAR PROCESO DE SUBIDA (ABRE EL RECORTADOR)
+  // --- GESTIÓN DE STORAGE (BORRAR ARCHIVOS) ---
+  const deleteImageFromStorage = async (url: string) => {
+    if (!url) return;
+    try {
+      const fileName = url.split('/').pop();
+      if (fileName) {
+        await supabase.storage.from('ramos').remove([fileName]);
+      }
+    } catch (error) {
+      console.error("Error al borrar de storage:", error);
+    }
+  };
+
+  // --- MANEJO DE IMÁGENES ---
   const onFileChange = (e: React.ChangeEvent<HTMLInputElement>, isPrincipal: boolean) => {
     if (e.target.files && e.target.files.length > 0) {
       setIsPrincipalCrop(isPrincipal);
@@ -115,7 +128,6 @@ export default function RamosAdminPage() {
 
   const onCropComplete = useCallback((_: any, pixels: any) => { setCroppedAreaPixels(pixels); }, []);
 
-  // GUARDAR RECORTE, COMPRIMIR Y SUBIR
   const handleCropSave = async () => {
     if (!imageToCrop || !croppedAreaPixels) return;
     const setter = isPrincipalCrop ? setUploadingPrincipal : setUploadingExtra;
@@ -127,7 +139,12 @@ export default function RamosAdminPage() {
       const options = { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true, fileType: "image/webp" };
       const compressedFile = await imageCompression(croppedFile, options);
 
-      const fileName = `ramo_${Date.now()}.${compressedFile.name.split('.').pop()}`;
+      // Si estamos editando y cambiamos la foto principal, borramos la anterior
+      if (isPrincipalCrop && formData.foto_principal) {
+        await deleteImageFromStorage(formData.foto_principal);
+      }
+
+      const fileName = `ramo_${Date.now()}.webp`;
       const { error } = await supabase.storage.from('ramos').upload(fileName, compressedFile);
       if (error) throw error;
       const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
@@ -139,6 +156,12 @@ export default function RamosAdminPage() {
     } finally { setter(false); }
   };
 
+  const removeExtraImage = async (url: string, index: number) => {
+    await deleteImageFromStorage(url);
+    setImagenesExtra(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // --- LÓGICA DE NEGOCIO ---
   const handleAddItem = (type: 'flor' | 'envoltura', id: string) => {
     const list = type === 'flor' ? detallesFlores : detallesEnvolturas;
     const setList = type === 'flor' ? setDetallesFlores : setDetallesEnvolturas;
@@ -197,7 +220,12 @@ export default function RamosAdminPage() {
     setActiveTab("editar");
   };
 
-  const handleDelete = async (id: string) => { if (confirm("¿Eliminar este ramo?")) { await deleteRamo(id); loadData(); } };
+  const handleDelete = async (id: string) => { 
+    if (confirm("¿Eliminar este ramo permanentemente?")) { 
+      await deleteRamo(id); 
+      loadData(); 
+    } 
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -205,7 +233,7 @@ export default function RamosAdminPage() {
       {/* MODAL DE RECORTE (Crop) */}
       {imageToCrop && (
         <div className="fixed inset-0 z-[100] bg-[#0A0A0A] flex flex-col items-center justify-center p-4 backdrop-blur-md">
-          <div className="relative w-full h-[65vh] md:h-[70vh] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+          <div className="relative w-full h-[60vh] md:h-[70vh] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
             <Cropper
               image={imageToCrop}
               crop={crop}
@@ -233,7 +261,7 @@ export default function RamosAdminPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-6">
         <div>
           <h2 className="text-2xl font-serif italic text-gray-800">Catálogo de Ramos</h2>
-          <p className="text-sm text-gray-500">Usa la cámara para capturar y recortar tus ramos.</p>
+          <p className="text-sm text-gray-500">Usa cámara o galería y recorta tus fotos.</p>
         </div>
         <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
            <button onClick={() => { setActiveTab("ver"); loadData(); }} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}><LayoutGrid size={14} className="inline mr-2 -mt-0.5" /> Catálogo</button>
@@ -254,15 +282,20 @@ export default function RamosAdminPage() {
                   <div className="md:col-span-4 flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 tracking-widest">Foto Principal (3:4)</span>
                     <div className="relative w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group hover:border-[#C5A059] transition-colors cursor-pointer">
-                        <input type="file" onChange={(e) => onFileChange(e, true)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" accept="image/*" capture="environment" />
+                        <input type="file" onChange={(e) => onFileChange(e, true)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" accept="image/*" />
                         {uploadingPrincipal ? (
                             <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-[10px] uppercase tracking-widest">Procesando...</div>
                         ) : formData.foto_principal ? (
-                            <Image src={formData.foto_principal} alt="Main" fill className="object-cover" unoptimized />
+                            <>
+                                <Image src={formData.foto_principal} alt="Main" fill className="object-cover" unoptimized />
+                                <button type="button" onClick={() => { deleteImageFromStorage(formData.foto_principal); setFormData({...formData, foto_principal: ""})}} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full z-30 shadow-lg hover:bg-red-600 transition-colors">
+                                    <Trash2 size={16} />
+                                </button>
+                            </>
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300 group-hover:text-[#C5A059]">
                                <Camera size={32} className="mb-2" />
-                               <span className="text-[10px] font-bold uppercase tracking-widest">Cámara / Subir</span>
+                               <span className="text-[10px] font-bold uppercase tracking-widest text-center px-4">Tocar para Foto o Galería</span>
                             </div>
                         )}
                     </div>
@@ -273,19 +306,17 @@ export default function RamosAdminPage() {
                         {imagenesExtra.map((img, idx) => (
                           <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group shadow-sm bg-white">
                              <Image src={img} alt="" fill className="object-cover" unoptimized />
-                             <button type="button" onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
+                             <button type="button" onClick={() => removeExtraImage(img, idx)} className="absolute top-1 right-1 bg-red-500 text-white w-6 h-6 rounded-full text-xs flex items-center justify-center z-30 shadow-md">×</button>
                           </div>
                         ))}
                         <div className="relative aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-[#C5A059] cursor-pointer transition-colors bg-white group">
-                           <input type="file" onChange={(e) => onFileChange(e, false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" capture="environment" />
-                           <Camera size={20} className="text-gray-300 group-hover:text-[#C5A059]" />
-                           {uploadingExtra && <span className="absolute text-[8px] bottom-1 text-[#C5A059] font-bold animate-pulse">...</span>}
+                           <input type="file" onChange={(e) => onFileChange(e, false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
+                           <Plus size={24} className="text-gray-300 group-hover:text-[#C5A059]" />
                         </div>
                     </div>
                   </div>
                 </div>
 
-                {/* SECCIÓN DATOS */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-5">
                     <div>
@@ -400,41 +431,23 @@ export default function RamosAdminPage() {
         </div>
       )}
 
-      {/* VISTA LISTA DE RAMOS */}
       {activeTab === "ver" && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in">
             {ramos.map((ramo) => (
-                <div key={ramo.id} className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border ${!ramo.activo ? 'border-gray-200 opacity-60 grayscale' : 'border-gray-100'}`}>
+                <div key={ramo.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                 <div className="relative h-64 bg-gray-50 group cursor-pointer" onClick={() => handleEditClick(ramo)}>
                     {ramo.foto_principal ? (
                         <Image src={ramo.foto_principal} alt={ramo.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
                     ) : ( <div className="flex items-center justify-center h-full text-4xl opacity-20">💐</div> )}
-                    <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-                        {ramo.es_oferta && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md animate-pulse">OFERTA</span>}
-                        {!ramo.activo && <span className="bg-black text-white text-[10px] font-bold px-2 py-1 rounded shadow-md">OCULTO</span>}
-                    </div>
-                    <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/80 via-black/40 to-transparent p-5 pt-16 text-white">
-                        <h3 className="font-serif text-xl italic mb-1">{ramo.nombre}</h3>
-                        <span className="text-[10px] uppercase tracking-widest opacity-80 border border-white/30 px-2 py-0.5 rounded-full">{ramo.categorias?.nombre || "General"}</span>
-                    </div>
                 </div>
-                <div className="p-5">
-                    <div className="flex justify-between items-center mb-4">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Precio</span>
-                            <div className="flex items-baseline gap-2">
-                            <span className={`font-serif font-bold text-lg ${ramo.es_oferta ? 'text-gray-400 line-through text-xs' : 'text-[#C5A059]'}`}>{ramo.precio_base} Bs</span>
-                            {ramo.es_oferta && <span className="font-serif font-bold text-xl text-red-500">{ramo.precio_oferta} Bs</span>}
-                            </div>
-                        </div>
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Tipo</span>
-                            <span className="text-xs font-bold text-gray-700 capitalize">{ramo.tipo}</span>
-                        </div>
+                <div className="p-5 flex justify-between items-center">
+                    <div>
+                        <h3 className="font-serif font-bold text-gray-800">{ramo.nombre}</h3>
+                        <p className="text-[#C5A059] font-bold">{ramo.precio_base} Bs</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
-                        <button onClick={() => handleEditClick(ramo)} className="bg-gray-50 text-gray-600 py-2 rounded-lg text-xs font-bold uppercase hover:bg-black hover:text-[#C5A059] transition-colors">✏️ Editar</button>
-                        <button onClick={() => handleDelete(ramo.id)} className="bg-red-50 text-red-400 py-2 rounded-lg text-xs font-bold uppercase hover:bg-red-500 hover:text-white transition-colors">🗑️ Eliminar</button>
+                    <div className="flex gap-2">
+                        <button onClick={() => handleEditClick(ramo)} className="p-2 bg-gray-50 rounded-lg text-gray-400 hover:bg-black hover:text-[#C5A059] transition-colors">✏️</button>
+                        <button onClick={() => handleDelete(ramo.id)} className="p-2 bg-red-50 rounded-lg text-red-400 hover:bg-red-500 hover:text-white transition-colors">🗑️</button>
                     </div>
                 </div>
                 </div>
