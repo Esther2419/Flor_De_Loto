@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { createCategoria, getCategorias, deleteCategoria, updateCategoria } from "./actions";
 import { Layers, Plus, FolderTree } from "lucide-react";
+import imageCompression from 'browser-image-compression';
 
 type Categoria = {
   id: string;
@@ -45,37 +46,6 @@ export default function CategoriasAdminPage() {
     setLoading(false);
   };
 
-  const compressImage = async (file: File): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = (event) => {
-        const img = document.createElement("img");
-        img.src = event.target?.result as string;
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const MAX_WIDTH = 1200;
-          const scaleSize = MAX_WIDTH / img.width;
-          
-          const newWidth = img.width > MAX_WIDTH ? MAX_WIDTH : img.width;
-          const newHeight = img.width > MAX_WIDTH ? img.height * scaleSize : img.height;
-
-          canvas.width = newWidth;
-          canvas.height = newHeight;
-
-          const ctx = canvas.getContext("2d");
-          ctx?.drawImage(img, 0, 0, newWidth, newHeight);
-
-          canvas.toBlob((blob) => {
-            if (blob) resolve(blob);
-            else reject(new Error("Error al comprimir imagen"));
-          }, "image/webp", 0.8); 
-        };
-      };
-      reader.onerror = (error) => reject(error);
-    });
-  };
-
   const handleUpload = async (file: File, type: "foto" | "portada") => {
     if (!file) return;
     
@@ -83,19 +53,20 @@ export default function CategoriasAdminPage() {
     setter(true);
 
     try {
-      const compressedBlob = await compressImage(file);
-      const compressedFile = new File([compressedBlob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
-        type: "image/webp",
-      });
+      // CONFIGURACIÓN DE COMPRESIÓN UNIFICADA
+      const options = {
+        maxSizeMB: type === "foto" ? 0.4 : 0.8, // Menos peso para el icono, un poco más para portada
+        maxWidthOrHeight: type === "foto" ? 500 : 1200, 
+        useWebWorker: true,
+        fileType: "image/webp" // Convertimos a webp para máxima eficiencia
+      };
 
+      const compressedFile = await imageCompression(file, options);
       const fileName = `${type}_${Date.now()}.webp`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('categorias')
-        .upload(fileName, compressedFile, {
-          cacheControl: '3600',
-          upsert: false
-        });
+        .upload(fileName, compressedFile);
 
       if (error) throw error;
 
@@ -184,13 +155,13 @@ export default function CategoriasAdminPage() {
 
       {(activeTab === "crear" || activeTab === "editar") && (
         <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-2">
-           <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center justify-between mb-8">
                 <h3 className="font-serif italic text-xl text-gray-800">{activeTab === "crear" ? "Crear Categoría" : "Editar Categoría"}</h3>
                 <button onClick={() => setActiveTab('ver')} className="text-xs text-red-400 hover:text-red-500 font-bold uppercase">Cancelar</button>
             </div>
 
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-2">Icono / Miniatura</span>
                     <div className="relative w-32 h-32 rounded-full border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group cursor-pointer hover:border-[#C5A059] hover:bg-white transition-colors">
@@ -198,7 +169,7 @@ export default function CategoriasAdminPage() {
                         {uploadingFoto ? 
                           <div className="absolute inset-0 flex items-center justify-center flex-col text-[#C5A059]">
                             <span className="text-xl animate-spin">❀</span>
-                            <span className="text-[10px] mt-1">Comprimiendo...</span>
+                            <span className="text-[10px] mt-1">Optimizando...</span>
                           </div> 
                         : formData.foto ? 
                           <Image src={formData.foto} alt="Icono" fill className="object-cover" /> 
@@ -215,7 +186,7 @@ export default function CategoriasAdminPage() {
                         {uploadingPortada ? 
                           <div className="absolute inset-0 flex items-center justify-center flex-col text-[#C5A059]">
                             <span className="text-xl animate-spin">❀</span>
-                            <span className="text-[10px] mt-1">Comprimiendo...</span>
+                            <span className="text-[10px] mt-1">Optimizando...</span>
                           </div> 
                         : formData.portada ? 
                           <Image src={formData.portada} alt="Portada" fill className="object-cover" /> 
@@ -224,15 +195,15 @@ export default function CategoriasAdminPage() {
                         }
                     </div>
                   </div>
-               </div>
+                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</label>
                     <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej. Fiestas" />
-                 </div>
+                  </div>
 
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Categoría Padre (Opcional)</label>
                     <select value={formData.padreId} onChange={e => setFormData({...formData, padreId: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 focus:ring-1 focus:ring-[#C5A059] text-sm outline-none">
                         <option value="">-- Es Categoría Principal --</option>
@@ -242,17 +213,17 @@ export default function CategoriasAdminPage() {
                             <option key={c.id} value={c.id}>{c.nombre} {c.categoria_padre_id ? '(Subcategoría)' : ''}</option>
                         ))}
                     </select>
-                 </div>
+                  </div>
 
-                 <div className="col-span-full space-y-2">
+                  <div className="col-span-full space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
                     <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 focus:ring-1 focus:ring-[#C5A059] outline-none" rows={3} placeholder="Descripción..." />
-                 </div>
-               </div>
+                  </div>
+                </div>
 
-               <button disabled={loading || uploadingFoto || uploadingPortada} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all disabled:opacity-50">
-                 {loading ? "Guardando..." : "Guardar Categoría"}
-               </button>
+                <button disabled={loading || uploadingFoto || uploadingPortada} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all disabled:opacity-50">
+                  {loading ? "Guardando..." : "Guardar Categoría"}
+                </button>
             </form>
         </div>
       )}

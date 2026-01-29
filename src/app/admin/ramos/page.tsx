@@ -6,7 +6,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
 import { Package, Plus, LayoutGrid, Search } from "lucide-react";
-// IMPORTACIÓN DE LA LIBRERÍA DE COMPRESIÓN
 import imageCompression from 'browser-image-compression';
 
 // --- TIPOS ---

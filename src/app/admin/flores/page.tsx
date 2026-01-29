@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase";
 import { getSession } from "next-auth/react";
 import { createFlor, getFlores, deleteFlor, updateFlor } from "./actions";
 import { Flower2, Plus, LayoutGrid } from "lucide-react";
-// IMPORTACIÓN DE LA LIBRERÍA DE COMPRESIÓN
 import imageCompression from 'browser-image-compression';
 
 type Flor = {
