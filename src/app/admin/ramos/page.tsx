@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
-import { Package, Plus, LayoutGrid, Search } from "lucide-react";
+import { Package, Plus, LayoutGrid, Search, Camera, Check, X, ZoomIn } from "lucide-react";
 import imageCompression from 'browser-image-compression';
+import Cropper from 'react-easy-crop';
 
 // --- TIPOS ---
 type AuxData = {
@@ -34,6 +35,25 @@ type Ramo = {
   ramo_imagenes: { url_foto: string }[];
 };
 
+// --- FUNCIONES AUXILIARES DE IMAGEN ---
+const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<File> => {
+  const image = await new Promise<HTMLImageElement>((resolve) => {
+    const img = new window.Image();
+    img.src = imageSrc;
+    img.onload = () => resolve(img);
+  });
+  const canvas = document.createElement('canvas');
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+  const ctx = canvas.getContext('2d');
+  ctx?.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, pixelCrop.width, pixelCrop.height);
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(new File([blob!], "temp.webp", { type: "image/webp" }));
+    }, 'image/webp', 0.9);
+  });
+};
+
 const getColorStyle = (nombreColor: string | null) => {
   if (!nombreColor) return '#ccc';
   if (nombreColor.startsWith('#')) return nombreColor;
@@ -53,32 +73,27 @@ export default function RamosAdminPage() {
   const [ramos, setRamos] = useState<Ramo[]>([]);
   const [auxData, setAuxData] = useState<AuxData>({ categorias: [], envolturas: [], flores: [] });
   
+  // ESTADOS PARA RECORTE
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+  const [isPrincipalCrop, setIsPrincipalCrop] = useState(true);
+
   const [formData, setFormData] = useState({
-    id: "",
-    nombre: "",
-    descripcion: "",
-    precio_base: "",
-    categoria_id: "",
-    tipo: "mano",
-    es_oferta: false,
-    precio_oferta: "",
-    activo: true,
-    foto_principal: "",
+    id: "", nombre: "", descripcion: "", precio_base: "", categoria_id: "", 
+    tipo: "mano", es_oferta: false, precio_oferta: "", activo: true, foto_principal: "",
   });
 
   const [detallesFlores, setDetallesFlores] = useState<DetalleItem[]>([]);
   const [detallesEnvolturas, setDetallesEnvolturas] = useState<DetalleItem[]>([]);
   const [imagenesExtra, setImagenesExtra] = useState<string[]>([]);
-
   const [showFlorSelector, setShowFlorSelector] = useState(false);
   const [showEnvolturaSelector, setShowEnvolturaSelector] = useState(false);
-
   const [uploadingPrincipal, setUploadingPrincipal] = useState(false);
   const [uploadingExtra, setUploadingExtra] = useState(false);
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -88,54 +103,49 @@ export default function RamosAdminPage() {
     setLoading(false);
   };
 
-  const handleUpload = async (file: File, isPrincipal: boolean) => {
-    const setter = isPrincipal ? setUploadingPrincipal : setUploadingExtra;
-    setter(true);
-    try {
-      // LOGICA DE COMPRESIÓN ANTES DE SUBIR
-      const options = {
-        maxSizeMB: 1,           // Máximo 1MB
-        maxWidthOrHeight: 1200, // Máximo 1200px
-        useWebWorker: true,
-      };
-      
-      const compressedFile = await imageCompression(file, options);
-
-      const fileExt = compressedFile.name.split('.').pop();
-      const fileName = `ramo_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      // SUBIR ARCHIVO COMPRIMIDO
-      const { error } = await supabase.storage.from('ramos').upload(fileName, compressedFile); 
-      if (error) throw error;
-      const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
-
-      if (isPrincipal) {
-        setFormData(prev => ({ ...prev, foto_principal: data.publicUrl }));
-      } else {
-        setImagenesExtra(prev => [...prev, data.publicUrl]);
-      }
-    } catch (error) {
-      alert("Error subiendo imagen.");
-      console.error(error);
-    } finally {
-      setter(false);
+  // INICIAR PROCESO DE SUBIDA (ABRE EL RECORTADOR)
+  const onFileChange = (e: React.ChangeEvent<HTMLInputElement>, isPrincipal: boolean) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setIsPrincipalCrop(isPrincipal);
+      const reader = new FileReader();
+      reader.addEventListener('load', () => setImageToCrop(reader.result as string));
+      reader.readAsDataURL(e.target.files[0]);
     }
   };
 
-  // --- GESTIÓN DE ITEMS (Flores y Envolturas) ---
+  const onCropComplete = useCallback((_: any, pixels: any) => { setCroppedAreaPixels(pixels); }, []);
+
+  // GUARDAR RECORTE, COMPRIMIR Y SUBIR
+  const handleCropSave = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+    const setter = isPrincipalCrop ? setUploadingPrincipal : setUploadingExtra;
+    setter(true);
+    setImageToCrop(null);
+
+    try {
+      const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
+      const options = { maxSizeMB: 1, maxWidthOrHeight: 1200, useWebWorker: true, fileType: "image/webp" };
+      const compressedFile = await imageCompression(croppedFile, options);
+
+      const fileName = `ramo_${Date.now()}.${compressedFile.name.split('.').pop()}`;
+      const { error } = await supabase.storage.from('ramos').upload(fileName, compressedFile);
+      if (error) throw error;
+      const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
+
+      if (isPrincipalCrop) setFormData(prev => ({ ...prev, foto_principal: data.publicUrl }));
+      else setImagenesExtra(prev => [...prev, data.publicUrl]);
+    } catch (error) {
+      alert("Error procesando imagen.");
+    } finally { setter(false); }
+  };
+
   const handleAddItem = (type: 'flor' | 'envoltura', id: string) => {
     const list = type === 'flor' ? detallesFlores : detallesEnvolturas;
     const setList = type === 'flor' ? setDetallesFlores : setDetallesEnvolturas;
-    const closeModal = type === 'flor' ? setShowFlorSelector : setShowEnvolturaSelector;
-
     const existe = list.find(d => d.id === id);
-    if (existe) {
-        const newList = list.map(d => d.id === id ? { ...d, cantidad: d.cantidad + 1 } : d);
-        setList(newList);
-    } else {
-        setList([...list, { id: id, cantidad: 1 }]);
-    }
-    closeModal(false);
+    if (existe) setList(list.map(d => d.id === id ? { ...d, cantidad: d.cantidad + 1 } : d));
+    else setList([...list, { id: id, cantidad: 1 }]);
+    type === 'flor' ? setShowFlorSelector(false) : setShowEnvolturaSelector(false);
   };
 
   const removeItem = (type: 'flor' | 'envoltura', index: number) => {
@@ -168,100 +178,66 @@ export default function RamosAdminPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
-    const payload = {
-      ...formData,
-      detalles: detallesFlores.map(d => ({ flor_id: d.id, cantidad: d.cantidad })),
-      envolturas: detallesEnvolturas.map(d => ({ envoltura_id: d.id, cantidad: d.cantidad })),
-      imagenes_extra: imagenesExtra
-    };
-
-    let res;
-    if (activeTab === "editar" && formData.id) {
-      res = await updateRamo(formData.id, payload);
-    } else {
-      res = await createRamo(payload);
-    }
-
-    if (res.success) {
-      resetForm();
-      setActiveTab("ver");
-      loadData();
-    } else {
-      alert(res.error);
-    }
+    const payload = { ...formData, detalles: detallesFlores.map(d => ({ flor_id: d.id, cantidad: d.cantidad })), envolturas: detallesEnvolturas.map(d => ({ envoltura_id: d.id, cantidad: d.cantidad })), imagenes_extra: imagenesExtra };
+    const res = (activeTab === "editar" && formData.id) ? await updateRamo(formData.id, payload) : await createRamo(payload);
+    if (res.success) { resetForm(); setActiveTab("ver"); loadData(); } else alert(res.error);
     setLoading(false);
   };
 
   const resetForm = () => {
-    setFormData({
-      id: "", nombre: "", descripcion: "", precio_base: "", categoria_id: "", 
-      tipo: "mano", es_oferta: false, precio_oferta: "", activo: true, foto_principal: ""
-    });
-    setDetallesFlores([]);
-    setDetallesEnvolturas([]);
-    setImagenesExtra([]);
+    setFormData({ id: "", nombre: "", descripcion: "", precio_base: "", categoria_id: "", tipo: "mano", es_oferta: false, precio_oferta: "", activo: true, foto_principal: "" });
+    setDetallesFlores([]); setDetallesEnvolturas([]); setImagenesExtra([]);
   };
 
   const handleEditClick = (ramo: Ramo) => {
-    setFormData({
-      id: ramo.id,
-      nombre: ramo.nombre,
-      descripcion: ramo.descripcion || "",
-      precio_base: ramo.precio_base.toString(),
-      categoria_id: ramo.categoria_id?.toString() || "",
-      tipo: ramo.tipo || "mano",
-      es_oferta: ramo.es_oferta || false,
-      precio_oferta: ramo.precio_oferta?.toString() || "",
-      activo: ramo.activo ?? true, 
-      foto_principal: ramo.foto_principal || "",
-    });
-    
-    setDetallesFlores(ramo.ramo_detalle.map(d => ({
-      id: d.flor_id.toString(),
-      cantidad: d.cantidad_base
-    })));
-
-    setDetallesEnvolturas(ramo.ramo_envolturas.map(e => ({
-      id: e.envoltura_id.toString(),
-      cantidad: e.cantidad
-    })));
-
+    setFormData({ id: ramo.id, nombre: ramo.nombre, descripcion: ramo.descripcion || "", precio_base: ramo.precio_base.toString(), categoria_id: ramo.categoria_id?.toString() || "", tipo: ramo.tipo || "mano", es_oferta: ramo.es_oferta || false, precio_oferta: ramo.precio_oferta?.toString() || "", activo: ramo.activo ?? true, foto_principal: ramo.foto_principal || "" });
+    setDetallesFlores(ramo.ramo_detalle.map(d => ({ id: d.flor_id.toString(), cantidad: d.cantidad_base })));
+    setDetallesEnvolturas(ramo.ramo_envolturas.map(e => ({ id: e.envoltura_id.toString(), cantidad: e.cantidad })));
     setImagenesExtra(ramo.ramo_imagenes.map(img => img.url_foto));
     setActiveTab("editar");
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("¿Eliminar este ramo?")) {
-      await deleteRamo(id);
-      loadData();
-    }
-  };
+  const handleDelete = async (id: string) => { if (confirm("¿Eliminar este ramo?")) { await deleteRamo(id); loadData(); } };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       
-      {/* HEADER ESTILO PEDIDOS */}
+      {/* MODAL DE RECORTE (Crop) */}
+      {imageToCrop && (
+        <div className="fixed inset-0 z-[100] bg-[#0A0A0A] flex flex-col items-center justify-center p-4 backdrop-blur-md">
+          <div className="relative w-full h-[65vh] md:h-[70vh] rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+            <Cropper
+              image={imageToCrop}
+              crop={crop}
+              zoom={zoom}
+              aspect={isPrincipalCrop ? 3/4 : 1}
+              onCropChange={setCrop}
+              onCropComplete={onCropComplete}
+              onZoomChange={setZoom}
+            />
+          </div>
+          <div className="mt-8 w-full max-w-md space-y-4">
+            <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5">
+              <ZoomIn size={16} className="text-[#C5A059]" />
+              <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-[#C5A059]" />
+            </div>
+            <div className="flex gap-4">
+              <button onClick={() => setImageToCrop(null)} className="flex-1 bg-white/5 text-white py-4 rounded-2xl font-bold uppercase text-[10px] tracking-[0.2em] border border-white/10 hover:bg-white/10 transition-all">Cancelar</button>
+              <button onClick={handleCropSave} className="flex-1 bg-[#C5A059] text-white py-4 rounded-2xl font-bold uppercase text-[10px] tracking-[0.2em] shadow-xl hover:bg-[#d4b06a] transition-all flex items-center justify-center gap-2"><Check size={14} /> Aplicar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-6">
         <div>
           <h2 className="text-2xl font-serif italic text-gray-800">Catálogo de Ramos</h2>
-          <p className="text-sm text-gray-500">Gestiona los arreglos florales y sus precios.</p>
+          <p className="text-sm text-gray-500">Usa la cámara para capturar y recortar tus ramos.</p>
         </div>
         <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
-           <button 
-             onClick={() => { setActiveTab("ver"); loadData(); }} 
-             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
-           >
-             <LayoutGrid size={14} className="inline mr-2 -mt-0.5" />
-             Catálogo
-           </button>
-           <button 
-             onClick={() => { setActiveTab("crear"); resetForm(); }} 
-             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "crear" ? "bg-[#C5A059] text-white shadow-md" : "text-gray-400 hover:text-gray-600"}`}
-           >
-             <Plus size={14} className="inline mr-2 -mt-0.5" />
-             Nuevo Ramo
-           </button>
+           <button onClick={() => { setActiveTab("ver"); loadData(); }} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}><LayoutGrid size={14} className="inline mr-2 -mt-0.5" /> Catálogo</button>
+           <button onClick={() => { setActiveTab("crear"); resetForm(); }} className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "crear" ? "bg-[#C5A059] text-white shadow-md" : "text-gray-400 hover:text-gray-600"}`}><Plus size={14} className="inline mr-2 -mt-0.5" /> Nuevo Ramo</button>
         </div>
       </div>
 
@@ -276,34 +252,34 @@ export default function RamosAdminPage() {
                 {/* SECCIÓN FOTOS */}
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
                   <div className="md:col-span-4 flex flex-col items-center">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2">Foto Principal</span>
-                    <div className="relative w-full aspect-[3/4] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group hover:border-[#C5A059] transition-colors cursor-pointer">
-                        <input type="file" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], true)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" accept="image/*" />
+                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 tracking-widest">Foto Principal (3:4)</span>
+                    <div className="relative w-full aspect-[3/4] rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden group hover:border-[#C5A059] transition-colors cursor-pointer">
+                        <input type="file" onChange={(e) => onFileChange(e, true)} className="absolute inset-0 z-20 opacity-0 cursor-pointer" accept="image/*" capture="environment" />
                         {uploadingPrincipal ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-xs">SUBIENDO...</div>
+                            <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-[10px] uppercase tracking-widest">Procesando...</div>
                         ) : formData.foto_principal ? (
-                            <Image src={formData.foto_principal} alt="Main" fill className="object-cover" />
+                            <Image src={formData.foto_principal} alt="Main" fill className="object-cover" unoptimized />
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-300 group-hover:text-[#C5A059]">
-                               <span className="text-4xl">📷</span>
-                               <span className="text-[10px] mt-2 font-bold uppercase">Subir</span>
+                               <Camera size={32} className="mb-2" />
+                               <span className="text-[10px] font-bold uppercase tracking-widest">Cámara / Subir</span>
                             </div>
                         )}
                     </div>
                   </div>
                   <div className="md:col-span-8">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 block">Galería Extra ({imagenesExtra.length})</span>
+                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 block tracking-widest">Galería Extra ({imagenesExtra.length})</span>
                     <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
                         {imagenesExtra.map((img, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 group shadow-sm bg-white">
-                             <Image src={img} alt="" fill className="object-cover" />
+                          <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-200 group shadow-sm bg-white">
+                             <Image src={img} alt="" fill className="object-cover" unoptimized />
                              <button type="button" onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">×</button>
                           </div>
                         ))}
-                        <div className="relative aspect-square rounded-lg border-2 border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-[#C5A059] cursor-pointer transition-colors bg-white">
-                           <input type="file" onChange={(e) => e.target.files?.[0] && handleUpload(e.target.files[0], false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" />
-                           <span className="text-3xl text-gray-300 group-hover:text-[#C5A059]">+</span>
-                           {uploadingExtra && <span className="absolute text-[8px] bottom-1 text-[#C5A059] font-bold">...</span>}
+                        <div className="relative aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center hover:bg-gray-50 hover:border-[#C5A059] cursor-pointer transition-colors bg-white group">
+                           <input type="file" onChange={(e) => onFileChange(e, false)} className="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" capture="environment" />
+                           <Camera size={20} className="text-gray-300 group-hover:text-[#C5A059]" />
+                           {uploadingExtra && <span className="absolute text-[8px] bottom-1 text-[#C5A059] font-bold animate-pulse">...</span>}
                         </div>
                     </div>
                   </div>
@@ -344,7 +320,6 @@ export default function RamosAdminPage() {
                     <div className="bg-gray-50 p-5 rounded-xl border border-gray-100">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio de Venta (Bs)</label>
                         <input required type="number" step="0.5" value={formData.precio_base} onChange={e => setFormData({...formData, precio_base: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-white border border-gray-200 rounded-lg p-3 mt-1 font-bold text-xl text-[#C5A059] outline-none" placeholder="0.00" />
-                        
                         <div className="mt-4 flex flex-col gap-3">
                             <div className="flex items-center gap-3">
                                 <input type="checkbox" id="oferta" checked={formData.es_oferta} onChange={e => setFormData({...formData, es_oferta: e.target.checked})} className="w-4 h-4 text-[#C5A059] rounded cursor-pointer" />
@@ -356,7 +331,6 @@ export default function RamosAdminPage() {
                         </div>
                     </div>
 
-                    {/* COMPOSICIÓN FLORAL */}
                     <div className="border border-gray-200 rounded-xl p-5 relative bg-white">
                         <span className="absolute -top-2.5 left-4 bg-white px-2 text-[10px] font-bold uppercase text-[#C5A059]">Flores (Composición)</span>
                         <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
@@ -365,7 +339,7 @@ export default function RamosAdminPage() {
                               return (
                                 <div key={index} className="flex gap-3 items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
                                     <div className="w-8 h-8 rounded-full border border-gray-200 relative overflow-hidden flex-shrink-0">
-                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" /> : <span className="flex items-center justify-center h-full text-xs">🌸</span>}
+                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" unoptimized /> : <span className="flex items-center justify-center h-full text-xs">🌸</span>}
                                     </div>
                                     <div className="flex-1 text-xs">
                                       <p className="font-bold text-gray-700">{item?.nombre}</p>
@@ -384,7 +358,6 @@ export default function RamosAdminPage() {
                         </div>
                     </div>
 
-                    {/* COMPOSICIÓN DE ENVOLTURA */}
                     <div className="border border-gray-200 rounded-xl p-5 relative bg-white">
                         <span className="absolute -top-2.5 left-4 bg-white px-2 text-[10px] font-bold uppercase text-gray-400">Envoltura / Papel</span>
                         <div className="space-y-3 max-h-48 overflow-y-auto pr-1 custom-scrollbar">
@@ -393,7 +366,7 @@ export default function RamosAdminPage() {
                               return (
                                 <div key={index} className="flex gap-3 items-center bg-gray-50 p-2 rounded-lg border border-gray-100">
                                     <div className="w-8 h-8 rounded-full border border-gray-200 relative overflow-hidden flex-shrink-0 bg-white">
-                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" /> : <span className="flex items-center justify-center h-full text-xs">🎁</span>}
+                                      {item?.foto ? <Image src={item.foto} alt="" fill className="object-cover" unoptimized /> : <span className="flex items-center justify-center h-full text-xs">🎁</span>}
                                     </div>
                                     <div className="flex-1 text-xs">
                                       <p className="font-bold text-gray-700">{item?.nombre}</p>
@@ -412,10 +385,7 @@ export default function RamosAdminPage() {
                         </div>
                     </div>
 
-                    <div className="text-right text-[10px] text-gray-400">
-                        Costo Materiales: <span className="font-bold text-gray-600">{costoEstimado.toFixed(2)} Bs</span>
-                    </div>
-
+                    <div className="text-right text-[10px] text-gray-400">Costo Materiales: <span className="font-bold text-gray-600">{costoEstimado.toFixed(2)} Bs</span></div>
                     <div className="flex items-center gap-2 pt-2">
                         <input type="checkbox" id="activo" checked={formData.activo} onChange={e => setFormData({...formData, activo: e.target.checked})} className="w-4 h-4 text-green-500 rounded cursor-pointer" />
                         <label htmlFor="activo" className="text-sm text-gray-600 cursor-pointer select-none">Ramo visible en catálogo</label>
@@ -437,10 +407,8 @@ export default function RamosAdminPage() {
                 <div key={ramo.id} className={`bg-white rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 overflow-hidden border ${!ramo.activo ? 'border-gray-200 opacity-60 grayscale' : 'border-gray-100'}`}>
                 <div className="relative h-64 bg-gray-50 group cursor-pointer" onClick={() => handleEditClick(ramo)}>
                     {ramo.foto_principal ? (
-                        <Image src={ramo.foto_principal} alt={ramo.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-700" />
-                    ) : (
-                        <div className="flex items-center justify-center h-full text-4xl opacity-20">💐</div>
-                    )}
+                        <Image src={ramo.foto_principal} alt={ramo.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-700" unoptimized />
+                    ) : ( <div className="flex items-center justify-center h-full text-4xl opacity-20">💐</div> )}
                     <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
                         {ramo.es_oferta && <span className="bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded shadow-md animate-pulse">OFERTA</span>}
                         {!ramo.activo && <span className="bg-black text-white text-[10px] font-bold px-2 py-1 rounded shadow-md">OCULTO</span>}
@@ -474,60 +442,60 @@ export default function RamosAdminPage() {
         </div>
       )}
 
-        {/* MODAL FLORES */}
-        {showFlorSelector && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
-              <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
-                <h3 className="font-serif text-xl italic">Seleccionar Flor</h3>
-                <button onClick={() => setShowFlorSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
-              </div>
-              <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {auxData.flores.map((flor) => (
-                    <div key={flor.id} onClick={() => handleAddItem('flor', flor.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-[#C5A059] hover:scale-105 transition-all group">
-                      <div className="relative aspect-square bg-gray-100">
-                        {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-2xl">🌸</div>}
-                        <div className="absolute top-2 right-2 w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: getColorStyle(flor.color) }}></div>
-                      </div>
-                      <div className="p-3 text-center">
-                        <h4 className="font-bold text-sm text-[#0A0A0A] line-clamp-1">{flor.nombre}</h4>
-                        <p className="text-xs text-[#C5A059] font-bold mt-1">Bs {flor.precio_unitario}</p>
-                      </div>
+      {/* MODAL FLORES */}
+      {showFlorSelector && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+            <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
+              <h3 className="font-serif text-xl italic">Seleccionar Flor</h3>
+              <button onClick={() => setShowFlorSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {auxData.flores.map((flor) => (
+                  <div key={flor.id} onClick={() => handleAddItem('flor', flor.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-[#C5A059] hover:scale-105 transition-all group">
+                    <div className="relative aspect-square bg-gray-100">
+                      {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full text-2xl">🌸</div>}
+                      <div className="absolute top-2 right-2 w-4 h-4 rounded-full border border-white shadow-sm" style={{ backgroundColor: getColorStyle(flor.color) }}></div>
                     </div>
-                  ))}
-                </div>
+                    <div className="p-3 text-center">
+                      <h4 className="font-bold text-sm text-[#0A0A0A] line-clamp-1">{flor.nombre}</h4>
+                      <p className="text-xs text-[#C5A059] font-bold mt-1">Bs {flor.precio_unitario}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* MODAL ENVOLTURAS*/}
-        {showEnvolturaSelector && (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
-              <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
-                <h3 className="font-serif text-xl italic">Seleccionar Material</h3>
-                <button onClick={() => setShowEnvolturaSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
-              </div>
-              <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-                  {auxData.envolturas.map((env) => (
-                    <div key={env.id} onClick={() => handleAddItem('envoltura', env.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-gray-500 hover:scale-105 transition-all group">
-                      <div className="relative aspect-square bg-gray-50">
-                        {env.foto ? <Image src={env.foto} alt={env.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-2xl">🎁</div>}
-                      </div>
-                      <div className="p-3 text-center">
-                        <h4 className="font-bold text-sm text-[#0A0A0A] line-clamp-1">{env.nombre}</h4>
-                        <p className="text-xs text-gray-500 font-bold mt-1">Bs {env.precio_unitario}</p>
-                      </div>
+      {/* MODAL ENVOLTURAS*/}
+      {showEnvolturaSelector && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[80vh] flex flex-col overflow-hidden animate-in zoom-in-95">
+            <div className="bg-[#0A0A0A] p-4 flex justify-between items-center text-white">
+              <h3 className="font-serif text-xl italic">Seleccionar Material</h3>
+              <button onClick={() => setShowEnvolturaSelector(false)} className="text-white/60 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+            <div className="p-4 overflow-y-auto flex-1 bg-[#F9F6EE] custom-scrollbar">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {auxData.envolturas.map((env) => (
+                  <div key={env.id} onClick={() => handleAddItem('envoltura', env.id)} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden cursor-pointer hover:shadow-lg hover:border-gray-500 hover:scale-105 transition-all group">
+                    <div className="relative aspect-square bg-gray-50">
+                      {env.foto ? <Image src={env.foto} alt={env.nombre} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full text-2xl">🎁</div>}
                     </div>
-                  ))}
-                </div>
+                    <div className="p-3 text-center">
+                      <h4 className="font-bold text-sm text-[#0A0A0A] line-clamp-1">{env.nombre}</h4>
+                      <p className="text-xs text-gray-500 font-bold mt-1">Bs {env.precio_unitario}</p>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
     </div>
   );
