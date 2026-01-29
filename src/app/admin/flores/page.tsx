@@ -7,6 +7,8 @@ import { supabase } from "@/lib/supabase";
 import { getSession } from "next-auth/react";
 import { createFlor, getFlores, deleteFlor, updateFlor } from "./actions";
 import { Flower2, Plus, LayoutGrid } from "lucide-react";
+// IMPORTACIÓN DE LA LIBRERÍA DE COMPRESIÓN
+import imageCompression from 'browser-image-compression';
 
 type Flor = {
   id: string;
@@ -132,13 +134,30 @@ export default function FloresAdminPage() {
     if (!e.target.files || e.target.files.length === 0) return;
     setUploading(true);
     const file = e.target.files[0];
-    const fileName = `${Date.now()}.${file.name.split('.').pop()}`;
+
     try {
-      await supabase.storage.from('flores').upload(fileName, file);
+      // LOGICA DE COMPRESIÓN ANTES DE SUBIR
+      const options = {
+        maxSizeMB: 0.8,          // Máximo 800KB para flores individuales
+        maxWidthOrHeight: 1000, // Máximo 1000px
+        useWebWorker: true,
+      };
+      
+      const compressedFile = await imageCompression(file, options);
+      const fileName = `${Date.now()}.${compressedFile.name.split('.').pop()}`;
+
+      // SUBIR ARCHIVO COMPRIMIDO
+      await supabase.storage.from('flores').upload(fileName, compressedFile);
       const { data: urlData } = supabase.storage.from('flores').getPublicUrl(fileName);
+      
       setFormData(prev => ({ ...prev, foto: urlData.publicUrl }));
       analyzeColor(urlData.publicUrl);
-    } catch (error) { alert("Error al subir imagen."); } finally { setUploading(false); }
+    } catch (error) { 
+      alert("Error al procesar o subir la imagen."); 
+      console.error(error);
+    } finally { 
+      setUploading(false); 
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -206,19 +225,19 @@ export default function FloresAdminPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 {/* FOTO */}
-                 <div className="col-span-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 bg-gray-50 hover:bg-white hover:border-[#C5A059] transition-colors cursor-pointer relative group">
-                    <input type="file" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept="image/*" />
-                    {uploading ? <span className="text-xs font-bold text-[#C5A059] animate-pulse">Analizando imagen...</span> : formData.foto ? <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg"><Image src={formData.foto} alt="Preview" fill className="object-cover" /></div> : <div className="text-center"><span className="text-4xl mb-2 block">📷</span><span className="text-xs text-gray-400 uppercase tracking-widest">Subir Foto</span></div>}
-                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* FOTO */}
+                  <div className="col-span-full flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-xl p-8 bg-gray-50 hover:bg-white hover:border-[#C5A059] transition-colors cursor-pointer relative group">
+                     <input type="file" onChange={handleImageUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20" accept="image/*" />
+                     {uploading ? <span className="text-xs font-bold text-[#C5A059] animate-pulse">Analizando imagen...</span> : formData.foto ? <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg"><Image src={formData.foto} alt="Preview" fill className="object-cover" /></div> : <div className="text-center"><span className="text-4xl mb-2 block">📷</span><span className="text-xs text-gray-400 uppercase tracking-widest">Subir Foto</span></div>}
+                  </div>
 
-                 <div className="space-y-2 col-span-full">
+                  <div className="space-y-2 col-span-full">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</label>
                     <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej: Girasol, Rosa Roja" />
-                 </div>
+                  </div>
 
-                 <div className="space-y-2 col-span-full">
+                  <div className="space-y-2 col-span-full">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Color</label>
                     <div className="flex flex-col gap-2">
                         <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
@@ -233,35 +252,35 @@ export default function FloresAdminPage() {
                         </div>
                         <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] font-bold text-sm outline-none" placeholder="Nombre del color" />
                     </div>
-                 </div>
+                  </div>
 
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio (Bs)</label>
                     <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" />
-                 </div>
+                  </div>
 
-                 <div className="space-y-2">
+                  <div className="space-y-2">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cantidad (Stock)</label>
                     <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} onWheel={(e) => e.currentTarget.blur()} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" />
-                 </div>
+                  </div>
 
-                 <div className="space-y-2 col-span-full">
+                  <div className="space-y-2 col-span-full">
                     <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
                     <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" rows={3} placeholder="Detalles de la flor..." />
-                 </div>
+                  </div>
 
-                 <div className={`col-span-full p-4 rounded-xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
+                  <div className={`col-span-full p-4 rounded-xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
                     <div className="flex flex-col"><span className="text-sm font-bold text-[#0A0A0A]">Disponibilidad</span><span className="text-[10px] text-gray-400">{isStockZero ? "Desactivado por falta de stock." : "¿Visible para ventas?"}</span></div>
                     <label className={`relative inline-flex items-center ${isStockZero ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
                         <input type="checkbox" checked={formData.disponible} onChange={e => setFormData({...formData, disponible: e.target.checked})} disabled={isStockZero} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#25D366]"></div>
                     </label>
-                 </div>
-               </div>
+                  </div>
+                </div>
 
-               <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all mt-4 disabled:opacity-50">
-                 {loading ? "Guardando..." : "Guardar Cambios"}
-               </button>
+                <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all mt-4 disabled:opacity-50">
+                  {loading ? "Guardando..." : "Guardar Cambios"}
+                </button>
             </form>
         </div>
       )}
