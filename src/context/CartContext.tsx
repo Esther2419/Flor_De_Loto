@@ -12,11 +12,17 @@ import {
 
 export interface CartItem {
   id: string;
+  productoId: string;
   nombre: string;
   precio: number;
   foto: string | null;
   cantidad: number;
-  personalizacion?: any; 
+  tipo: 'ramo' | 'flor';
+  personalizacion?: {
+    envolturas?: any;
+    floresExtra?: any;
+    dedicatoria?: string;
+  };
 }
 
 interface CartContextType {
@@ -25,6 +31,7 @@ interface CartContextType {
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, delta: number) => void;
   clearCart: () => void;
+  metodoEntrega: 'tienda';
   total: number;
   count: number;
   isCartOpen: boolean;
@@ -38,6 +45,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  
+  const metodoEntrega = 'tienda';
 
   useEffect(() => {
     const loadCart = async () => {
@@ -46,12 +55,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (localCart.length > 0) {
           const syncedItems = await syncCartAction(localCart);
           if (syncedItems) {
-            setItems(syncedItems as CartItem[]);
+            setItems(syncedItems as unknown as CartItem[]);
             localStorage.removeItem("flor-de-loto-cart"); 
           }
         } else {
           const dbItems = await getCartAction();
-          if (dbItems) setItems(dbItems as CartItem[]);
+          if (dbItems) setItems(dbItems as unknown as CartItem[]);
         }
       } else if (status === "unauthenticated") {
         const savedCart = localStorage.getItem("flor-de-loto-cart");
@@ -59,10 +68,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
       setIsLoaded(true);
     };
-
-    if (status !== "loading") {
-      loadCart();
-    }
+    if (status !== "loading") loadCart();
   }, [status]);
 
   useEffect(() => {
@@ -72,32 +78,29 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isLoaded, status]);
 
   const addToCart = async (product: Omit<CartItem, "cantidad">) => {
-    const cartItemId = product.personalizacion 
-      ? `${product.id}-custom-${Date.now()}` 
-      : product.id;
-
-    // Actualización local inmediata
     setItems((currentItems) => {
-      const existingItem = currentItems.find((item) => item.id === cartItemId);
-      if (existingItem && !product.personalizacion) {
+      const existingItem = currentItems.find((item) => item.id === product.id);
+      if (existingItem) {
         return currentItems.map((item) =>
-          item.id === cartItemId ? { ...item, cantidad: item.cantidad + 1 } : item
+          item.id === product.id ? { ...item, cantidad: item.cantidad + 1 } : item
         );
       }
-      return [...currentItems, { ...product, id: cartItemId, cantidad: 1 }];
+      return [...currentItems, { ...product, cantidad: 1 }];
     });
 
-    // Sincronización con base de datos
     if (status === "authenticated") {
-      await addToCartAction({ ...product, id: cartItemId, cantidad: 1 });
+      // Nos aseguramos de enviar productoId
+      await addToCartAction({ 
+        ...product, 
+        productoId: product.productoId, 
+        cantidad: 1 
+      });
     }
   };
 
   const removeFromCart = async (id: string) => {
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
-    if (status === "authenticated") {
-      await removeFromCartAction(id);
-    }
+    if (status === "authenticated") await removeFromCartAction(id);
   };
 
   const updateQuantity = async (id: string, delta: number) => {
@@ -110,9 +113,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item;
       })
     );
-    if (status === "authenticated") {
-      await updateQuantityAction(id, delta);
-    }
+    if (status === "authenticated") await updateQuantityAction(id, delta);
   };
 
   const clearCart = () => setItems([]);
@@ -122,9 +123,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const count = items.reduce((acc, item) => acc + item.cantidad, 0);
 
   return (
-    <CartContext.Provider
-      value={{ items, addToCart, removeFromCart, updateQuantity, clearCart, total, count, isCartOpen, toggleCart }}
-    >
+    <CartContext.Provider value={{ 
+      items, addToCart, removeFromCart, updateQuantity, clearCart, 
+      metodoEntrega, total, count, isCartOpen, toggleCart 
+    }}>
       {children}
     </CartContext.Provider>
   );

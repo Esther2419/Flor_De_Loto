@@ -8,7 +8,8 @@ import { useState } from "react";
 import Image from "next/image";
 
 interface AddToCartProps {
-  id: string;
+  id: string; 
+  productoId?: string;
   nombre: string;
   precio: number;
   foto: string | null;
@@ -18,7 +19,17 @@ interface AddToCartProps {
   personalizacion?: any;
 }
 
-export default function AddToCartButton({ id, nombre, precio, foto, className, onAfterAdd, personalizacion }: AddToCartProps) {
+export default function AddToCartButton({ 
+  id, 
+  productoId, 
+  nombre, 
+  precio, 
+  foto, 
+  type, 
+  className, 
+  onAfterAdd, 
+  personalizacion 
+}: AddToCartProps) {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
@@ -31,39 +42,36 @@ export default function AddToCartButton({ id, nombre, precio, foto, className, o
   const handleAction = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     
-    // Si ya se está procesando, no hacer nada
     if (isPending || showCheck) return;
 
     try {
-      setIsPending(true); // Bloqueamos el botón inmediatamente
+      setIsPending(true); 
 
-      // Captura posición para la animación
       const rect = e.currentTarget.getBoundingClientRect();
       setStartPos({ x: rect.left, y: rect.top });
       
       setIsAnimating(true);
 
-      // Agrega al carrito (la lógica del ID ahora vive en el Contexto)
+      // Si no viene productoId, usamos id como fallback (para compatibilidad)
+      const finalProductoId = productoId || id; 
+
       await addToCart({ 
         id, 
+        productoId: finalProductoId, // Ahora el contexto lo acepta
         nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
         precio, 
         foto,
+        tipo: (type as 'ramo' | 'flor') || 'ramo', 
         personalizacion 
       });
 
       setShowCheck(true);
 
-      // Espera a que termine la animación para limpiar estados y redirigir
       setTimeout(() => {
         setIsAnimating(false);
         setIsPending(false);
-        
-        toast("¡Ramo agregado! Revise su carrito para finalizar el pedido.", "success");
-        
-        // Redirige al homepage
+        toast("¡Agregado! Revise su carrito para finalizar.", "success");
         router.push("/");
-
         if (onAfterAdd) onAfterAdd();
       }, 800);
 
@@ -98,7 +106,6 @@ export default function AddToCartButton({ id, nombre, precio, foto, className, o
         )}
       </button>
 
-      {/* Animación de la imagen volando al carrito */}
       {isAnimating && foto && (
         <div
           className="fixed z-[9999] pointer-events-none rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-xl animate-fly-to-cart"

@@ -23,7 +23,10 @@ export default async function MisPedidosPage() {
     orderBy: { fecha_pedido: 'desc' },
     include: {
       detalle_pedidos: {
-        include: { ramos: true }
+        include: { 
+          ramos: true,
+          flores: true
+        }
       }
     }
   });
@@ -87,7 +90,6 @@ export default async function MisPedidosPage() {
                       <div className="flex items-center gap-2">
                         <Clock size={14} />
                         <span className="text-xs font-medium">
-                           {/* HORA MODIFICADA A AM/PM */}
                            Hora: {format(new Date(pedido.fecha_entrega), "hh:mm aa")}
                         </span>
                       </div>
@@ -101,17 +103,22 @@ export default async function MisPedidosPage() {
 
                     <div className="pt-4 border-t border-gray-50">
                       <p className="text-[10px] font-bold uppercase text-gray-300 tracking-widest mb-2">Productos:</p>
-                      {pedido.detalle_pedidos.map((detalle) => (
-                        <div key={detalle.id.toString()} className="flex justify-between text-sm py-1">
-                          <span className="text-gris/70 flex items-center gap-2">
-                            {detalle.cantidad}x {detalle.ramos.nombre}
-                            {detalle.personalizacion && (
-                               <span className="text-[9px] bg-yellow-50 text-yellow-700 px-1 rounded uppercase font-bold">Pers.</span>
-                            )}
-                          </span>
-                          <span className="font-bold text-gris">Bs {Number(detalle.precio_unitario) * detalle.cantidad}</span>
-                        </div>
-                      ))}
+                      {pedido.detalle_pedidos.map((detalle) => {
+                        // Lógica corregida para obtener el nombre del producto
+                        const nombreProducto = detalle.ramos?.nombre || detalle.flores?.nombre || "Producto desconocido";
+                        
+                        return (
+                          <div key={detalle.id.toString()} className="flex justify-between text-sm py-1">
+                            <span className="text-gris/70 flex items-center gap-2">
+                              {detalle.cantidad}x {nombreProducto}
+                              {detalle.personalizacion && (
+                                 <span className="text-[9px] bg-yellow-50 text-yellow-700 px-1 rounded uppercase font-bold">Pers.</span>
+                              )}
+                            </span>
+                            <span className="font-bold text-gris">Bs {Number(detalle.precio_unitario) * detalle.cantidad}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
