@@ -4,34 +4,47 @@ import { useState, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
+import { Eye, EyeOff } from "lucide-react";
 
-// Separamos el contenido del formulario en un componente interno
 function LoginForm() {
   const [isRegister, setIsRegister] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  
   const searchParams = useSearchParams();
   const router = useRouter();
-  
-  // Ahora useSearchParams() está dentro de un Suspense
   const callbackUrl = searchParams.get("callbackUrl") || "/";
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
     const password = formData.get("password") as string;
-    const nombre = formData.get("nombre") as string;
+    
+    setLoading(true);
 
     if (isRegister) {
+      const nombre = formData.get("nombre") as string;
+      const celular = formData.get("celular") as string;
+      const confirmPassword = formData.get("confirmPassword") as string;
+
+      if (password !== confirmPassword) {
+        setError("Las contraseñas no coinciden");
+        setLoading(false);
+        return;
+      }
+
       const res = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, nombre }),
+        body: JSON.stringify({ email, password, nombre, celular }),
       });
+
       if (res.ok) {
+        // Login automático tras registro exitoso
         await signIn("credentials", { email, password, callbackUrl });
       } else {
         const data = await res.json();
@@ -53,46 +66,87 @@ function LoginForm() {
     <div className="bg-white max-w-md w-full rounded-3xl shadow-xl p-8 border border-gray-100">
       <div className="text-center mb-8">
         <Image src="/LogoSinLetra.png" alt="Logo" width={60} height={60} className="mx-auto mb-4" />
-        <h1 className="font-serif italic text-3xl text-gris">{isRegister ? "Crear Cuenta" : "Bienvenido"}</h1>
-        <p className="text-gray-400 text-sm mt-2">Disfruta de la magia de Flor de Loto</p>
+        <h1 className="font-serif italic text-3xl text-gris">
+          {isRegister ? "Crear Cuenta" : "Bienvenido"}
+        </h1>
+        <p className="text-gray-400 text-sm mt-2">Flor de Loto</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         {isRegister && (
-          <input name="nombre" type="text" placeholder="Nombre completo" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
+          <>
+            <input name="nombre" type="text" placeholder="Nombre completo" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
+            <input name="celular" type="tel" placeholder="Número de celular" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
+          </>
         )}
+        
         <input name="email" type="email" placeholder="Correo electrónico" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
-        <input name="password" type="password" placeholder="Contraseña" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
+        
+        <div className="relative">
+          <input 
+            name="password" 
+            type={showPassword ? "text" : "password"} 
+            placeholder="Contraseña" 
+            required 
+            className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" 
+          />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+            {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+          </button>
+        </div>
+
+        {isRegister && (
+          <div className="relative">
+            <input 
+              name="confirmPassword" 
+              type={showConfirmPassword ? "text" : "password"} 
+              placeholder="Confirmar contraseña" 
+              required 
+              className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" 
+            />
+            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
+              {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+            </button>
+          </div>
+        )}
         
         {error && <p className="text-red-500 text-xs text-center font-bold">{error}</p>}
         
         <button disabled={loading} className="w-full bg-[#C5A059] text-white py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-[#b38f4d] transition-all disabled:bg-gray-400">
-          {loading ? "Cargando..." : (isRegister ? "Registrarme" : "Iniciar Sesión")}
+          {loading ? "Procesando..." : (isRegister ? "Registrarme" : "Iniciar Sesión")}
         </button>
       </form>
 
-      <div className="mt-6 flex flex-col gap-4">
-        <button onClick={() => signIn("google", { callbackUrl })} className="w-full border py-4 rounded-2xl flex items-center justify-center gap-3 hover:bg-gray-50 transition-all font-medium text-sm">
-          <Image src="https://www.google.com/favicon.ico" alt="Google" width={18} height={18} />
-          Continuar con Google
+      <div className="relative my-6 text-center">
+        <span className="bg-white px-4 text-gray-400 text-sm relative z-10">O continuar con</span>
+        <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gray-100"></div>
+      </div>
+
+      {/* BOTÓN DE GOOGLE */}
+      <button 
+        onClick={() => signIn("google", { callbackUrl })}
+        className="w-full flex items-center justify-center gap-3 border border-gray-200 py-4 rounded-2xl hover:bg-gray-50 transition-all font-medium text-gray-600"
+      >
+        <Image src="https://www.google.com/favicon.ico" alt="Google" width={20} height={20} />
+        Google
+      </button>
+
+      <div className="text-center mt-8">
+        <button 
+          onClick={() => setIsRegister(!isRegister)} 
+          className="text-[#C5A059] font-bold text-sm hover:underline"
+        >
+          {isRegister ? "¿Ya tienes cuenta? Inicia Sesión" : "¿No tienes cuenta? Regístrate aquí"}
         </button>
-        
-        <p className="text-center text-sm text-gray-500">
-          {isRegister ? "¿Ya tienes cuenta?" : "¿No tienes cuenta?"}{" "}
-          <button onClick={() => setIsRegister(!isRegister)} className="text-[#C5A059] font-bold hover:underline">
-            {isRegister ? "Inicia sesión" : "Regístrate aquí"}
-          </button>
-        </p>
       </div>
     </div>
   );
 }
 
-// El componente principal envuelve al formulario en Suspense
 export default function LoginPage() {
   return (
     <div className="min-h-screen bg-crema flex items-center justify-center p-4">
-      <Suspense fallback={<div className="text-[#C5A059] font-serif italic">Cargando...</div>}>
+      <Suspense fallback={<div>Cargando...</div>}>
         <LoginForm />
       </Suspense>
     </div>

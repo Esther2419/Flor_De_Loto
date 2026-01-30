@@ -4,7 +4,7 @@ import bcrypt from "bcrypt";
 
 export async function POST(req: Request) {
   try {
-    const { email, password, nombre } = await req.json();
+    const { email, password, nombre, celular } = await req.json();
 
     const existe = await prisma.usuarios.findUnique({ where: { email } });
     if (existe) {
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
         email,
         nombre_completo: nombre,
         password: hashedPassword,
+        celular: celular,
         rol: "cliente",
       },
     });
