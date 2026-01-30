@@ -150,8 +150,8 @@ export default function CategoriasAdminPage() {
       
       {/* MODAL CROP RESPONSIVO */}
       {imageToCrop && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-2 md:p-4 backdrop-blur-md">
-          <div className="relative w-full h-[50vh] md:h-[65vh] rounded-3xl overflow-hidden shadow-2xl">
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-2 md:p-4 backdrop-blur-sm">
+          <div className="relative w-full h-[55vh] md:h-[65vh] rounded-3xl overflow-hidden shadow-2xl">
             <Cropper 
               image={imageToCrop} 
               crop={crop} 
@@ -164,7 +164,7 @@ export default function CategoriasAdminPage() {
               showGrid={false}
             />
           </div>
-          <div className="mt-6 w-full max-w-xs space-y-4">
+          <div className="mt-8 w-full max-w-xs space-y-4">
             <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5">
                 <ZoomIn size={16} className="text-[#C5A059]" />
                 <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-[#C5A059]" />
@@ -201,23 +201,38 @@ export default function CategoriasAdminPage() {
 
       {(activeTab === "crear" || activeTab === "editar") && (
         <div className="bg-white p-4 md:p-8 rounded-3xl border border-gray-100 shadow-sm animate-in slide-in-from-bottom-2">
+            <div className="flex items-center justify-between mb-8">
+                <h3 className="font-serif italic text-xl text-gray-800">{activeTab === "crear" ? "Crear Categoría" : "Editar Categoría"}</h3>
+                <button onClick={() => setActiveTab('ver')} className="text-xs text-red-400 hover:text-red-500 font-bold uppercase">Cancelar</button>
+            </div>
+
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* ICONO CIRCULAR */}
+                  {/* ICONO CIRCULAR CON BORRADO VISIBLE */}
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest">Icono Circular (1:1)</span>
-                    <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
+                    <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden shadow-inner">
                         {uploadingFoto ? (
-                          <div className="text-[#C5A059] animate-pulse font-bold text-[10px]">...</div> 
+                          <div className="text-[#C5A059] animate-pulse font-bold text-[10px]">PROCESANDO...</div> 
                         ) : formData.foto ? (
-                          <>
+                          <div className="relative w-full h-full group">
                             <Image src={formData.foto} alt="Icon" fill className="object-cover" unoptimized /> 
-                            <button type="button" onClick={() => { deleteImageFromStorage(formData.foto); setFormData({...formData, foto: ""}) }} className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"><Trash2 size={24}/></button>
-                          </>
+                            <button 
+                              type="button" 
+                              onClick={() => { deleteImageFromStorage(formData.foto); setFormData({...formData, foto: ""}) }} 
+                              className="absolute inset-0 m-auto w-12 h-12 bg-red-500/90 text-white rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm active:scale-95 transition-all z-10"
+                            >
+                              <Trash2 size={24}/>
+                            </button>
+                          </div>
                         ) : (
                           <div className="flex flex-col gap-2 p-4 w-full h-full justify-center">
-                              <button type="button" onClick={() => iconCamRef.current?.click()} className="bg-[#0A0A0A] text-[#C5A059] py-2 rounded-xl text-[9px] font-bold uppercase"><Camera size={14} className="inline mr-1" /> Cámara</button>
-                              <button type="button" onClick={() => iconFileRef.current?.click()} className="bg-white border text-gray-500 py-2 rounded-xl text-[9px] font-bold uppercase">Galería</button>
+                              <button type="button" onClick={() => iconCamRef.current?.click()} className="w-full bg-[#0A0A0A] text-[#C5A059] py-3 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center justify-center gap-2">
+                                <Camera size={16} /> Cámara
+                              </button>
+                              <button type="button" onClick={() => iconFileRef.current?.click()} className="w-full bg-white border border-gray-200 text-gray-500 py-3 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center justify-center gap-2">
+                                <ImageIcon size={16} /> Galería
+                              </button>
                               <input ref={iconCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFileChange(e, "foto")} />
                               <input ref={iconFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e, "foto")} />
                           </div>
@@ -230,16 +245,20 @@ export default function CategoriasAdminPage() {
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest">Portada Horizontal (16:9)</span>
                     <div className="relative w-full h-32 md:h-40 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
                         {uploadingPortada ? (
-                          <div className="text-[#C5A059] animate-pulse font-bold text-[10px]">...</div> 
+                          <div className="text-[#C5A059] animate-pulse font-bold text-[10px]">PROCESANDO...</div> 
                         ) : formData.portada ? (
                           <>
                             <Image src={formData.portada} alt="Portada" fill className="object-cover" unoptimized /> 
-                            <button type="button" onClick={() => { deleteImageFromStorage(formData.portada); setFormData({...formData, portada: ""}) }} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg"><Trash2 size={16}/></button>
+                            <button type="button" onClick={() => { deleteImageFromStorage(formData.portada); setFormData({...formData, portada: ""}) }} className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full shadow-lg z-10"><Trash2 size={16}/></button>
                           </>
                         ) : (
-                          <div className="flex gap-4">
-                                <button type="button" onClick={() => coverCamRef.current?.click()} className="bg-[#0A0A0A] text-[#C5A059] p-4 rounded-2xl"><Camera size={24}/></button>
-                                <button type="button" onClick={() => coverFileRef.current?.click()} className="bg-white border border-gray-200 text-gray-400 p-4 rounded-2xl"><ImageIcon size={24}/></button>
+                          <div className="flex gap-4 w-full h-full items-center justify-center px-4">
+                                <button type="button" onClick={() => coverCamRef.current?.click()} className="flex-1 bg-[#0A0A0A] text-[#C5A059] py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-[10px] uppercase shadow-md">
+                                  <Camera size={20}/> Cámara
+                                </button>
+                                <button type="button" onClick={() => coverFileRef.current?.click()} className="flex-1 bg-white border border-gray-200 text-gray-400 py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-[10px] uppercase shadow-sm">
+                                  <ImageIcon size={20}/> Galería
+                                </button>
                                 <input ref={coverCamRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFileChange(e, "portada")} />
                                 <input ref={coverFileRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e, "portada")} />
                           </div>
@@ -275,22 +294,20 @@ export default function CategoriasAdminPage() {
         </div>
       )}
 
-      {/* VISTA LISTA RESPONSIVA CON DESCRIPCIÓN COMPLETA */}
+      {/* VISTA LISTA CON DESCRIPCIÓN COMPLETA (Arreglada) */}
       {activeTab === "ver" && (
         <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
             <div className="divide-y divide-gray-50">
                 {categorias.map((cat) => (
                     <div key={cat.id} className="grid grid-cols-12 gap-3 items-start p-4 md:px-6 hover:bg-gray-50 transition-colors">
-                        {/* ICONO CIRCULAR */}
                         <div className="col-span-3 md:col-span-1 pt-1">
                             <div className="relative w-12 h-12 md:w-10 md:h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200 aspect-square">
                                 {cat.foto ? <Image src={cat.foto} alt="" fill className="object-cover" unoptimized /> : <Layers className="m-auto text-gray-300 w-5 h-5" />}
                             </div>
                         </div>
-                        {/* TEXTO ADAPTADO - DESCRIPCIÓN COMPLETA */}
-                        <div className="col-span-9 md:col-span-9">
-                            <p className="font-serif font-bold text-gray-800 text-sm md:text-base leading-tight mb-1">{cat.nombre}</p>
-                            <div className="flex flex-col gap-1">
+                        <div className="col-span-9 md:col-span-9 pr-2">
+                            <p className="font-serif font-bold text-gray-800 text-sm md:text-base leading-tight mb-1 uppercase tracking-tight">{cat.nombre}</p>
+                            <div className="flex flex-col gap-1.5">
                                 <div className="flex items-center gap-2">
                                     {cat.categoria_padre_id ? (
                                         <span className="text-[8px] bg-[#C5A059]/10 text-[#C5A059] px-2 py-0.5 rounded-full font-bold uppercase shrink-0">Subcategoría</span>
@@ -298,24 +315,23 @@ export default function CategoriasAdminPage() {
                                         <span className="text-[8px] bg-black text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0">Principal</span>
                                     )}
                                 </div>
-                                {/* SE QUITÓ 'truncate' PARA MOSTRAR TODO EL TEXTO */}
-                                <p className="text-[11px] text-gray-500 leading-relaxed break-words">
+                                {/* DESCRIPCIÓN COMPLETA CON AJUSTE DE LÍNEAS */}
+                                <p className="text-[11px] text-gray-500 leading-relaxed break-words whitespace-pre-wrap">
                                     {cat.descripcion || "Sin descripción establecida."}
                                 </p>
                             </div>
                         </div>
-                        {/* ACCIONES */}
-                        <div className="col-span-12 md:col-span-2 flex justify-end gap-2 mt-3 md:mt-0 border-t md:border-none pt-3 md:pt-2">
-                            <button onClick={() => handleEditClick(cat)} className="flex-1 md:flex-none h-10 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-gray-50 text-gray-400 hover:bg-black hover:text-[#C5A059] transition-all">
-                                ✏️ <span className="md:hidden ml-2 text-[10px] font-bold">EDITAR</span>
+                        <div className="col-span-12 md:col-span-2 flex justify-end gap-2 mt-4 md:mt-0 border-t md:border-none pt-4 md:pt-2">
+                            <button onClick={() => handleEditClick(cat)} className="flex-1 md:flex-none h-11 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-gray-100 text-gray-500 hover:bg-black hover:text-[#C5A059] transition-all">
+                                ✏️ <span className="md:hidden ml-2 text-[10px] font-bold uppercase">Editar</span>
                             </button>
-                            <button onClick={() => handleDeleteCat(cat.id)} className="flex-1 md:flex-none h-10 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all">
-                                🗑️ <span className="md:hidden ml-2 text-[10px] font-bold">BORRAR</span>
+                            <button onClick={() => handleDeleteCat(cat.id)} className="flex-1 md:flex-none h-11 md:w-9 md:h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-500 hover:text-white transition-all">
+                                🗑️ <span className="md:hidden ml-2 text-[10px] font-bold uppercase tracking-tighter">Borrar</span>
                             </button>
                         </div>
                     </div>
                 ))}
-                {categorias.length === 0 && <div className="p-20 text-center text-gray-400 font-serif italic">No hay categorías registradas.</div>}
+                {categorias.length === 0 && <div className="p-20 text-center text-gray-400 font-serif italic uppercase text-[10px] tracking-widest">No hay categorías registradas.</div>}
             </div>
         </div>
       )}

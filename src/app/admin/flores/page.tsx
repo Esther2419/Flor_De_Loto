@@ -22,7 +22,7 @@ type Flor = {
   disponible: boolean;
 };
 
-// 1. Colores primarios (Botones rápidos - Recuperado de tu código original)
+// 1. Colores primarios (Botones rápidos)
 const PRIMARY_PRESETS = [
   { name: 'Rojo', hex: '#EF4444' },
   { name: 'Negro', hex: '#000000' },
@@ -34,7 +34,7 @@ const PRIMARY_PRESETS = [
   { name: 'Violeta', hex: '#8B5CF6' },
 ];
 
-// 2. Referencia para detección automática (Recuperado completo)
+// 2. Referencia para detección automática (Traduce códigos a nombres)
 const COLOR_DETECTION_REF = [
   ...PRIMARY_PRESETS,
   { name: 'Rojo Oscuro', hex: '#7F1D1D' },
@@ -122,7 +122,6 @@ export default function FloresAdminPage() {
   useEffect(() => { if (activeTab === "ver") loadFlores(); }, [activeTab]);
   useEffect(() => { getSession().then((s) => { if (s?.user?.email) setCurrentUser(s.user.email); }); }, []);
 
-  // Validación de Stock automática (Recuperada)
   useEffect(() => {
     const qty = parseInt(formData.cantidad) || 0;
     if (qty === 0) setFormData(p => ({ ...p, disponible: false }));
@@ -140,7 +139,7 @@ export default function FloresAdminPage() {
     try {
       const fileName = url.split('/').pop();
       if (fileName) await supabase.storage.from('flores').remove([fileName]);
-    } catch (e) { console.error("Error al borrar:", e); }
+    } catch (e) { console.error("Error storage:", e); }
   };
 
   const analyzeColor = (url: string) => {
@@ -196,7 +195,7 @@ export default function FloresAdminPage() {
 
       setFormData(prev => ({ ...prev, foto: data.publicUrl }));
       analyzeColor(data.publicUrl);
-    } catch (err) { alert("Error al procesar imagen"); } finally { setUploading(false); }
+    } catch (err) { alert("Error procesando imagen"); } finally { setUploading(false); }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -222,6 +221,7 @@ export default function FloresAdminPage() {
         cantidad: flor.cantidad.toString(), foto: flor.foto || "", disponible: flor.disponible 
     });
     setActiveTab("editar");
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDelete = async (id: string) => {
@@ -236,17 +236,20 @@ export default function FloresAdminPage() {
   const isStockZero = (parseInt(formData.cantidad) || 0) === 0;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 p-2 md:p-0">
       
-      {/* MODAL CROP */}
+      {/* MODAL CROP RESPONSIVO */}
       {imageToCrop && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4 backdrop-blur-md">
-          <div className="relative w-full h-[60vh] md:h-[70vh] rounded-3xl overflow-hidden shadow-2xl">
-            <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} />
+        <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-2 md:p-4 backdrop-blur-md">
+          <div className="relative w-full h-[50vh] md:h-[65vh] rounded-3xl overflow-hidden shadow-2xl">
+            <Cropper image={imageToCrop} crop={crop} zoom={zoom} aspect={1} onCropChange={setCrop} onCropComplete={onCropComplete} onZoomChange={setZoom} cropShape="round" showGrid={false} />
           </div>
-          <div className="mt-8 w-full max-w-xs space-y-4 text-center">
-            <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-[#C5A059]" />
-            <div className="flex gap-2">
+          <div className="mt-8 w-full max-w-xs space-y-4">
+            <div className="flex items-center gap-4 bg-white/5 p-3 rounded-2xl border border-white/5">
+                <ZoomIn size={16} className="text-[#C5A059]" />
+                <input type="range" value={zoom} min={1} max={3} step={0.1} onChange={(e) => setZoom(Number(e.target.value))} className="w-full accent-[#C5A059]" />
+            </div>
+            <div className="flex gap-4">
               <button onClick={() => setImageToCrop(null)} className="flex-1 bg-white/10 text-white py-4 rounded-2xl font-bold uppercase text-[10px] tracking-widest border border-white/10">Cancelar</button>
               <button onClick={handleCropSave} className="flex-1 bg-[#C5A059] text-white py-4 rounded-2xl font-bold uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2"><Check size={14} /> Aplicar</button>
             </div>
@@ -256,52 +259,44 @@ export default function FloresAdminPage() {
 
       {/* HEADER */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100 pb-6">
-        <div>
+        <div className="text-center md:text-left">
           <h2 className="text-2xl font-serif italic text-gray-800">Inventario de Flores</h2>
-          <p className="text-sm text-gray-500">Gestiona las variedades, stock y precios unitarios.</p>
+          <p className="text-sm text-gray-500">Gestiona variedades, stock y precios.</p>
         </div>
-        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl">
-           <button 
-             onClick={() => setActiveTab("ver")} 
-             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}
-           >
-             <LayoutGrid size={14} className="inline mr-2 -mt-0.5" />
-             Ver Todo
+        <div className="flex gap-2 bg-gray-50 p-1 rounded-xl w-full md:w-auto">
+           <button onClick={() => setActiveTab("ver")} className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "ver" ? "bg-white text-[#C5A059] shadow-sm" : "text-gray-400 hover:text-gray-600"}`}>
+             <LayoutGrid size={14} className="inline mr-2 -mt-0.5" /> Ver Todo
            </button>
-           <button 
-             onClick={() => { setActiveTab("crear"); resetForm(); }} 
-             className={`px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "crear" ? "bg-[#C5A059] text-white shadow-md" : "text-gray-400 hover:text-gray-600"}`}
-           >
-             <Plus size={14} className="inline mr-2 -mt-0.5" />
-             Añadir Flor
+           <button onClick={() => { setActiveTab("crear"); resetForm(); }} className={`flex-1 md:flex-none px-4 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${activeTab === "crear" ? "bg-[#C5A059] text-white shadow-md" : "text-gray-400 hover:text-gray-600"}`}>
+             <Plus size={14} className="inline mr-2 -mt-0.5" /> Añadir Flor
            </button>
         </div>
       </div>
 
       {(activeTab === "crear" || activeTab === "editar") && (
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm animate-in fade-in slide-in-from-bottom-2">
+        <div className="bg-white p-4 md:p-8 rounded-3xl border border-gray-100 shadow-sm animate-in slide-in-from-bottom-2">
             <div className="flex items-center justify-between mb-8">
-                <h3 className="font-serif italic text-xl text-gray-800">{activeTab === "crear" ? "Registrar Nueva Variedad" : "Editar Flor"}</h3>
+                <h3 className="font-serif italic text-xl text-gray-800">{activeTab === "crear" ? "Nueva Variedad" : "Editar Variedad"}</h3>
                 <button onClick={() => setActiveTab('ver')} className="text-xs text-red-400 hover:text-red-500 font-bold uppercase">Cancelar</button>
             </div>
 
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
-                {/* SECCIÓN FOTO DUAL */}
-                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-3xl p-8 bg-gray-50 overflow-hidden relative min-h-[250px]">
+                {/* SECCIÓN FOTO DUAL CIRCULAR CON BORRADO VISIBLE */}
+                <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-full w-40 h-40 md:w-48 md:h-48 mx-auto bg-gray-50 overflow-hidden relative shadow-inner">
                     {uploading ? (
-                        <span className="text-xs font-bold text-[#C5A059] animate-pulse uppercase tracking-widest">Analizando imagen...</span>
+                        <div className="text-[#C5A059] animate-pulse font-bold text-[10px] text-center px-4 uppercase">Analizando...</div>
                     ) : formData.foto ? (
-                        <div className="relative w-40 h-40 rounded-full overflow-hidden border-4 border-white shadow-lg">
+                        <div className="relative w-full h-full group">
                             <Image src={formData.foto} alt="Preview" fill className="object-cover" unoptimized />
-                            <button type="button" onClick={() => { deleteImageFromStorage(formData.foto); setFormData({...formData, foto: ""})}} className="absolute top-0 right-0 bg-red-500 text-white p-2 rounded-full shadow-lg hover:bg-red-600 transition-colors"><Trash2 size={16} /></button>
+                            <button type="button" onClick={() => { deleteImageFromStorage(formData.foto); setFormData({...formData, foto: ""})}} className="absolute inset-0 m-auto w-12 h-12 bg-red-500/90 text-white rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm z-10 active:scale-90 transition-transform"><Trash2 size={24} /></button>
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-4 w-full max-w-xs">
-                             <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-[#0A0A0A] text-[#C5A059] py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all">
-                                <Camera size={20} /> CÁMARA
+                        <div className="flex flex-col gap-2 w-full h-full justify-center p-4">
+                             <button type="button" onClick={() => cameraInputRef.current?.click()} className="bg-[#0A0A0A] text-[#C5A059] py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center justify-center gap-1">
+                                <Camera size={14} /> Cámara
                               </button>
-                              <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-white text-gray-600 border border-gray-200 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                <ImageIcon size={20} /> GALERÍA
+                              <button type="button" onClick={() => fileInputRef.current?.click()} className="bg-white border border-gray-200 text-gray-500 py-2.5 rounded-xl text-[10px] font-bold uppercase shadow-sm flex items-center justify-center gap-1">
+                                <ImageIcon size={14} /> Galería
                               </button>
                               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFileChange} />
                               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onFileChange} />
@@ -310,54 +305,54 @@ export default function FloresAdminPage() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2 col-span-full">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Nombre</label>
-                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej: Girasol, Rosa Roja" />
+                  <div className="col-span-full space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Nombre</label>
+                    <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 focus:ring-1 focus:ring-[#C5A059] outline-none" placeholder="Ej: Rosa Roja" />
                   </div>
 
-                  <div className="space-y-2 col-span-full">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Color</label>
-                    <div className="flex flex-col gap-2">
-                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                  <div className="col-span-full space-y-2">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Color</label>
+                    <div className="flex flex-col gap-3">
+                        <div className="flex flex-wrap gap-2 p-3 bg-gray-50 rounded-2xl border border-gray-100 justify-center md:justify-start">
                             {PRIMARY_PRESETS.map((c) => (
-                                <button key={c.hex} type="button" onClick={() => setFormData({ ...formData, color: c.name })} className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === c.name ? 'ring-2 ring-[#0A0A0A] ring-offset-1 scale-110 shadow-md' : 'border-white hover:scale-105'}`} style={{ backgroundColor: c.hex }} title={c.name} />
+                                <button key={c.hex} type="button" onClick={() => setFormData({ ...formData, color: c.name })} className={`w-8 h-8 rounded-full border-2 transition-all ${formData.color === c.name ? 'ring-2 ring-black ring-offset-1 scale-110 shadow-md' : 'border-white'}`} style={{ backgroundColor: c.hex }} title={c.name} />
                             ))}
                             <div className="w-px h-8 bg-gray-200 mx-1"></div>
-                            <div className="relative w-8 h-8 rounded-full border-2 border-dashed border-[#C5A059] flex items-center justify-center bg-white overflow-hidden group">
+                            <div className="relative w-8 h-8 rounded-full border-2 border-dashed border-[#C5A059] flex items-center justify-center bg-white overflow-hidden">
                                 <span className="text-xs">🎨</span>
                                 <input type="color" className="absolute inset-0 opacity-0 cursor-pointer scale-150" onChange={(e) => setFormData({ ...formData, color: getNameFromHex(e.target.value) })} />
                             </div>
                         </div>
-                        <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] font-bold text-sm outline-none" placeholder="Nombre del color" />
+                        <input type="text" value={formData.color} onChange={e => setFormData({...formData, color: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 font-bold text-sm outline-none" placeholder="Nombre del color" />
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Precio (Bs)</label>
-                    <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] outline-none" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Precio Unitario (Bs)</label>
+                    <input required type="number" step="0.5" value={formData.precio} onChange={e => setFormData({...formData, precio: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 outline-none" />
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Cantidad (Stock)</label>
-                    <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] outline-none" />
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Stock Actual</label>
+                    <input required type="number" value={formData.cantidad} onChange={e => setFormData({...formData, cantidad: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 outline-none" />
                   </div>
 
-                  <div className="space-y-2 col-span-full">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400">Descripción</label>
-                    <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border border-gray-100 rounded-lg p-3 text-[#0A0A0A] focus:ring-1 focus:ring-[#C5A059] outline-none" rows={3} placeholder="Detalles de la flor..." />
+                  <div className="col-span-full space-y-1">
+                    <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-1">Descripción</label>
+                    <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 outline-none min-h-[100px]" placeholder="Detalles de la flor..." />
                   </div>
 
-                  <div className={`col-span-full p-4 rounded-xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50 border-gray-100'}`}>
-                    <div className="flex flex-col"><span className="text-sm font-bold text-[#0A0A0A]">Disponibilidad</span><span className="text-[10px] text-gray-400">{isStockZero ? "Desactivado por falta de stock." : "¿Visible para ventas?"}</span></div>
-                    <label className={`relative inline-flex items-center ${isStockZero ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                  <div className={`col-span-full p-4 rounded-2xl flex items-center justify-between border ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'}`}>
+                    <div className="flex flex-col"><span className="text-sm font-bold text-gray-800">Disponibilidad</span><span className="text-[10px] text-gray-400 uppercase">{isStockZero ? "Agotado automáticamente" : "¿Visible para ventas?"}</span></div>
+                    <label className={`relative inline-flex items-center ${isStockZero ? 'opacity-50' : 'cursor-pointer'}`}>
                         <input type="checkbox" checked={formData.disponible} onChange={e => setFormData({...formData, disponible: e.target.checked})} disabled={isStockZero} className="sr-only peer" />
                         <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#25D366] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
                     </label>
                   </div>
                 </div>
 
-                <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-lg">
-                  {loading ? "Guardando..." : "Guardar Variedad"}
+                <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-5 rounded-2xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-xl">
+                  {loading ? "PROCESANDO..." : "CONFIRMAR VARIEDAD"}
                 </button>
             </form>
         </div>
@@ -366,20 +361,17 @@ export default function FloresAdminPage() {
       {activeTab === "ver" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 animate-in fade-in">
             {flores.map((flor) => (
-                <div key={flor.id} onClick={() => setSelectedFlor(flor)} className={`bg-white border rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all group relative cursor-pointer ${!flor.disponible ? 'border-red-100 opacity-80' : 'border-gray-100'}`}>
-                    <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
-                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase tracking-widest shadow-sm ${flor.cantidad > 0 ? 'bg-white/90 text-[#0A0A0A]' : 'bg-red-500 text-white'}`}>
-                            Stock: {flor.cantidad}
-                        </span>
+                <div key={flor.id} onClick={() => setSelectedFlor(flor)} className={`bg-white border rounded-[2rem] overflow-hidden shadow-sm hover:shadow-xl transition-all relative cursor-pointer ${!flor.disponible ? 'opacity-70 grayscale' : 'border-gray-100'}`}>
+                    <div className="relative aspect-square bg-gray-50 overflow-hidden">
+                        {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full text-3xl opacity-20">🌸</div>}
+                        <div className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase shadow-sm">Stock: {flor.cantidad}</div>
                     </div>
-                    <div className="relative h-40 md:h-48 bg-gray-50">
-                        {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className={`object-cover ${!flor.disponible ? 'grayscale' : ''}`} unoptimized /> : <div className="flex items-center justify-center h-full text-3xl opacity-20">🌸</div>}
-                        <div className="absolute bottom-2 right-2 z-10">{flor.disponible ? <span className="bg-[#25D366]/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm">Disponible</span> : <span className="bg-red-500/90 text-white px-2 py-1 rounded text-[10px] font-bold uppercase shadow-sm">Agotado</span>}</div>
-                    </div>
-                    <div className="p-4">
-                        <div className="flex flex-col mb-2 text-center">
-                             <h3 className="font-serif font-bold text-lg text-[#0A0A0A] leading-tight line-clamp-1">{flor.nombre}</h3>
-                             <span className="text-[#C5A059] font-bold text-sm">Bs {flor.precio_unitario}</span>
+                    <div className="p-4 text-center">
+                        <h3 className="font-serif font-bold text-gray-800 text-sm truncate uppercase tracking-tighter leading-tight mb-1">{flor.nombre}</h3>
+                        <p className="text-[#C5A059] font-bold text-xs">{flor.precio_unitario} Bs</p>
+                        <div className="flex justify-center items-center gap-1.5 mt-2">
+                             <div className="w-3 h-3 rounded-full shadow-inner border border-gray-100" style={{ backgroundColor: getColorStyle(flor.color) }}></div>
+                             <span className="text-[9px] text-gray-400 font-bold uppercase tracking-widest truncate">{flor.color || 'Sin color'}</span>
                         </div>
                     </div>
                 </div>
@@ -389,21 +381,22 @@ export default function FloresAdminPage() {
 
       {selectedFlor && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedFlor(null)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedFlor(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-1"><X size={20}/></button>
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelectedFlor(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-2"><X size={20}/></button>
             <div className="relative h-64 bg-gray-100">{selectedFlor.foto && <Image src={selectedFlor.foto} alt="P" fill className="object-cover" unoptimized />}</div>
-            <div className="p-6">
+            <div className="p-8">
               <div className="flex justify-between items-start mb-4"><h3 className="font-serif text-2xl text-[#0A0A0A] leading-tight">{selectedFlor.nombre}</h3><span className="text-[#C5A059] font-bold text-xl whitespace-nowrap">Bs {selectedFlor.precio_unitario}</span></div>
               <div className="space-y-4 mb-8">
-                <p className="text-sm text-gray-600 leading-relaxed">{selectedFlor.descripcion || "Sin descripción"}</p>
+                <p className="text-sm text-gray-600 leading-relaxed whitespace-pre-wrap">{selectedFlor.descripcion || "Sin descripción adicional."}</p>
                 <div className="flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                  <span className="bg-gray-100 px-2 py-1 rounded flex items-center gap-1">Color: <div className="w-2 h-2 rounded-full" style={{backgroundColor: getColorStyle(selectedFlor.color)}}></div> {selectedFlor.color}</span>
-                  <span className="bg-gray-100 px-2 py-1 rounded">Stock: {selectedFlor.cantidad}</span>
+                  <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">Color: <div className="w-2 h-2 rounded-full" style={{backgroundColor: getColorStyle(selectedFlor.color)}}></div> {selectedFlor.color}</span>
+                  <span className="bg-gray-100 px-3 py-1 rounded-full">Stock: {selectedFlor.cantidad}</span>
+                  <span className={`px-3 py-1 rounded-full ${selectedFlor.disponible ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>{selectedFlor.disponible ? "Disponible" : "Agotado"}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => handleEditClick(selectedFlor)} className="bg-[#0A0A0A] text-white py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-colors flex items-center justify-center gap-2"><span>✏️</span> Editar</button>
-                <button onClick={() => handleDelete(selectedFlor.id)} className="bg-red-50 text-red-500 border border-red-100 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-colors flex items-center justify-center gap-2"><span>🗑️</span> Eliminar</button>
+                <button onClick={() => handleEditClick(selectedFlor)} className="bg-[#0A0A0A] text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-all flex items-center justify-center gap-2"><span>✏️</span> Editar</button>
+                <button onClick={() => handleDelete(selectedFlor.id)} className="bg-red-50 text-red-500 border border-red-100 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"><span>🗑️</span> Eliminar</button>
               </div>
             </div>
           </div>
