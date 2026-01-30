@@ -31,6 +31,14 @@ function LoginForm() {
       const celular = formData.get("celular") as string;
       const confirmPassword = formData.get("confirmPassword") as string;
 
+      // Validación de Contraseña Segura (8+ carac, Mayús, Minús, Núm, Especial)
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+      if (!passwordRegex.test(password)) {
+        setError("La contraseña debe tener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.");
+        setLoading(false);
+        return;
+      }
+
       if (password !== confirmPassword) {
         setError("Las contraseñas no coinciden");
         setLoading(false);
@@ -44,7 +52,6 @@ function LoginForm() {
       });
 
       if (res.ok) {
-        // Login automático tras registro exitoso
         await signIn("credentials", { email, password, callbackUrl });
       } else {
         const data = await res.json();
@@ -75,8 +82,24 @@ function LoginForm() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {isRegister && (
           <>
-            <input name="nombre" type="text" placeholder="Nombre completo" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
-            <input name="celular" type="tel" placeholder="Número de celular" required className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" />
+            {/* Solo letras y espacios en Nombre */}
+            <input 
+              name="nombre" 
+              type="text" 
+              placeholder="Nombre completo" 
+              required 
+              onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[0-9]/g, '')}
+              className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" 
+            />
+            {/* Solo números en Celular */}
+            <input 
+              name="celular" 
+              type="tel" 
+              placeholder="Número de celular" 
+              required 
+              onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '')}
+              className="w-full p-4 bg-gray-50 border rounded-2xl focus:outline-[#C5A059]" 
+            />
           </>
         )}
         
@@ -122,7 +145,6 @@ function LoginForm() {
         <div className="absolute top-1/2 left-0 w-full h-[1px] bg-gray-100"></div>
       </div>
 
-      {/* BOTÓN DE GOOGLE */}
       <button 
         onClick={() => signIn("google", { callbackUrl })}
         className="w-full flex items-center justify-center gap-3 border border-gray-200 py-4 rounded-2xl hover:bg-gray-50 transition-all font-medium text-gray-600"
@@ -133,7 +155,7 @@ function LoginForm() {
 
       <div className="text-center mt-8">
         <button 
-          onClick={() => setIsRegister(!isRegister)} 
+          onClick={() => { setIsRegister(!isRegister); setError(""); }} 
           className="text-[#C5A059] font-bold text-sm hover:underline"
         >
           {isRegister ? "¿Ya tienes cuenta? Inicia Sesión" : "¿No tienes cuenta? Regístrate aquí"}
