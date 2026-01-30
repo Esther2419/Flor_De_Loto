@@ -14,7 +14,8 @@ export default async function AdminPedidosPage() {
       usuarios: true,
       detalle_pedidos: {
         include: {
-          ramos: true
+          ramos: true,
+          flores: true
         }
       }
     }
@@ -44,7 +45,6 @@ export default async function AdminPedidosPage() {
                   </span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
-                  {/* HORA MODIFICADA A AM/PM */}
                   Creado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
                 </p>
               </div>
@@ -53,45 +53,50 @@ export default async function AdminPedidosPage() {
                  <p className="text-xs text-gray-500">{pedido.telefono_contacto}</p>
                  <div className="mt-2 text-xs bg-gray-50 p-2 rounded text-gray-600 inline-block max-w-xs text-left border border-gray-100">
                     <p><span className="font-bold">Recoge:</span> {pedido.nombre_receptor}</p>
-                    {/* HORA MODIFICADA A AM/PM */}
                     <p className="mt-1"><span className="font-bold">Para el:</span> {format(new Date(pedido.fecha_entrega), "dd/MM/yyyy hh:mm aa")}</p>
                  </div>
               </div>
             </div>
 
             <div className="space-y-3">
-              {pedido.detalle_pedidos.map((detalle) => (
-                <div key={detalle.id.toString()} className="flex justify-between items-start text-sm bg-gray-50/50 p-2 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-gray-200 relative overflow-hidden shrink-0 border border-gray-200">
-                      {detalle.ramos.foto_principal ? (
-                        <Image 
-                          src={detalle.ramos.foto_principal} 
-                          alt={detalle.ramos.nombre} 
-                          fill 
-                          className="object-cover" 
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-gray-400">
-                           <Package size={16} />
-                        </div>
-                      )}
+              {pedido.detalle_pedidos.map((detalle) => {
+                const producto = detalle.ramos || detalle.flores;
+                const nombreProducto = producto?.nombre || "Producto desconocido";
+                const fotoProducto = detalle.ramos?.foto_principal || detalle.flores?.foto;
+
+                return (
+                  <div key={detalle.id.toString()} className="flex justify-between items-start text-sm bg-gray-50/50 p-2 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-gray-200 relative overflow-hidden shrink-0 border border-gray-200">
+                        {fotoProducto ? (
+                          <Image 
+                            src={fotoProducto} 
+                            alt={nombreProducto} 
+                            fill 
+                            className="object-cover" 
+                          />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-gray-400">
+                             <Package size={16} />
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div>
+                        <p className="font-medium text-gray-800">
+                          {detalle.cantidad}x {nombreProducto}
+                        </p>
+                        {detalle.personalizacion && (
+                           <div className="text-[10px] text-gray-500 bg-white border border-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
+                              🎨 Personalizado
+                           </div>
+                        )}
+                      </div>
                     </div>
-                    
-                    <div>
-                      <p className="font-medium text-gray-800">
-                        {detalle.cantidad}x {detalle.ramos.nombre}
-                      </p>
-                      {detalle.personalizacion && (
-                         <div className="text-[10px] text-gray-500 bg-white border border-gray-100 px-1.5 py-0.5 rounded inline-block mt-1">
-                            🎨 Personalizado
-                         </div>
-                      )}
-                    </div>
+                    <span className="font-bold text-gray-600">Bs {Number(detalle.subtotal).toFixed(2)}</span>
                   </div>
-                  <span className="font-bold text-gray-600">Bs {Number(detalle.subtotal).toFixed(2)}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Total Footer */}

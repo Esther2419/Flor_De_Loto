@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronUp, ShoppingBag, Loader2 } from "lucide-react";
 
 interface Flor {
   id: string;
@@ -16,6 +17,13 @@ interface Flor {
 export default function NuestrasFlores({ flores }: { flores: Flor[] }) {
   const INITIAL_COUNT = 12;
   const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+  const [loadingId, setLoadingId] = useState<string | null>(null);
+  const router = useRouter();
+
+  const handleComprar = (id: string) => {
+    setLoadingId(id);
+    router.push(`/detalles/flor/${id}`);
+  };
 
   const isExpanded = visibleCount >= flores.length;
   const visibleFlores = flores.slice(0, visibleCount);
@@ -43,7 +51,10 @@ export default function NuestrasFlores({ flores }: { flores: Flor[] }) {
               {visibleFlores.map((flor) => (
                 <div 
                   key={flor.id} 
-                  className={`group bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 ${!flor.disponible ? 'opacity-60' : 'hover:shadow-md'}`}
+                  onClick={() => flor.disponible && handleComprar(flor.id)}
+                  className={`group bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 ${
+                    !flor.disponible ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-md cursor-pointer hover:-translate-y-1'
+                  }`}
                 >
                   <div className="relative aspect-square bg-gray-100">
                     {flor.foto ? (
@@ -62,14 +73,33 @@ export default function NuestrasFlores({ flores }: { flores: Flor[] }) {
                       </div>
                     )}
                   </div>
-                  <div className="p-2 text-center">
+                  <div className="p-2 text-center flex flex-col gap-1">
                     <h3 className="font-serif text-[11px] font-bold text-[#0A0A0A] truncate">
                       {flor.nombre}
                     </h3>
-                    <p className="text-[#C5A059] font-bold text-xs mt-1">Bs {flor.precio_unitario}</p>
+                    <p className="text-[#C5A059] font-bold text-xs">Bs {flor.precio_unitario}</p>
                     {flor.color && (
-                        <span className="text-[8px] text-gray-400 uppercase tracking-tighter">{flor.color}</span>
+                        <span className="text-[8px] text-gray-400 uppercase tracking-tighter mb-1">{flor.color}</span>
                     )}
+                    
+                    {/* Botón Comprar explícito */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (flor.disponible) handleComprar(flor.id);
+                      }}
+                      disabled={!flor.disponible || loadingId === flor.id}
+                      className="mt-1 w-full py-1.5 bg-[#0A0A0A] text-white text-[8px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-1 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200 disabled:text-gray-400"
+                    >
+                      {loadingId === flor.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <>
+                          <ShoppingBag className="w-3 h-3" />
+                          Comprar
+                        </>
+                      )}
+                    </button>
                   </div>
                 </div>
               ))}

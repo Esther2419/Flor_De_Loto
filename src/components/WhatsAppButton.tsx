@@ -3,7 +3,6 @@
 import React from "react";
 import { MessageCircle } from "lucide-react";
 import { format, addMinutes } from "date-fns";
-import { es } from "date-fns/locale";
 
 interface WhatsAppButtonProps {
   pedido: any;
@@ -18,7 +17,10 @@ export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
 
     const productosTexto = pedido.detalle_pedidos
       .map((detalle: any) => {
-        let itemStr = `- ${detalle.cantidad}x ${detalle.ramos.nombre} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
+        const nombreProducto = detalle.ramos?.nombre || detalle.flores?.nombre || "Producto desconocido";
+        
+        let itemStr = `- ${detalle.cantidad}x ${nombreProducto} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
+        
         if (detalle.personalizacion) {
           itemStr += `\n  _Personalizado_`;
         }

@@ -14,10 +14,10 @@ interface OrderData {
   items: any[];
 }
 
-function getValidRamoId(id: string | number): bigint {
+function getValidId(id: string | number): bigint {
   const stringId = String(id);
   const numericPart = stringId.match(/^\d+/)?.[0];
-  if (!numericPart) throw new Error(`ID de producto inválido: ${id}`);
+  if (!numericPart) throw new Error(`ID inválido: ${id}`);
   return BigInt(numericPart);
 }
 
@@ -37,10 +37,12 @@ export async function createOrderAction(data: OrderData) {
 
   try {
     const pedido = await prisma.$transaction(async (tx) => {
+      // 1. Configurar fecha exacta
       const fechaExacta = new Date(data.fecha_entrega);
       const [horas, minutos] = data.hora_recojo.split(':').map(Number);
       fechaExacta.setHours(horas, minutos, 0, 0);
 
+      // 2. Crear cabecera del pedido
       const nuevoPedido = await tx.pedidos.create({
         data: {
           usuario_id: usuario.id,
@@ -53,20 +55,27 @@ export async function createOrderAction(data: OrderData) {
         }
       });
 
+      // 3. Crear detalles (Mapeando correctamente Flor vs Ramo)
       for (const item of data.items) {
+        // Detectamos tipo
+        const esFlor = item.tipo === 'flor';
+        const idProducto = getValidId(item.productoId || item.id);
+        
         await tx.detalle_pedidos.create({
           data: {
             pedido_id: nuevoPedido.id,
-            ramo_id: getValidRamoId(item.id),
+            // Asignar al campo correcto según el tipo
+            ramo_id: !esFlor ? idProducto : null,
+            flor_id: esFlor ? idProducto : null,
             cantidad: item.cantidad,
             precio_unitario: item.precio,
             subtotal: item.precio * item.cantidad,
-            personalizacion: item.personalizacion || undefined
+            personalizacion: item.personalizacion ? JSON.parse(JSON.stringify(item.personalizacion)) : undefined
           }
         });
       }
 
-      // Limpiar carrito tras pedido exitoso
+      // 4. Limpiar carrito tras pedido exitoso
       const carrito = await tx.carrito.findFirst({ where: { usuario_id: usuario.id } });
       if (carrito) {
         await tx.carrito_detalle.deleteMany({ where: { carrito_id: carrito.id } });
@@ -76,6 +85,7 @@ export async function createOrderAction(data: OrderData) {
     });
 
     return { success: true, orderId: pedido.id.toString() };
+
   } catch (error) {
     console.error("Error creando pedido:", error);
     return { success: false, message: "Error interno al procesar el pedido" };
