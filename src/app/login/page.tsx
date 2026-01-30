@@ -4,7 +4,7 @@ import { useState, Suspense, useRef, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Eye, EyeOff, Search, ChevronDown, Check } from "lucide-react";
+import { Eye, EyeOff, Search, ChevronDown, Check, X, Circle } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -49,10 +49,25 @@ function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   
+  // Estados para contraseña y validaciones
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  
   const dropdownRef = useRef<HTMLDivElement>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const callbackUrl = searchParams.get("callbackUrl") || "/";
+
+  const validations = [
+    { label: "Mínimo 8 caracteres", met: password.length >= 8 },
+    { label: "Una mayúscula", met: /[A-Z]/.test(password) },
+    { label: "Un número", met: /[0-9]/.test(password) },
+    { label: "Un símbolo (@$!%*.?)", met: /[@$!%*.?&]/.test(password) },
+  ];
+
+  const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
+  const isSecurityValid = validations.every(v => v.met);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -72,29 +87,25 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+    
+    if (isRegister) {
+      if (!isSecurityValid) {
+        setError("La contraseña no cumple con los requisitos de seguridad.");
+        return;
+      }
+      if (!passwordsMatch) {
+        setError("Las contraseñas no coinciden.");
+        return;
+      }
+    }
+
+    setLoading(true);
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
-    const password = formData.get("password") as string;
-    
-    setLoading(true);
 
     if (isRegister) {
       const nombre = formData.get("nombre") as string;
       const celularRaw = formData.get("celular") as string;
-      const confirmPassword = formData.get("confirmPassword") as string;
-
-      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-      if (!passwordRegex.test(password)) {
-        setError("La contraseña requiere: 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.");
-        setLoading(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        setError("Las contraseñas no coinciden");
-        setLoading(false);
-        return;
-      }
 
       const fullNumber = `${selectedCountry.prefix}${celularRaw}`;
       const phoneNumber = parsePhoneNumberFromString(fullNumber);
@@ -222,7 +233,7 @@ function LoginForm() {
                 <input 
                   name="celular" 
                   type="tel" 
-                  placeholder="Número de celular" 
+                  placeholder="Celular" 
                   required 
                   maxLength={selectedCountry.limit}
                   onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/[^0-9]/g, '')}
@@ -241,12 +252,36 @@ function LoginForm() {
             type={showPassword ? "text" : "password"} 
             placeholder="Contraseña" 
             required 
-            className="w-full p-4 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-[#C5A059] outline-none" 
+            value={password}
+            onFocus={() => setIsPasswordFocused(true)}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full p-4 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-[#C5A059] outline-none transition-all" 
           />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
             {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
           </button>
         </div>
+
+        {/* Validador de Seguridad en Tiempo Real */}
+        <AnimatePresence>
+          {isRegister && isPasswordFocused && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-2 gap-2 p-4 bg-[#FDF8F0] rounded-2xl border border-[#C5A059]/20 shadow-inner">
+                {validations.map((v, i) => (
+                  <div key={i} className={`flex items-center gap-2 text-[10px] transition-all ${v.met ? 'text-green-600 font-bold' : 'text-gray-400'}`}>
+                    {v.met ? <Check size={12} className="shrink-0" /> : <Circle size={8} className="shrink-0 opacity-20" fill="currentColor" />}
+                    {v.label}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {isRegister && (
           <div className="relative">
@@ -255,8 +290,13 @@ function LoginForm() {
               type={showConfirmPassword ? "text" : "password"} 
               placeholder="Confirmar contraseña" 
               required 
-              className="w-full p-4 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-[#C5A059] outline-none" 
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              className={`w-full p-4 bg-gray-50 border rounded-2xl focus:ring-2 outline-none transition-all ${confirmPassword.length > 0 ? (passwordsMatch ? 'border-green-200 focus:ring-green-400' : 'border-red-200 focus:ring-red-400') : 'focus:ring-[#C5A059]'}`} 
             />
+            <div className="absolute right-12 top-1/2 -translate-y-1/2">
+                {confirmPassword.length > 0 && (passwordsMatch ? <Check size={18} className="text-green-500" /> : <X size={18} className="text-red-400" />)}
+            </div>
             <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">
               {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
             </button>
@@ -285,7 +325,13 @@ function LoginForm() {
 
       <div className="text-center">
         <button 
-          onClick={() => { setIsRegister(!isRegister); setError(""); }} 
+          onClick={() => { 
+            setIsRegister(!isRegister); 
+            setError(""); 
+            setPassword(""); 
+            setConfirmPassword(""); 
+            setIsPasswordFocused(false);
+          }} 
           className="text-[#C5A059] font-bold text-sm hover:underline"
         >
           {isRegister ? "¿Ya tienes cuenta? Inicia Sesión" : "¿No tienes cuenta? Regístrate aquí"}
