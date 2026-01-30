@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AddToCartButton from "@/components/AddToCartButton";
-import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Scroll, Tag } from "lucide-react";
+import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Tag } from "lucide-react";
 
 export default function DetailClient({ data, type, id, opciones }: any) {
   const [isFloresModalOpen, setIsFloresModalOpen] = useState(false);
@@ -23,32 +23,22 @@ export default function DetailClient({ data, type, id, opciones }: any) {
   const [floresExtra, setFloresExtra] = useState<{[key: string]: number}>({});
   const [dedicatoria, setDedicatoria] = useState("");
 
-  // 1. Detectar si es oferta (solo aplica a ramos en tu esquema actual)
+  // DETECCIÓN DE OFERTA
   const esOferta = type === 'ramo' && data.es_oferta && data.precio_oferta;
 
-  // 2. Definir el precio real que se cobrará
-  const precioBase = esOferta 
+  // Precio base para cálculos de extras (se usa el de oferta si existe)
+  const precioActualCalculo = esOferta 
     ? Number(data.precio_oferta) 
     : Number(data.precio_base || data.precio_unitario || 0);
-
-  // 3. Guardar el precio original solo para mostrarlo tachado
-  const precioOriginal = esOferta ? Number(data.precio_base) : null;
-  // ------------------------------------------
 
   const foto = data.foto_principal || data.foto;
   const descripcion = data.descripcion || `Selección especial de ${data.nombre}.`;
 
-  // Composición base (solo existe para ramos)
-  const floresComposicion = data.ramo_detalle?.map((d: any) => ({ 
-    ...d.flores, 
-    cantidad: d.cantidad_base || 1 
-  })) || [];
-
   const totalPapelesSeleccionados = envolturasSeleccionadas.length;
   const sePasoDelLimite = totalPapelesSeleccionados > limiteEnvolturas;
 
-  // Función para calcular el precio total (Precio Base Oferta + Extras)
-  const calcularTotal = () => {
+  // Función para calcular solo el costo de los extras añadidos
+  const calcularExtras = () => {
     let extra = 0;
     
     // Sumar costo de Flores Extra
@@ -67,7 +57,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
        });
     }
 
-    return precioBase + extra;
+    return extra;
   };
 
   const handleUpdateEnvoltura = (envId: string) => {
@@ -112,7 +102,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
         ) : (
           <div className="bg-zinc-100 w-full h-full flex items-center justify-center text-zinc-400">Sin foto</div>
         )}
-        {/* Badge de Oferta en la imagen */}
         {esOferta && (
           <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
             OFERTA
@@ -149,11 +138,11 @@ export default function DetailClient({ data, type, id, opciones }: any) {
             <span className="text-[10px] text-zinc-400 uppercase font-black tracking-widest block mb-1">Precio Unitario</span>
             {esOferta ? (
               <div className="flex flex-col items-end">
-                <span className="text-sm text-gray-400 line-through font-medium">Bs. {precioOriginal?.toFixed(2)}</span>
-                <span className="text-2xl md:text-3xl font-bold text-red-600 tracking-tighter">Bs. {precioBase.toFixed(2)}</span>
+                <span className="text-sm text-gray-400 line-through font-medium">Bs. {Number(data.precio_base).toFixed(2)}</span>
+                <span className="text-2xl md:text-3xl font-bold text-red-600 tracking-tighter">Bs. {Number(data.precio_oferta).toFixed(2)}</span>
               </div>
             ) : (
-              <span className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tighter">Bs. {precioBase.toFixed(2)}</span>
+              <span className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tighter">Bs. {precioActualCalculo.toFixed(2)}</span>
             )}
           </div>
         </div>
@@ -264,14 +253,14 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                     </h3>
                     <div className="space-y-2 mb-3">
                        {Object.keys(floresExtra).map(fId => {
-                          const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
-                          if (!flor || floresExtra[fId] === 0) return null;
-                          return (
-                            <div key={fId} className="flex items-center justify-between bg-amber-50/40 p-2 rounded-xl border border-amber-100">
-                               <span className="text-xs font-bold uppercase ml-2">{flor.nombre} x{floresExtra[fId]}</span>
-                               <span className="text-[10px] text-[#D4AF37] font-bold mr-2">Bs. {(Number(flor.precio_unitario) * floresExtra[fId]).toFixed(2)}</span>
-                            </div>
-                          );
+                         const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
+                         if (!flor || floresExtra[fId] === 0) return null;
+                         return (
+                           <div key={fId} className="flex items-center justify-between bg-amber-50/40 p-2 rounded-xl border border-amber-100">
+                              <span className="text-xs font-bold uppercase ml-2">{flor.nombre} x{floresExtra[fId]}</span>
+                              <span className="text-[10px] text-[#D4AF37] font-bold mr-2">Bs. {(Number(flor.precio_unitario) * floresExtra[fId]).toFixed(2)}</span>
+                           </div>
+                         );
                        })}
                     </div>
                     <button onClick={() => setIsFloresModalOpen(true)} className="w-full py-3 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 font-bold uppercase text-[10px] hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all flex items-center justify-center gap-2">
@@ -291,7 +280,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               </div>
             )}
 
-            {/* FOOTER */}
+            {/* FOOTER Y BOTÓN DE ACCIÓN */}
             <div className="mt-12 pt-8 border-t-2 border-zinc-100 flex flex-col gap-4 w-full">
               {sePasoDelLimite && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
@@ -306,9 +295,9 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase font-black tracking-widest block mb-1">Total Final</span>
                   <div className="flex items-baseline gap-2">
-                    {esOferta && <span className="text-sm text-gray-400 line-through">Bs. {precioOriginal}</span>}
+                    {esOferta && <span className="text-sm text-gray-400 line-through">Bs. {Number(data.precio_base).toFixed(2)}</span>}
                     <span className={`text-xl md:text-3xl font-bold tracking-tight ${esOferta ? 'text-red-600' : 'text-zinc-900'}`}>
-                      Bs. {calcularTotal().toFixed(2)}
+                      Bs. {(precioActualCalculo + calcularExtras()).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -318,7 +307,10 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                     id={cartId}
                     productoId={id}
                     nombre={data.nombre}
-                    precio={calcularTotal()}
+                    // SE PASAN LOS DATOS DE OFERTA CALCULADOS
+                    precioBase={Number(data.precio_base || data.precio_unitario || 0) + calcularExtras()}
+                    precioOferta={esOferta ? (Number(data.precio_oferta) + calcularExtras()) : undefined}
+                    esOferta={!!esOferta}
                     foto={foto}
                     type={type} 
                     personalizacion={personalizacionParaCarrito}

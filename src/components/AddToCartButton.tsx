@@ -11,7 +11,9 @@ interface AddToCartProps {
   id: string; 
   productoId?: string;
   nombre: string;
-  precio: number;
+  precioBase: number;
+  precioOferta?: number;
+  esOferta?: boolean;
   foto: string | null;
   type?: string;
   className?: string;
@@ -23,7 +25,9 @@ export default function AddToCartButton({
   id, 
   productoId, 
   nombre, 
-  precio, 
+  precioBase, 
+  precioOferta,
+  esOferta,
   foto, 
   type, 
   className, 
@@ -52,14 +56,18 @@ export default function AddToCartButton({
       
       setIsAnimating(true);
 
-      // Si no viene productoId, usamos id como fallback (para compatibilidad)
       const finalProductoId = productoId || id; 
+
+      // Calculamos el precio real que se envía al contexto
+      const precioFinal = esOferta && precioOferta ? precioOferta : precioBase;
 
       await addToCart({ 
         id, 
-        productoId: finalProductoId, // Ahora el contexto lo acepta
+        productoId: finalProductoId,
         nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
-        precio, 
+        precio: precioFinal,
+        precioOriginal: precioBase,
+        esOferta: !!esOferta,
         foto,
         tipo: (type as 'ramo' | 'flor') || 'ramo', 
         personalizacion 
@@ -67,11 +75,15 @@ export default function AddToCartButton({
 
       setShowCheck(true);
 
+      // TIEMPO DE ESPERA PARA LA ANIMACIÓN ANTES DE REDIRIGIR
       setTimeout(() => {
         setIsAnimating(false);
         setIsPending(false);
-        toast("¡Agregado! Revise su carrito para finalizar.", "success");
+        toast("¡Agregado con éxito!", "success");
+        
+        // ACCIÓN SOLICITADA: Redirigir al inicio
         router.push("/");
+        
         if (onAfterAdd) onAfterAdd();
       }, 800);
 

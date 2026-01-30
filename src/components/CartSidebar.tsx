@@ -85,8 +85,18 @@ export default function CartSidebar() {
                 <div className="flex-1 flex flex-col justify-between py-1">
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="text-sm font-bold text-gris uppercase tracking-tight">{item.nombre}</h3>
-                      <p className="text-xs text-[#C5A059] font-medium mt-1">Bs {item.precio}</p>
+                      <h3 className="text-sm font-bold text-gris uppercase tracking-tight">
+                        {item.nombre}
+                        {item.esOferta && (
+                          <span className="ml-2 text-[8px] bg-red-500 text-white px-1.5 py-0.5 rounded-full font-bold">OFERTA</span>
+                        )}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <p className="text-xs text-[#C5A059] font-medium">Bs {item.precio}</p>
+                        {item.esOferta && item.precioOriginal && (
+                          <p className="text-[10px] text-gray-400 line-through italic decoration-red-400/50">Bs {item.precioOriginal}</p>
+                        )}
+                      </div>
                     </div>
                     <button 
                       onClick={() => removeFromCart(item.id)}
@@ -97,7 +107,6 @@ export default function CartSidebar() {
                   </div>
 
                   <div className="flex items-center justify-between mt-2">
-                    {/* MODIFICACIÓN: Si NO es personalizado, mostramos los controles +- */}
                     {!item.personalizacion ? (
                       <div className="flex items-center border border-gray-100 rounded-lg overflow-hidden bg-gray-50">
                         <button 
@@ -115,7 +124,6 @@ export default function CartSidebar() {
                         </button>
                       </div>
                     ) : (
-                      /* Si ES personalizado, solo mostramos la cantidad fija (1) */
                       <div className="text-xs font-medium text-gray-400">
                         Cantidad: <span className="font-bold text-gris">{item.cantidad}</span>
                       </div>

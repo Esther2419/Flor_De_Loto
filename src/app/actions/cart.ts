@@ -44,29 +44,34 @@ export async function getCartAction() {
   return carrito.carrito_detalle.map((detalle) => {
     const esFlor = !!detalle.flores;
     
-    // Recuperar datos según el tipo
     let nombre = "Producto desconocido";
-    let precio = 0;
     let foto = null;
     let productoId = "";
+    let precioBaseDB = 0;
 
     if (esFlor && detalle.flores) {
       nombre = detalle.flores.nombre;
-      precio = Number(detalle.flores.precio_unitario);
+      precioBaseDB = Number(detalle.flores.precio_unitario);
       foto = detalle.flores.foto;
       productoId = detalle.flores.id.toString();
     } else if (detalle.ramos) {
       nombre = detalle.ramos.nombre;
-      precio = Number(detalle.ramos.precio_base);
+      precioBaseDB = Number(detalle.ramos.precio_base);
       foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
       productoId = detalle.ramos.id.toString();
     }
 
+    // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
+    const pers = detalle.personalizacion as any;
+    
     return {
       id: detalle.id.toString(),
       productoId: productoId, 
       nombre: nombre,
-      precio: precio,
+      // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
+      precio: pers?.precioComprado || precioBaseDB, 
+      precioOriginal: pers?.precioOriginal || precioBaseDB,
+      esOferta: pers?.esOferta || false,
       foto: foto,
       cantidad: detalle.cantidad,
       tipo: esFlor ? 'flor' : 'ramo',
@@ -85,7 +90,6 @@ export async function syncCartAction(localItems: any[]) {
   const usuario = await prisma.usuarios.findUnique({ where: { email: session.user.email } });
   if (!usuario) return;
 
-  // Buscar o crear carrito
   let carrito = await prisma.carrito.findFirst({ where: { usuario_id: usuario.id } });
   if (!carrito) {
     carrito = await prisma.carrito.create({ data: { usuario_id: usuario.id } });
@@ -99,7 +103,7 @@ export async function syncCartAction(localItems: any[]) {
 }
 
 // ----------------------------------------------------------------------
-// 3. Agregar item (CORREGIDO CON UNDEFINED)
+// 3. Agregar item (CORREGIDO: Sin el campo 'precio' que da error)
 // ----------------------------------------------------------------------
 export async function addToCartAction(item: any) {
   const session = await getServerSession(authOptions);
@@ -115,23 +119,28 @@ export async function addToCartAction(item: any) {
 
   const idProducto = getValidId(item.productoId || item.id);
   const esFlor = item.tipo === 'flor';
-  const personalizacionJson = item.personalizacion ? JSON.parse(JSON.stringify(item.personalizacion)) : null;
+
+  // GUARDADO: Metemos el precio de oferta y el flag dentro del JSON de personalización
+  const personalizacionJson = {
+    ...(item.personalizacion || {}),
+    esOferta: item.esOferta || false,
+    precioOriginal: item.precioOriginal || item.precio,
+    precioComprado: item.precio // Este es el valor de oferta (Bs. 20)
+  };
 
   const itemsExistentes = await prisma.carrito_detalle.findMany({
     where: { 
       carrito_id: carrito.id, 
-      ramo_id: !esFlor ? idProducto : null as any, 
-      flor_id: esFlor ? idProducto : null as any
+      ramo_id: !esFlor ? idProducto : undefined, 
+      flor_id: esFlor ? idProducto : undefined
     }
   });
 
   let itemEncontrado = null;
+  const persNuevaStr = JSON.stringify(personalizacionJson);
 
   for (const existente of itemsExistentes) {
-    const persExistente = JSON.stringify(existente.personalizacion);
-    const persNueva = JSON.stringify(personalizacionJson);
-    
-    if ((!existente.personalizacion && !personalizacionJson) || persExistente === persNueva) {
+    if (JSON.stringify(existente.personalizacion) === persNuevaStr) {
       itemEncontrado = existente;
       break;
     }
@@ -143,15 +152,14 @@ export async function addToCartAction(item: any) {
       data: { cantidad: itemEncontrado.cantidad + (item.cantidad || 1) }
     });
   } else {
-
     await prisma.carrito_detalle.create({
       data: {
         carrito_id: carrito.id,
         ramo_id: !esFlor ? idProducto : undefined,
         flor_id: esFlor ? idProducto : undefined,
         cantidad: item.cantidad || 1,
-        personalizacion: personalizacionJson || undefined,
-        envoltura_id: undefined
+        // Eliminado el campo 'precio' ya que no existe en tu tabla
+        personalizacion: personalizacionJson,
       }
     });
   }

@@ -19,7 +19,11 @@ export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
       .map((detalle: any) => {
         const nombreProducto = detalle.ramos?.nombre || detalle.flores?.nombre || "Producto desconocido";
         
-        let itemStr = `- ${detalle.cantidad}x ${nombreProducto} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
+        // Verificamos si es oferta en la relación o en el JSON de personalización del detalle
+        const esOferta = detalle.ramos?.es_oferta || (detalle.personalizacion as any)?.esOferta;
+        const etiquetaOferta = esOferta ? " 🔥[OFERTA]🔥" : "";
+        
+        let itemStr = `- ${detalle.cantidad}x ${nombreProducto}${etiquetaOferta} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
         
         if (detalle.personalizacion) {
           itemStr += `\n  _Personalizado_`;
@@ -40,9 +44,7 @@ ${productosTexto}
 
 *TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*`;
 
-    const mensajeCodificado = encodeURIComponent(mensaje);
-    
-    window.open(`https://wa.me/59162646545?text=${mensajeCodificado}`, "_blank");
+    window.open(`https://wa.me/59162646545?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
 
   return (

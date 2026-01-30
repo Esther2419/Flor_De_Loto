@@ -15,14 +15,12 @@ export interface CartItem {
   productoId: string;
   nombre: string;
   precio: number;
+  precioOriginal?: number;
+  esOferta?: boolean;
   foto: string | null;
   cantidad: number;
   tipo: 'ramo' | 'flor';
-  personalizacion?: {
-    envolturas?: any;
-    floresExtra?: any;
-    dedicatoria?: string;
-  };
+  personalizacion?: any;
 }
 
 interface CartContextType {
@@ -89,10 +87,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
 
     if (status === "authenticated") {
-      // Nos aseguramos de enviar productoId
+      // IMPORTANTE: Enviamos el objeto completo al servidor
       await addToCartAction({ 
         ...product, 
-        productoId: product.productoId, 
         cantidad: 1 
       });
     }

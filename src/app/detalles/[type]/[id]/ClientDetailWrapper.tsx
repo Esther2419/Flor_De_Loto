@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import AddToCartButton from "@/components/AddToCartButton";
-import { Plus, Minus, MessageSquare, Palette, Scroll } from "lucide-react";
+import { Plus, Minus, MessageSquare, Palette, Scroll, Tag } from "lucide-react";
 
 export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
   // Estados de personalización
@@ -11,7 +11,14 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
   const [floresExtra, setFloresExtra] = useState<{[key: string]: number}>({});
   const [dedicatoria, setDedicatoria] = useState("");
 
-  const precioBase = Number(data.precio_base || data.precio_unitario || data.precio || 0);
+  // DETECCIÓN DE OFERTA
+  const esOferta = type === 'ramo' && data.es_oferta && data.precio_oferta;
+
+  // Precio base para cálculos (usamos el de oferta si existe)
+  const precioBaseCalculo = esOferta 
+    ? Number(data.precio_oferta) 
+    : Number(data.precio_base || data.precio_unitario || data.precio || 0);
+
   const foto = data.foto_principal || data.foto;
   const descripcion = data.descripcion || `Selección de alta calidad: ${data.nombre}.`;
 
@@ -20,7 +27,8 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
     cantidad: d.cantidad_base || 1 
   })) || [];
 
-  const calcularTotal = () => {
+  // Función para calcular solo los costos adicionales
+  const calcularExtras = () => {
     let extra = 0;
     if (opciones?.flores) {
       Object.keys(floresExtra).forEach(fId => {
@@ -28,26 +36,34 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
         if (flor) extra += Number(flor.precio_unitario) * floresExtra[fId];
       });
     }
-    return precioBase + extra;
+    return extra;
   };
+
+  const totalFinal = precioBaseCalculo + calcularExtras();
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 pt-24 md:pt-32 flex flex-row gap-4 md:gap-12 items-start">
       {/* IMAGEN DEL PRODUCTO */}
       <div className="w-1/3 md:flex-1 aspect-square relative rounded-2xl md:rounded-3xl overflow-hidden shadow-lg border border-zinc-100 flex-shrink-0">
         {foto ? <Image src={foto} alt={data.nombre} fill className="object-cover" priority /> : <div className="bg-zinc-100 w-full h-full" />}
+        {esOferta && (
+          <div className="absolute top-2 right-2 md:top-4 md:right-4 bg-red-500 text-white text-[8px] md:text-xs font-bold px-2 py-1 rounded-full shadow-lg animate-pulse">
+            OFERTA
+          </div>
+        )}
       </div>
 
       {/* INFORMACIÓN Y PERSONALIZACIÓN */}
       <div className="w-2/3 md:flex-1 flex flex-col justify-start">
         <nav className="flex items-center gap-2 text-[8px] md:text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] mb-2 md:mb-4">
           <span>Catálogo</span> <span className="text-zinc-300">/</span> <span>{type}</span>
+          {esOferta && <span className="ml-2 bg-red-50 text-red-600 px-2 py-0.5 rounded-full flex items-center gap-1"><Tag size={10}/> OFERTA</span>}
         </nav>
         
         <h1 className="text-xl md:text-5xl font-black text-zinc-900 mb-2 md:mb-6 uppercase tracking-tighter leading-tight">{data.nombre}</h1>
         <p className="text-zinc-500 text-xs md:text-lg mb-4 md:mb-8 leading-relaxed line-clamp-3 md:line-clamp-none">{descripcion}</p>
 
-        {/* COMPOSICIÓN DEL RAMO (Con imágenes - Visible en móvil) */}
+        {/* COMPOSICIÓN DEL RAMO */}
         {type === 'ramo' && floresComposicion.length > 0 && (
           <div className="mb-6 border-t border-zinc-100 pt-4">
             <h3 className="text-[10px] text-zinc-400 uppercase font-bold tracking-widest mb-3 flex items-center gap-2">
@@ -69,10 +85,9 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
           </div>
         )}
 
-        {/* SECCIÓN DE PERSONALIZACIÓN (Papel y Flores Extra) */}
+        {/* PERSONALIZACIÓN */}
         {type === 'ramo' && opciones && (
           <div className="space-y-6 mb-8 border-t border-zinc-100 pt-6">
-            {/* Selección de Envoltura con Imagen */}
             <div>
               <label className="text-[10px] font-bold uppercase text-zinc-400 mb-3 block tracking-widest flex items-center gap-2">
                 <Palette className="w-3 h-3" /> Selecciona el Papel
@@ -92,7 +107,6 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
               </div>
             </div>
 
-            {/* Añadir Flores Extra con Imagen */}
             <div>
               <label className="text-[10px] font-bold uppercase text-zinc-400 mb-3 block tracking-widest">Añadir más flores</label>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -118,7 +132,6 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
               </div>
             </div>
 
-            {/* Dedicatoria */}
             <div>
               <label className="text-[10px] font-bold uppercase text-zinc-400 mb-3 block tracking-widest flex items-center gap-2">
                 <MessageSquare className="w-3 h-3" /> Nota o Dedicatoria
@@ -136,13 +149,26 @@ export default function ClientDetailWrapper({ data, type, id, opciones }: any) {
 
         <div className="mb-4 md:mb-10">
           <span className="text-[8px] md:text-sm text-zinc-400 uppercase font-bold block mb-1">Precio Total</span>
-          <span className="text-lg md:text-4xl font-light text-zinc-900">Bs. {calcularTotal().toFixed(2)}</span>
+          <div className="flex items-baseline gap-2">
+            {esOferta && (
+              <span className="text-xs md:text-lg text-gray-400 line-through">
+                Bs. {(Number(data.precio_base) + calcularExtras()).toFixed(2)}
+              </span>
+            )}
+            <span className={`text-lg md:text-4xl font-bold ${esOferta ? 'text-red-600' : 'text-zinc-900'}`}>
+              Bs. {totalFinal.toFixed(2)}
+            </span>
+          </div>
         </div>
 
         <AddToCartButton 
           id={id}
+          productoId={id}
           nombre={data.nombre}
-          precio={calcularTotal()}
+          // PASANDO LOS DATOS DE OFERTA CORREGIDOS
+          precioBase={Number(data.precio_base || data.precio_unitario || 0) + calcularExtras()}
+          precioOferta={esOferta ? (Number(data.precio_oferta) + calcularExtras()) : undefined}
+          esOferta={!!esOferta}
           foto={foto}
           type={type} 
           personalizacion={{ envolturaId, floresExtra, dedicatoria }}
