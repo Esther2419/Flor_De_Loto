@@ -8,35 +8,35 @@ import { Eye, EyeOff, Search, ChevronDown, Check } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Lista extendida de países con límites de dígitos
+// Lista de países con URL de banderas en formato SVG para visualización garantizada
 const COUNTRIES = [
-  { code: "BO", name: "Bolivia", prefix: "+591", flag: "🇧🇴", limit: 8 },
-  { code: "AR", name: "Argentina", prefix: "+54", flag: "🇦🇷", limit: 10 },
-  { code: "CL", name: "Chile", prefix: "+56", flag: "🇨🇱", limit: 9 },
-  { code: "PE", name: "Perú", prefix: "+51", flag: "🇵🇪", limit: 9 },
-  { code: "CO", name: "Colombia", prefix: "+57", flag: "🇨🇴", limit: 10 },
-  { code: "MX", name: "México", prefix: "+52", flag: "🇲🇽", limit: 10 },
-  { code: "ES", name: "España", prefix: "+34", flag: "🇪🇸", limit: 9 },
-  { code: "US", name: "Estados Unidos", prefix: "+1", flag: "🇺🇸", limit: 10 },
-  { code: "BR", name: "Brasil", prefix: "+55", flag: "🇧🇷", limit: 11 },
-  { code: "UY", name: "Uruguay", prefix: "+598", flag: "🇺🇾", limit: 8 },
-  { code: "PY", name: "Paraguay", prefix: "+595", flag: "🇵🇾", limit: 9 },
-  { code: "EC", name: "Ecuador", prefix: "+593", flag: "🇪🇨", limit: 9 },
-  { code: "VE", name: "Venezuela", prefix: "+58", flag: "🇻🇪", limit: 10 },
-  { code: "PA", name: "Panamá", prefix: "+507", flag: "🇵🇦", limit: 8 },
-  { code: "CR", name: "Costa Rica", prefix: "+506", flag: "🇨🇷", limit: 8 },
-  { code: "DO", name: "Rep. Dominicana", prefix: "+1", flag: "🇩🇴", limit: 10 },
-  { code: "GT", name: "Guatemala", prefix: "+502", flag: "🇬🇹", limit: 8 },
-  { code: "HN", name: "Honduras", prefix: "+504", flag: "🇭🇳", limit: 8 },
-  { code: "SV", name: "El Salvador", prefix: "+503", flag: "🇸🇻", limit: 8 },
-  { code: "NI", name: "Nicaragua", prefix: "+505", flag: "🇳🇮", limit: 8 },
-  { code: "PR", name: "Puerto Rico", prefix: "+1", flag: "🇵🇷", limit: 10 },
-  { code: "IT", name: "Italia", prefix: "+39", flag: "🇮🇹", limit: 10 },
-  { code: "FR", name: "Francia", prefix: "+33", flag: "🇫🇷", limit: 9 },
-  { code: "DE", name: "Alemania", prefix: "+49", flag: "🇩🇪", limit: 11 },
-  { code: "GB", name: "Reino Unido", prefix: "+44", flag: "🇬🇧", limit: 10 },
-  { code: "CA", name: "Canadá", prefix: "+1", flag: "🇨🇦", limit: 10 },
-  { code: "PT", name: "Portugal", prefix: "+351", flag: "🇵🇹", limit: 9 },
+  { code: "BO", name: "Bolivia", prefix: "+591", flag: "https://flagcdn.com/bo.svg", limit: 8 },
+  { code: "AR", name: "Argentina", prefix: "+54", flag: "https://flagcdn.com/ar.svg", limit: 10 },
+  { code: "CL", name: "Chile", prefix: "+56", flag: "https://flagcdn.com/cl.svg", limit: 9 },
+  { code: "PE", name: "Perú", prefix: "+51", flag: "https://flagcdn.com/pe.svg", limit: 9 },
+  { code: "CO", name: "Colombia", prefix: "+57", flag: "https://flagcdn.com/co.svg", limit: 10 },
+  { code: "MX", name: "México", prefix: "+52", flag: "https://flagcdn.com/mx.svg", limit: 10 },
+  { code: "ES", name: "España", prefix: "+34", flag: "https://flagcdn.com/es.svg", limit: 9 },
+  { code: "US", name: "Estados Unidos", prefix: "+1", flag: "https://flagcdn.com/us.svg", limit: 10 },
+  { code: "BR", name: "Brasil", prefix: "+55", flag: "https://flagcdn.com/br.svg", limit: 11 },
+  { code: "UY", name: "Uruguay", prefix: "+598", flag: "https://flagcdn.com/uy.svg", limit: 8 },
+  { code: "PY", name: "Paraguay", prefix: "+595", flag: "https://flagcdn.com/py.svg", limit: 9 },
+  { code: "EC", name: "Ecuador", prefix: "+593", flag: "https://flagcdn.com/ec.svg", limit: 9 },
+  { code: "VE", name: "Venezuela", prefix: "+58", flag: "https://flagcdn.com/ve.svg", limit: 10 },
+  { code: "PA", name: "Panamá", prefix: "+507", flag: "https://flagcdn.com/pa.svg", limit: 8 },
+  { code: "CR", name: "Costa Rica", prefix: "+506", flag: "https://flagcdn.com/cr.svg", limit: 8 },
+  { code: "DO", name: "Rep. Dominicana", prefix: "+1", flag: "https://flagcdn.com/do.svg", limit: 10 },
+  { code: "GT", name: "Guatemala", prefix: "+502", flag: "https://flagcdn.com/gt.svg", limit: 8 },
+  { code: "HN", name: "Honduras", prefix: "+504", flag: "https://flagcdn.com/hn.svg", limit: 8 },
+  { code: "SV", name: "El Salvador", prefix: "+503", flag: "https://flagcdn.com/sv.svg", limit: 8 },
+  { code: "NI", name: "Nicaragua", prefix: "+505", flag: "https://flagcdn.com/ni.svg", limit: 8 },
+  { code: "PR", name: "Puerto Rico", prefix: "+1", flag: "https://flagcdn.com/pr.svg", limit: 10 },
+  { code: "IT", name: "Italia", prefix: "+39", flag: "https://flagcdn.com/it.svg", limit: 10 },
+  { code: "FR", name: "Francia", prefix: "+33", flag: "https://flagcdn.com/fr.svg", limit: 9 },
+  { code: "DE", name: "Alemania", prefix: "+49", flag: "https://flagcdn.com/de.svg", limit: 11 },
+  { code: "GB", name: "Reino Unido", prefix: "+44", flag: "https://flagcdn.com/gb.svg", limit: 10 },
+  { code: "CA", name: "Canadá", prefix: "+1", flag: "https://flagcdn.com/ca.svg", limit: 10 },
+  { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
 function LoginForm() {
@@ -83,7 +83,6 @@ function LoginForm() {
       const celularRaw = formData.get("celular") as string;
       const confirmPassword = formData.get("confirmPassword") as string;
 
-      // Validación de Contraseña Segura
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
       if (!passwordRegex.test(password)) {
         setError("La contraseña requiere: 8 caracteres, una mayúscula, una minúscula, un número y un símbolo.");
@@ -157,13 +156,14 @@ function LoginForm() {
               className="w-full p-4 bg-gray-50 border rounded-2xl focus:ring-2 focus:ring-[#C5A059] outline-none transition-all" 
             />
 
-            {/* Selector de País con scroll mejorado */}
             <div className="flex gap-2 relative" ref={dropdownRef}>
               <div 
                 onClick={() => setIsCountryOpen(!isCountryOpen)}
                 className="flex items-center gap-2 p-4 bg-gray-50 border rounded-2xl cursor-pointer hover:bg-gray-100 min-w-[115px] justify-between shadow-sm"
               >
-                <span className="text-xl">{selectedCountry.flag}</span>
+                <div className="w-6 h-4 relative">
+                    <img src={selectedCountry.flag} alt={selectedCountry.name} className="object-cover w-full h-full rounded-sm" />
+                </div>
                 <span className="text-sm font-bold">{selectedCountry.code}</span>
                 <ChevronDown size={14} className={`text-gray-400 transition-transform ${isCountryOpen ? 'rotate-180' : ''}`} />
               </div>
@@ -187,7 +187,6 @@ function LoginForm() {
                         autoFocus
                       />
                     </div>
-                    {/* Contenedor de lista con scroll */}
                     <div className="max-h-60 overflow-y-auto custom-scrollbar">
                       {filteredCountries.map((c) => (
                         <div 
@@ -200,7 +199,9 @@ function LoginForm() {
                           className="flex items-center justify-between p-4 hover:bg-[#FDF8F0] cursor-pointer transition-colors"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="text-2xl">{c.flag}</span>
+                            <div className="w-6 h-4 relative">
+                                <img src={c.flag} alt={c.name} className="object-cover w-full h-full rounded-sm" />
+                            </div>
                             <div className="flex flex-col">
                               <span className="text-sm text-gray-700 font-semibold">{c.name}</span>
                               <span className="text-[10px] text-gray-400 font-mono">{c.prefix}</span>
