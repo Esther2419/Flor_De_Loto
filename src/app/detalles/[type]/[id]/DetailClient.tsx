@@ -3,30 +3,38 @@
 import { useState } from "react";
 import Image from "next/image";
 import AddToCartButton from "@/components/AddToCartButton";
-import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Scroll } from "lucide-react";
+import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Scroll, Tag } from "lucide-react";
 
 export default function DetailClient({ data, type, id, opciones }: any) {
   const [isFloresModalOpen, setIsFloresModalOpen] = useState(false);
   const [isEnvolturasModalOpen, setIsEnvolturasModalOpen] = useState(false);
   
-  // REGLA: Si es flor individual máx 2 papeles, si es ramo usa la configuración original de la BD
+  // REGLA: Si es flor individual máx 2 papeles, si es ramo usa la configuración original
   const limiteEnvolturas = type === 'flor' ? 2 : (data.ramo_envolturas?.reduce(
     (acc: number, curr: any) => acc + (curr.cantidad || 1), 0
   ) || 1);
 
-  // Estado para las envolturas seleccionadas (Array de IDs)
-  // Si viene con opciones predeterminadas (ramos), las usamos. Si es flor, inicia vacío.
+  // Estado para las envolturas seleccionadas
   const [envolturasSeleccionadas, setEnvolturasSeleccionadas] = useState<string[]>(
     opciones?.idsOriginales || []
   );
 
-  // Estado para flores extra
+  // Estado para flores extra y dedicatoria
   const [floresExtra, setFloresExtra] = useState<{[key: string]: number}>({});
-  
-  // Estado para la dedicatoria
   const [dedicatoria, setDedicatoria] = useState("");
 
-  const precioBase = Number(data.precio_base || data.precio_unitario || 0);
+  // 1. Detectar si es oferta (solo aplica a ramos en tu esquema actual)
+  const esOferta = type === 'ramo' && data.es_oferta && data.precio_oferta;
+
+  // 2. Definir el precio real que se cobrará
+  const precioBase = esOferta 
+    ? Number(data.precio_oferta) 
+    : Number(data.precio_base || data.precio_unitario || 0);
+
+  // 3. Guardar el precio original solo para mostrarlo tachado
+  const precioOriginal = esOferta ? Number(data.precio_base) : null;
+  // ------------------------------------------
+
   const foto = data.foto_principal || data.foto;
   const descripcion = data.descripcion || `Selección especial de ${data.nombre}.`;
 
@@ -36,15 +44,14 @@ export default function DetailClient({ data, type, id, opciones }: any) {
     cantidad: d.cantidad_base || 1 
   })) || [];
 
-  // Contador visual para validaciones
   const totalPapelesSeleccionados = envolturasSeleccionadas.length;
   const sePasoDelLimite = totalPapelesSeleccionados > limiteEnvolturas;
 
-  // Función para calcular el precio total en tiempo real
+  // Función para calcular el precio total (Precio Base Oferta + Extras)
   const calcularTotal = () => {
     let extra = 0;
     
-    // 1. Sumar costo de Flores Extra
+    // Sumar costo de Flores Extra
     if (opciones?.flores) {
       Object.keys(floresExtra).forEach(fId => {
         const flor = opciones.flores.find((f: any) => f.id.toString() === fId);
@@ -52,8 +59,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
       });
     }
 
-    // 2. Sumar costo de Envolturas (Solo si es 'flor')
-    // Asumimos que para 'flor' se cobran aparte. Para 'ramo' el precio base ya incluye el diseño.
+    // Sumar costo de Envolturas (Solo si es 'flor')
     if (opciones?.envolturas && type === 'flor') {
        envolturasSeleccionadas.forEach(envId => {
          const env = opciones.envolturas.find((e: any) => e.id.toString() === envId);
@@ -64,28 +70,18 @@ export default function DetailClient({ data, type, id, opciones }: any) {
     return precioBase + extra;
   };
 
-  // Manejador para seleccionar/deseleccionar envolturas desde el modal
-  // Esta función maneja la lógica de selección múltiple con límite
   const handleUpdateEnvoltura = (envId: string) => {
     setEnvolturasSeleccionadas(prev => {
-      // Si ya está seleccionada, la quitamos
-      if (prev.includes(envId)) {
-        return prev.filter(id => id !== envId); 
-      }
+      if (prev.includes(envId)) return prev.filter(id => id !== envId); 
       
-      // Si llegamos al límite
       if (prev.length >= limiteEnvolturas) {
-         // Si es ramo y el límite es 1, reemplazamos la selección anterior
          if (type === 'ramo' && limiteEnvolturas === 1) return [envId];
-         // Si no (ej: flores con límite 2), no permitimos más selecciones
          return prev; 
       }
-      
-      return [...prev, envId]; // Añadir nueva selección
+      return [...prev, envId]; 
     });
   };
 
-  // Manejador para cantidades de flores extra (+ / -)
   const handleUpdateCantidad = (id: string, val: number | string, setFn: Function) => {
     setFn((prev: any) => {
       let nuevaCant: number;
@@ -98,32 +94,34 @@ export default function DetailClient({ data, type, id, opciones }: any) {
     });
   };
 
-  // Preparamos los datos finales para el carrito
   const personalizacionParaCarrito = {
      envolturas: envolturasSeleccionadas.reduce((acc, id) => ({...acc, [id]: 1}), {}),
      floresExtra,
      dedicatoria: type === 'ramo' ? dedicatoria : undefined 
   };
 
-  // Generar ID único para el carrito
   const cartId = `${id}-${envolturasSeleccionadas.sort().join('-')}-${Object.entries(floresExtra).filter(([_,v])=>v>0).map(([k,v])=>`${k}x${v}`).join('-')}`;
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-10 pt-24 md:pt-32 flex flex-col md:flex-row gap-10 md:gap-16 items-start">
       
-      {/* ---------------- IMAGEN DEL PRODUCTO ---------------- */}
+      {/* IMAGEN DEL PRODUCTO */}
       <div className="w-full md:w-80 aspect-square relative rounded-3xl overflow-hidden shadow-2xl border border-zinc-100 flex-shrink-0 mx-auto md:mx-0">
         {foto ? (
           <Image src={foto} alt={data.nombre} fill className="object-cover" priority />
         ) : (
           <div className="bg-zinc-100 w-full h-full flex items-center justify-center text-zinc-400">Sin foto</div>
         )}
+        {/* Badge de Oferta en la imagen */}
+        {esOferta && (
+          <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
+            OFERTA
+          </div>
+        )}
       </div>
 
-      {/* ---------------- INFORMACIÓN Y PERSONALIZACIÓN ---------------- */}
+      {/* INFORMACIÓN */}
       <div className="flex-1 flex flex-col justify-start w-full">
-        
-        {/* Breadcrumb y Título */}
         <div className="flex justify-between items-start mb-6">
           <div>
             <nav className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] mb-2">
@@ -133,17 +131,30 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               {data.nombre}
             </h1>
             
-            {data.tipo && (
-              <div className="mt-3 flex">
+            <div className="mt-3 flex gap-2">
+              {data.tipo && (
                 <span className="bg-zinc-900 text-[#D4AF37] text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full shadow-lg border border-zinc-800">
                   Estilo: {data.tipo}
                 </span>
-              </div>
-            )}
+              )}
+              {esOferta && (
+                 <span className="bg-red-50 text-red-600 text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full border border-red-100 flex items-center gap-1">
+                   <Tag size={12}/> Oferta Especial
+                 </span>
+              )}
+            </div>
           </div>
+
           <div className="text-right">
-            <span className="text-[10px] text-zinc-400 uppercase font-black tracking-widest block mb-1">Precio Base</span>
-            <span className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tighter">Bs. {precioBase.toFixed(2)}</span>
+            <span className="text-[10px] text-zinc-400 uppercase font-black tracking-widest block mb-1">Precio Unitario</span>
+            {esOferta ? (
+              <div className="flex flex-col items-end">
+                <span className="text-sm text-gray-400 line-through font-medium">Bs. {precioOriginal?.toFixed(2)}</span>
+                <span className="text-2xl md:text-3xl font-bold text-red-600 tracking-tighter">Bs. {precioBase.toFixed(2)}</span>
+              </div>
+            ) : (
+              <span className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tighter">Bs. {precioBase.toFixed(2)}</span>
+            )}
           </div>
         </div>
 
@@ -153,7 +164,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
 
         <div className="space-y-12">
             
-            {/* --- SECCIÓN 1: COMPOSICIÓN BASE (SOLO SE MUESTRA EN RAMOS) --- */}
+            {/* COMPOSICIÓN BASE */}
             {type === 'ramo' && (
               <div className="border-t-2 border-zinc-100 pt-8">
                 <div className="flex items-center justify-between mb-6">
@@ -166,7 +177,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                 </div>
                 
                 <div className="space-y-3">
-                  {/* Flores base del ramo */}
                   {data.ramo_detalle?.map((d: any) => (
                     <div key={d.flores.id} className="flex items-center justify-between bg-zinc-50 p-2 rounded-2xl border border-zinc-100">
                       <div className="flex items-center gap-3">
@@ -181,7 +191,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                     </div>
                   ))}
                   
-                  {/* Flores EXTRA agregadas */}
                   {Object.keys(floresExtra).map(fId => {
                     const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
                     if (!flor || floresExtra[fId] === 0) return null;
@@ -208,7 +217,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               </div>
             )}
 
-            {/* --- SECCIÓN 2: ENVOLTURAS (VISIBLE PARA AMBOS) --- */}
+            {/* SECCIÓN ENVOLTURAS */}
             <div className="border-t-2 border-zinc-100 pt-8">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex flex-col">
@@ -225,7 +234,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                 </button>
               </div>
 
-              {/* Lista de envolturas seleccionadas */}
               <div className="space-y-3">
                 {envolturasSeleccionadas.map(envId => {
                   const env = opciones?.envolturas.find((e: any) => e.id.toString() === envId);
@@ -248,15 +256,12 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                   );
                 })}
               </div>
-              
-              {/* Botón para abrir modal de flores extra si es tipo FLOR (porque no tiene la sección de composición arriba) */}
+
               {type === 'flor' && (
                  <div className="mt-4 pt-4 border-t border-dashed border-zinc-200">
                     <h3 className="text-sm font-bold uppercase mb-3 flex items-center gap-2">
                        <Flower2 className="w-4 h-4 text-[#D4AF37]" /> ¿Deseas agregar más flores?
                     </h3>
-                    
-                    {/* Lista de flores extra agregadas */}
                     <div className="space-y-2 mb-3">
                        {Object.keys(floresExtra).map(fId => {
                           const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
@@ -269,7 +274,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                           );
                        })}
                     </div>
-
                     <button onClick={() => setIsFloresModalOpen(true)} className="w-full py-3 border-2 border-dashed border-zinc-200 rounded-xl text-zinc-400 font-bold uppercase text-[10px] hover:border-[#D4AF37] hover:text-[#D4AF37] transition-all flex items-center justify-center gap-2">
                        <Plus className="w-3 h-3" /> Agregar Flores Extra
                     </button>
@@ -277,7 +281,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               )}
             </div>
 
-            {/* DEDICATORIA (SOLO PARA RAMOS) */}
+            {/* DEDICATORIA */}
             {type === 'ramo' && (
               <div className="border-t border-zinc-100 pt-8">
                 <label className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400 mb-4 flex items-center gap-2">
@@ -287,7 +291,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               </div>
             )}
 
-            {/* FOOTER TOTAL Y BOTÓN */}
+            {/* FOOTER */}
             <div className="mt-12 pt-8 border-t-2 border-zinc-100 flex flex-col gap-4 w-full">
               {sePasoDelLimite && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
@@ -301,7 +305,12 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               <div className="flex items-center justify-between gap-8">
                 <div>
                   <span className="text-[10px] text-zinc-400 uppercase font-black tracking-widest block mb-1">Total Final</span>
-                  <span className="text-xl md:text-3xl font-bold text-zinc-900 tracking-tight">Bs. {calcularTotal().toFixed(2)}</span>
+                  <div className="flex items-baseline gap-2">
+                    {esOferta && <span className="text-sm text-gray-400 line-through">Bs. {precioOriginal}</span>}
+                    <span className={`text-xl md:text-3xl font-bold tracking-tight ${esOferta ? 'text-red-600' : 'text-zinc-900'}`}>
+                      Bs. {calcularTotal().toFixed(2)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className={`flex-1 ${sePasoDelLimite ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
@@ -321,7 +330,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
         </div>
       </div>
 
-      {/* --- MODAL ENVOLTURAS --- */}
+      {/* MODAL ENVOLTURAS */}
       {isEnvolturasModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setIsEnvolturasModalOpen(false)}>
           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
@@ -358,7 +367,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
         </div>
       )}
 
-      {/* --- MODAL FLORES EXTRA --- */}
+      {/* MODAL FLORES EXTRA */}
       {isFloresModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setIsFloresModalOpen(false)}>
           <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl animate-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
@@ -369,7 +378,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
             <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-1 scrollbar-hide">
               {opciones?.flores.map((flor: any) => {
                 const idF = flor.id.toString();
-                // Ocultar la misma flor principal si es compra de flor individual
                 if (type === 'flor' && idF === id) return null;
 
                 const cant = floresExtra[idF] || 0;

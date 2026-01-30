@@ -75,12 +75,10 @@ export default function NuestrasFlores({ flores }: { flores: Flor[] }) {
                   </div>
                   <div className="p-2 text-center flex flex-col gap-1">
                     <h3 className="font-serif text-[11px] font-bold text-[#0A0A0A] truncate">
-                      {flor.nombre}
+                      {flor.nombre} {flor.color || ""}
                     </h3>
                     <p className="text-[#C5A059] font-bold text-xs">Bs {flor.precio_unitario}</p>
-                    {flor.color && (
-                        <span className="text-[8px] text-gray-400 uppercase tracking-tighter mb-1">{flor.color}</span>
-                    )}
+                    
                     
                     {/* Botón Comprar explícito */}
                     <button
