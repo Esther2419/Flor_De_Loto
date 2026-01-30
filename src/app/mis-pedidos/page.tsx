@@ -3,11 +3,9 @@ import { authOptions } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import Navbar from "@/components/Navbar";
-import { Package, Calendar, Clock, ClipboardList, AlertCircle, UserCheck } from "lucide-react";
-import { format } from "date-fns";
-import { es } from "date-fns/locale";
+import { ClipboardList, AlertCircle, Package } from "lucide-react";
 import Link from "next/link";
-import WhatsAppButton from "@/components/WhatsAppButton";
+import OrderCard from "./OrderCard";
 
 export default async function MisPedidosPage() {
   const session = await getServerSession(authOptions);
@@ -24,12 +22,17 @@ export default async function MisPedidosPage() {
     include: {
       detalle_pedidos: {
         include: { 
-          ramos: true,
-          flores: true
+          ramos: { include: { ramo_imagenes: true } }, 
+          flores: true 
         }
       }
     }
   });
+
+  const [catalogoFlores, catalogoEnvolturas] = await Promise.all([
+    prisma.flores.findMany({ select: { id: true, nombre: true, color: true, foto: true } }),
+    prisma.envolturas.findMany({ select: { id: true, nombre: true, foto: true } })
+  ]);
 
   return (
     <div className="min-h-screen bg-crema">
@@ -63,76 +66,12 @@ export default async function MisPedidosPage() {
         ) : (
           <div className="space-y-6">
             {pedidos.map((pedido) => (
-              <div key={pedido.id.toString()} className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow p-6 md:p-8">
-                <div className="flex flex-col md:flex-row justify-between gap-6">
-                  
-                  <div className="space-y-4 flex-1">
-                    <div className="flex items-center gap-4 flex-wrap">
-                      <span className="bg-gray-50 px-3 py-1 rounded-full text-[10px] font-bold text-gray-500 border border-gray-100 uppercase tracking-tighter">
-                        Pedido #{pedido.id.toString()}
-                      </span>
-                      <span className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
-                        pedido.estado === 'pendiente' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
-                        pedido.estado === 'completado' ? 'bg-green-50 text-green-600 border-green-100' :
-                        'bg-gray-50 text-gray-600 border-gray-100'
-                      }`}>
-                        {pedido.estado}
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-6 text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <Calendar size={14} />
-                        <span className="text-xs font-medium">
-                          {format(new Date(pedido.fecha_entrega), "dd 'de' MMMM", { locale: es })}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} />
-                        <span className="text-xs font-medium">
-                           Hora: {format(new Date(pedido.fecha_entrega), "hh:mm aa")}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <UserCheck size={14} />
-                        <span className="text-xs font-medium">
-                           Recoge: <span className="text-gray-600">{pedido.nombre_receptor}</span>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="pt-4 border-t border-gray-50">
-                      <p className="text-[10px] font-bold uppercase text-gray-300 tracking-widest mb-2">Productos:</p>
-                      {pedido.detalle_pedidos.map((detalle) => {
-                        // Lógica corregida para obtener el nombre del producto
-                        const nombreProducto = detalle.ramos?.nombre || detalle.flores?.nombre || "Producto desconocido";
-                        
-                        return (
-                          <div key={detalle.id.toString()} className="flex justify-between text-sm py-1">
-                            <span className="text-gris/70 flex items-center gap-2">
-                              {detalle.cantidad}x {nombreProducto}
-                              {detalle.personalizacion && (
-                                 <span className="text-[9px] bg-yellow-50 text-yellow-700 px-1 rounded uppercase font-bold">Pers.</span>
-                              )}
-                            </span>
-                            <span className="font-bold text-gris">Bs {Number(detalle.precio_unitario) * detalle.cantidad}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col items-end justify-between min-w-[200px] gap-4">
-                    <div className="text-right">
-                      <p className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Total a Pagar</p>
-                      <p className="text-3xl font-bold text-[#C5A059] font-serif italic tracking-tighter">Bs {Number(pedido.total_pagar).toFixed(2)}</p>
-                    </div>
-
-                    <WhatsAppButton pedido={pedido} />
-                  </div>
-
-                </div>
-              </div>
+              <OrderCard 
+                key={pedido.id.toString()} 
+                pedido={pedido}
+                catalogoFlores={catalogoFlores}
+                catalogoEnvolturas={catalogoEnvolturas}
+              />
             ))}
           </div>
         )}
