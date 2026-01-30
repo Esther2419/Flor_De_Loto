@@ -1,15 +1,16 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcrypt";
+import { isValidNumber } from "libphonenumber-js";
 
 export async function POST(req: Request) {
   try {
     const { email, password, nombre, celular } = await req.json();
 
-    // 1. Validar contraseña fuerte
+    // 1. Validar Contraseña Segura
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-      return NextResponse.json({ error: "Contraseña no cumple requisitos de seguridad." }, { status: 400 });
+      return NextResponse.json({ error: "La contraseña no es lo suficientemente segura." }, { status: 400 });
     }
 
     // 2. Validar que el nombre no contenga números
@@ -17,9 +18,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "El nombre no puede contener números." }, { status: 400 });
     }
 
-    // 3. Validar que el celular solo contenga números
-    if (/[^0-9]/.test(celular)) {
-      return NextResponse.json({ error: "El celular solo debe contener números." }, { status: 400 });
+    // 3. Validar número de celular internacional
+    if (!isValidNumber(celular)) {
+      return NextResponse.json({ error: "El formato del número de celular es inválido." }, { status: 400 });
     }
 
     const existe = await prisma.usuarios.findUnique({ where: { email } });
@@ -29,7 +30,7 @@ export async function POST(req: Request) {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const nuevoUsuario = await prisma.usuarios.create({
+    await prisma.usuarios.create({
       data: {
         email,
         nombre_completo: nombre,
