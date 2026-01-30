@@ -266,10 +266,10 @@ export default function RamosAdminPage() {
                         ) : (
                             <div className="flex flex-col gap-3 p-4 w-full h-full justify-center">
                               <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-[#0A0A0A] text-[#C5A059] py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all">
-                                <Camera size={16} /> USAR CÁMARA
+                                <Camera size={16} /> CÁMARA
                               </button>
                               <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-white text-gray-600 border border-gray-200 py-3 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                <ImageIcon size={16} /> ELEGIR GALERÍA
+                                <ImageIcon size={16} /> GALERÍA
                               </button>
                               {/* INPUTS OCULTOS */}
                               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => onFileChange(e, true)} />

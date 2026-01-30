@@ -281,10 +281,10 @@ export default function EnvolturasAdminPage() {
                     ) : (
                         <div className="flex flex-col gap-4 w-full max-w-xs">
                              <button type="button" onClick={() => cameraInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-[#0A0A0A] text-[#C5A059] py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-black transition-all">
-                                <Camera size={20} /> Capturar Material
+                                <Camera size={20} /> CÁMARA
                               </button>
                               <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 bg-white text-gray-600 border border-gray-200 py-4 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-gray-50 transition-all">
-                                <ImageIcon size={20} /> Abrir Galería
+                                <ImageIcon size={20} /> GALERÍA
                               </button>
                               <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={onFileChange} />
                               <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => onFileChange(e)} />
