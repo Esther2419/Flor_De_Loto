@@ -4,8 +4,9 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Image from "next/image";
 import Link from "next/link";
-import { Package, Flower2, MessageSquare, Info, Gift, ArrowLeft, Eye } from "lucide-react";
+import { Package, Flower2, MessageSquare, Info, Gift, ArrowLeft, Eye, History } from "lucide-react";
 import { notFound } from "next/navigation";
+import { BotoneraAdmin } from "@/components/BotoneraAdmin";
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,14 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
           flores: true,
           envolturas: true
         }
+      },
+      pedidos_historial: {
+        include: {
+          usuarios: true
+        },
+        orderBy: {
+          fecha: 'desc'
+        }
       }
     }
   });
@@ -84,13 +93,19 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               <span className="text-[#C5A059] font-bold text-xl font-serif">Pedido #{pedido.id.toString()}</span>
               <span className={`px-3 py-1 rounded-full text-[10px] uppercase font-black tracking-widest ${
                 pedido.estado === 'pendiente' ? 'bg-amber-100 text-amber-700' : 
-                pedido.estado === 'completado' ? 'bg-emerald-100 text-emerald-700' :
-                'bg-gray-100 text-gray-700'
+                pedido.estado === 'aceptado' ? 'bg-blue-100 text-blue-700' :
+                pedido.estado === 'terminado' ? 'bg-purple-100 text-purple-700' :
+                pedido.estado === 'entregado' ? 'bg-emerald-100 text-emerald-700' :
+                'bg-red-100 text-red-700'
               }`}>
                 {pedido.estado}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-2 font-medium">
+            
+            {/* Botonera de Acciones */}
+            <BotoneraAdmin pedidoId={pedido.id.toString()} estadoActual={pedido.estado || 'pendiente'} />
+            
+            <p className="text-xs text-gray-400 mt-4 font-medium">
               Solicitado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
             </p>
           </div>
@@ -123,7 +138,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               const nombreProducto = producto?.nombre || "Producto desconocido";
               const fotoProducto = detalle.ramos?.foto_principal || detalle.flores?.foto || detalle.envolturas?.foto;
               
-              // ENLACE AL DETALLE DEL RAMO O FLOR
               let productLink = null;
               if (detalle.ramos) {
                  productLink = `/admin/ramo/${detalle.ramos.id.toString()}?pedidoId=${pedido.id.toString()}`;
@@ -187,11 +201,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
                           <p className="font-serif italic text-lg text-gray-800">{nombreProducto}</p>
                         )}
                         <p className="text-xs text-gray-400">Cantidad: {detalle.cantidad} unidad(es)</p>
-                        {productLink && (
-                          <Link href={productLink} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-[#C5A059]/10 text-[#C5A059] rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-[#C5A059]/20 transition-colors">
-                            <Flower2 size={12} /> {detalle.ramos ? "Ver Composición" : "(Ver flor)"}
-                          </Link>
-                        )}
                       </div>
                     </div>
                     <span className="font-bold text-[#C5A059]">Bs {Number(detalle.subtotal).toFixed(2)}</span>
@@ -286,6 +295,34 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
             <span className="text-2xl font-serif italic text-[#C5A059]">{Number(pedido.total_pagar).toFixed(2)}</span>
           </div>
         </div>
+
+        {/* Bitácora de Actividad */}
+        {pedido.pedidos_historial && pedido.pedidos_historial.length > 0 && (
+          <div className="bg-gray-50/50 border-t border-gray-100 p-8">
+            <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+              <History size={14} /> Bitácora de Actividad
+            </h4>
+            <div className="space-y-6 relative before:absolute before:left-[5.5rem] before:top-2 before:bottom-2 before:w-px before:bg-gray-200">
+              {pedido.pedidos_historial.map((h) => (
+                <div key={h.id.toString()} className="flex gap-6 text-xs relative">
+                  <div className="w-20 text-right text-gray-400 font-mono shrink-0 py-1">
+                    {h.fecha ? format(new Date(h.fecha), "HH:mm") : "--:--"}
+                    <div className="text-[9px] opacity-60">{h.fecha ? format(new Date(h.fecha), "dd/MM") : ""}</div>
+                  </div>
+                  <div className="py-1">
+                    <span className="font-bold text-gray-800 block">
+                      {h.usuarios?.nombre_completo || "Sistema"}
+                      <span className="ml-2 font-normal text-[10px] px-1.5 py-0.5 bg-gray-100 rounded text-gray-500 uppercase tracking-tighter">
+                        {h.estado_nuevo}
+                      </span>
+                    </span>
+                    <p className="text-gray-500 mt-0.5">{h.observacion}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
