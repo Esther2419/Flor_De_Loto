@@ -22,7 +22,6 @@ function getValidId(id: string | number): bigint {
   return BigInt(numericPart);
 }
 
-// MANTENEMOS TU FUNCIÓN ORIGINAL
 function getMinutesTotal(input: any): number {
   if (input instanceof Date) {
     return input.getUTCHours() * 60 + input.getUTCMinutes();
@@ -36,7 +35,6 @@ export async function createOrderAction(data: OrderData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { success: false, message: "No autenticado" };
 
-  // Nota: Usamos 'correo' que es el campo real en tu base de datos
   const usuario = await prisma.usuarios.findUnique({
     where: { email: session.user.email },
   });
@@ -44,12 +42,10 @@ export async function createOrderAction(data: OrderData) {
   if (!usuario) return { success: false, message: "Usuario no encontrado" };
 
   try {
-    // 1. Hora actual en Bolivia
     const ahoraBolivia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
     const minutosAhora = ahoraBolivia.getHours() * 60 + ahoraBolivia.getMinutes();
 
     const pedido = await prisma.$transaction(async (tx) => {
-      // 2. BUSCAMOS TU CONFIGURACIÓN (Líneas restauradas)
       const config = await tx.configuracion.findUnique({ where: { id: 1 } });
       
       if (!config || !config.horario_apertura || !config.horario_cierre) {
@@ -60,37 +56,42 @@ export async function createOrderAction(data: OrderData) {
         throw new Error("La tienda se encuentra cerrada actualmente.");
       }
 
-      const bufferMinutos = Number((config as any).minutos_preparacion) || 120; // 2 horas por defecto
-      const [hPedido, mPedido] = data.hora_recojo.split(':').map(Number);
-      const minutosPedido = hPedido * 60 + mPedido;
+      const bufferMinutos = Number((config as any).minutos_preparacion) || 120;
       
-      // AJUSTE DE ZONA HORARIA: Creamos la fecha forzando el offset de Bolivia (-04:00)
-      const fechaString = `${data.fecha_entrega}T${data.hora_recojo}:00-04:00`;
+      // --- CORRECCIÓN PARA "INVALID DATE" ---
+      // Limpiamos posibles espacios y aseguramos formato YYYY-MM-DDTHH:mm:00-04:00
+      const fechaLimpia = data.fecha_entrega.trim();
+      const horaLimpia = data.hora_recojo.trim();
+      
+      const fechaString = `${fechaLimpia}T${horaLimpia}:00-04:00`;
       const fechaEntregaExacta = new Date(fechaString);
 
-      // 3. VALIDACIÓN: Margen de preparación (Tus líneas originales)
+      // Verificamos si la fecha es válida antes de seguir
+      if (isNaN(fechaEntregaExacta.getTime())) {
+        throw new Error(`Formato de fecha u hora inválido: ${fechaString}`);
+      }
+      // ---------------------------------------
+
       const diffMinutos = Math.floor((fechaEntregaExacta.getTime() - ahoraBolivia.getTime()) / 60000);
       if (diffMinutos < bufferMinutos) {
         throw new Error(`Necesitamos por lo menos ${bufferMinutos} minutos para preparar tu pedido.`);
       }
 
-      // 4. VALIDACIÓN: Horario de atención (Tus líneas originales)
+      const [hPedido, mPedido] = horaLimpia.split(':').map(Number);
+      const minutosPedido = hPedido * 60 + mPedido;
       const minApertura = getMinutesTotal(config.horario_apertura);
       const minCierre = getMinutesTotal(config.horario_cierre);
-
-      console.log(`Debug Horario: Ahora(${minutosAhora}) | Pedido(${minutosPedido}) | Rango(${minApertura}-${minCierre})`);
 
       if (minutosPedido < minApertura || minutosPedido >= minCierre) {
         throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
       }
 
-      // 5. Crear el pedido
       const nuevoPedido = await tx.pedidos.create({
         data: {
           usuario_id: usuario.id,
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
-          fecha_pedido: ahoraBolivia, // Guardamos la hora de Bolivia
+          fecha_pedido: ahoraBolivia, 
           fecha_entrega: fechaEntregaExacta,
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
@@ -98,7 +99,6 @@ export async function createOrderAction(data: OrderData) {
         }
       });
 
-      // 6. Insertar detalles (Tu lógica original completa)
       for (const item of data.items) {
         const idProducto = getValidId(item.productoId || item.id);
         await tx.detalle_pedidos.create({
@@ -114,7 +114,6 @@ export async function createOrderAction(data: OrderData) {
         });
       }
 
-      // 7. Limpiar carrito
       const carrito = await tx.carrito.findFirst({ where: { usuario_id: usuario.id } });
       if (carrito) {
         await tx.carrito_detalle.deleteMany({ where: { carrito_id: carrito.id } });
