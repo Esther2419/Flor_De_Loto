@@ -170,11 +170,13 @@ model usuarios {
 }
 
 model configuracion {
-  id               Int       @id @default(autoincrement())
-  tienda_abierta   Boolean?  @default(true)
-  horario_apertura DateTime? @default(dbgenerated("'09:00:00'::time without time zone")) @db.Time(6)
-  horario_cierre   DateTime? @default(dbgenerated("'19:00:00'::time without time zone")) @db.Time(6)
-  updated_at       DateTime? @default(now()) @db.Timestamptz(6)
+  id                  Int       @id @default(autoincrement())
+  tienda_abierta      Boolean?  @default(true)
+  horario_apertura    DateTime? @default(dbgenerated("'09:00:00'::time without time zone")) @db.Time(6)
+  horario_cierre      DateTime? @default(dbgenerated("'19:00:00'::time without time zone")) @db.Time(6)
+  updated_at          DateTime? @default(now()) @db.Timestamptz(6)
+  minutos_preparacion Int?      @default(30)
+  cierre_temporal     Boolean?  @default(false)
 }
 
 model detalle_pedidos {

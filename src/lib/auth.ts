@@ -33,7 +33,8 @@ export const authOptions: NextAuthOptions = {
           id: usuario.id.toString(),
           name: usuario.nombre_completo,
           email: usuario.email,
-          role: usuario.rol || "cliente", 
+          rol: usuario.rol || "cliente", 
+          celular: usuario.celular, 
         };
       }
     })
@@ -51,28 +52,43 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               nombre_completo: user.name,
               rol: "cliente",
-              password: "", // Los usuarios de Google no tienen contraseña local
+              password: "", 
             }
           });
         }
       }
       return true;
     },
-    async jwt({ token, user }: any) {
+    async jwt({ token, user, trigger, session }: any) {
+      if (trigger === "update" && session) {
+        token.name = session.user.name;
+        token.celular = session.user.celular;
+      }
+
       if (user) {
         token.id = user.id;
-        token.role = user.role;
-      } else if (!token.role) {
-        const dbUser = await prisma.usuarios.findUnique({ where: { email: token.email! } });
-        token.role = dbUser?.rol || "cliente";
-        token.id = dbUser?.id.toString();
+        token.rol = user.rol;
+        token.celular = user.celular;
+      } 
+      if (!token.rol && token.email) {
+        const dbUser = await prisma.usuarios.findUnique({ 
+          where: { email: token.email } 
+        });
+        if (dbUser) {
+          token.id = dbUser.id.toString();
+          token.rol = dbUser.rol || "cliente";
+          token.celular = dbUser.celular;
+          token.name = dbUser.nombre_completo;
+        }
       }
+      
       return token;
     },
     async session({ session, token }: any) {
       if (session.user) {
-        session.user.id = token.id as string;
-        session.user.role = token.role as string;
+        session.user.id = token.id;
+        session.user.rol = token.rol;
+        session.user.celular = token.celular;
       }
       return session;
     }
@@ -80,6 +96,9 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
     error: '/login',
+  },
+  session: {
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };

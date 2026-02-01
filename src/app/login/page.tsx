@@ -4,11 +4,11 @@ import { useState, Suspense, useRef, useEffect } from "react";
 import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
-import { Eye, EyeOff, Search, ChevronDown, Check, X, Circle } from "lucide-react";
+import { Eye, EyeOff, Search, ChevronDown, Check, X, Circle, Loader2 } from "lucide-react";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { motion, AnimatePresence } from "framer-motion";
 
-// Lista de países con URL de banderas en formato SVG para visualización garantizada
+// Lista de países con URL de banderas
 const COUNTRIES = [
   { code: "BO", name: "Bolivia", prefix: "+591", flag: "https://flagcdn.com/bo.svg", limit: 8 },
   { code: "AR", name: "Argentina", prefix: "+54", flag: "https://flagcdn.com/ar.svg", limit: 10 },
@@ -47,7 +47,9 @@ function LoginForm() {
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [searchCountry, setSearchCountry] = useState("");
   const [error, setError] = useState("");
+  
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   
   // Estados para contraseña y validaciones
   const [password, setPassword] = useState("");
@@ -86,6 +88,8 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (loading || googleLoading) return;
+
     setError("");
     
     if (isRegister) {
@@ -103,46 +107,57 @@ function LoginForm() {
     const formData = new FormData(e.currentTarget);
     const email = formData.get("email") as string;
 
-    if (isRegister) {
-      const nombre = formData.get("nombre") as string;
-      const celularRaw = formData.get("celular") as string;
+    try {
+      if (isRegister) {
+        const nombre = formData.get("nombre") as string;
+        const celularRaw = formData.get("celular") as string;
 
-      const fullNumber = `${selectedCountry.prefix}${celularRaw}`;
-      const phoneNumber = parsePhoneNumberFromString(fullNumber);
-      
-      if (!phoneNumber || !phoneNumber.isValid()) {
-        setError(`Número inválido para ${selectedCountry.name}. Revisa la cantidad de dígitos.`);
-        setLoading(false);
-        return;
-      }
+        const fullNumber = `${selectedCountry.prefix}${celularRaw}`;
+        const phoneNumber = parsePhoneNumberFromString(fullNumber);
+        
+        if (!phoneNumber || !phoneNumber.isValid()) {
+          setError(`Número inválido para ${selectedCountry.name}. Revisa la cantidad de dígitos.`);
+          setLoading(false);
+          return;
+        }
 
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email, 
-          password, 
-          nombre, 
-          celular: phoneNumber.formatInternational() 
-        }),
-      });
+        const res = await fetch("/api/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            email, 
+            password, 
+            nombre, 
+            celular: phoneNumber.formatInternational() 
+          }),
+        });
 
-      if (res.ok) {
-        await signIn("credentials", { email, password, callbackUrl });
+        if (res.ok) {
+          await signIn("credentials", { email, password, callbackUrl });
+        } else {
+          const data = await res.json();
+          setError(data.error || "Error al registrarse");
+          setLoading(false);
+        }
       } else {
-        const data = await res.json();
-        setError(data.error || "Error al registrarse");
-        setLoading(false);
+        const res = await signIn("credentials", { email, password, redirect: false });
+        if (res?.error) {
+          setError("Correo o contraseña incorrectos");
+          setLoading(false);
+        } else {
+          router.push(callbackUrl);
+        }
       }
-    } else {
-      const res = await signIn("credentials", { email, password, redirect: false });
-      if (res?.error) {
-        setError("Correo o contraseña incorrectos");
-        setLoading(false);
-      } else {
-        router.push(callbackUrl);
-      }
+    } catch (err) {
+      setError("Ocurrió un error inesperado.");
+      setLoading(false);
     }
+  };
+
+  const handleGoogleLogin = () => {
+    if (loading || googleLoading) return;
+    setGoogleLoading(true);
+    signIn("google", { callbackUrl });
   };
 
   return (
@@ -305,8 +320,19 @@ function LoginForm() {
         
         {error && <p className="text-red-500 text-[11px] text-center font-bold bg-red-50 p-2 rounded-xl">{error}</p>}
         
-        <button disabled={loading} className="w-full bg-[#C5A059] text-white py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-[#b38f4d] shadow-lg shadow-[#C5A059]/20 transition-all disabled:bg-gray-400">
-          {loading ? "Procesando..." : (isRegister ? "Registrarme" : "Iniciar Sesión")}
+        <button 
+          type="submit"
+          disabled={loading || googleLoading} 
+          className="w-full bg-[#C5A059] text-white py-4 rounded-2xl font-bold uppercase tracking-widest hover:bg-[#b38f4d] shadow-lg shadow-[#C5A059]/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="animate-spin" size={20} />
+              <span>Procesando...</span>
+            </>
+          ) : (
+            isRegister ? "Registrarme" : "Iniciar Sesión"
+          )}
         </button>
       </form>
 
@@ -316,23 +342,31 @@ function LoginForm() {
       </div>
 
       <button 
-        onClick={() => signIn("google", { callbackUrl })}
-        className="w-full flex items-center justify-center gap-3 border border-gray-200 py-4 rounded-2xl hover:bg-gray-50 transition-all font-semibold text-gray-600 mb-6"
+        type="button"
+        onClick={handleGoogleLogin}
+        disabled={loading || googleLoading}
+        className="w-full flex items-center justify-center gap-3 border border-gray-200 py-4 rounded-2xl hover:bg-gray-50 transition-all font-semibold text-gray-600 mb-6 disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        <Image src="https://www.google.com/favicon.ico" alt="Google" width={18} height={18} />
-        Google
+        {googleLoading ? (
+            <Loader2 className="animate-spin" size={20} />
+        ) : (
+            <Image src="https://www.google.com/favicon.ico" alt="Google" width={18} height={18} />
+        )}
+        {googleLoading ? "Redirigiendo..." : "Google"}
       </button>
 
       <div className="text-center">
         <button 
           onClick={() => { 
+            if(loading || googleLoading) return;
             setIsRegister(!isRegister); 
             setError(""); 
             setPassword(""); 
             setConfirmPassword(""); 
             setIsPasswordFocused(false);
           }} 
-          className="text-[#C5A059] font-bold text-sm hover:underline"
+          disabled={loading || googleLoading}
+          className="text-[#C5A059] font-bold text-sm hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isRegister ? "¿Ya tienes cuenta? Inicia Sesión" : "¿No tienes cuenta? Regístrate aquí"}
         </button>

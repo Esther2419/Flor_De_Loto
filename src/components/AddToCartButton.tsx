@@ -38,8 +38,8 @@ export default function AddToCartButton({
   const { toast } = useToast();
   const router = useRouter();
   
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [showCheck, setShowCheck] = useState(false);
 
@@ -53,37 +53,54 @@ export default function AddToCartButton({
 
       const rect = e.currentTarget.getBoundingClientRect();
       setStartPos({ x: rect.left, y: rect.top });
-      
       setIsAnimating(true);
 
       const finalProductoId = productoId || id; 
-
-      // Calculamos el precio real que se envía al contexto
       const precioFinal = esOferta && precioOferta ? precioOferta : precioBase;
+
+      // --- LÓGICA DE LIMPIEZA DE PERSONALIZACIÓN ---
+      let realPersonalizacion = null;
+      
+      if (personalizacion) {
+        const tieneFlores = personalizacion.floresExtra && 
+                           Object.values(personalizacion.floresExtra).some((cant: any) => cant > 0);
+        
+        const tieneEnvolturas = personalizacion.envolturas && 
+                               Object.keys(personalizacion.envolturas).length > 0;
+        
+        const tieneDedicatoria = personalizacion.dedicatoria && 
+                                personalizacion.dedicatoria.trim() !== "";
+
+        // Solo si tiene algo de lo anterior, guardamos el objeto
+        if (tieneFlores || tieneEnvolturas || tieneDedicatoria) {
+          realPersonalizacion = {
+            floresExtra: tieneFlores ? personalizacion.floresExtra : null,
+            envolturas: tieneEnvolturas ? personalizacion.envolturas : null,
+            dedicatoria: tieneDedicatoria ? personalizacion.dedicatoria : null
+          };
+        }
+      }
 
       await addToCart({ 
         id, 
         productoId: finalProductoId,
-        nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
+        // Solo añade "(Personalizado)" al nombre si realPersonalizacion no es null
+        nombre: realPersonalizacion ? `${nombre} (Personalizado)` : nombre, 
         precio: precioFinal,
         precioOriginal: precioBase,
         esOferta: !!esOferta,
         foto,
         tipo: (type as 'ramo' | 'flor') || 'ramo', 
-        personalizacion 
+        personalizacion: realPersonalizacion 
       });
 
       setShowCheck(true);
 
-      // TIEMPO DE ESPERA PARA LA ANIMACIÓN ANTES DE REDIRIGIR
       setTimeout(() => {
         setIsAnimating(false);
         setIsPending(false);
         toast("¡Agregado con éxito!", "success");
-        
-        // ACCIÓN SOLICITADA: Redirigir al inicio
         router.push("/");
-        
         if (onAfterAdd) onAfterAdd();
       }, 800);
 
