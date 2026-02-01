@@ -7,7 +7,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { 
   Send, User, Phone, Clock, Loader2, Trash2, 
-  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar
+  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet
 } from "lucide-react";
 import { createOrderAction } from "@/app/actions/orders";
 import { useToast } from "@/context/ToastContext";
@@ -56,6 +56,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [minutosPrep, setMinutosPrep] = useState(6);
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   // --- LÓGICA DE CALENDARIO ---
   const fechaHoyBolivia = useMemo(() => {
@@ -117,10 +118,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
     fetchConfig();
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting || !tiendaAbiertaBD || (formData.fechaEntrega === fechaHoyBolivia && yaCerroPorHora)) return;
+  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
 
+  const handlePreSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!estaRealmenteAbierto || items.length === 0) return;
+    setShowConfirmModal(true);
+  };
+
+  const executeSubmit = async () => {
+    if (isSubmitting) return;
     setIsSubmitting(true);
     try {
       const result = await createOrderAction({
@@ -147,7 +154,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
     }
   };
 
-  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
+  const handleFinalConfirm = async () => {
+    setShowConfirmModal(false);
+    await executeSubmit();
+  };
+
   const filteredCountries = COUNTRIES.filter(c => c.name.toLowerCase().includes(searchCountry.toLowerCase()) || c.prefix.includes(searchCountry));
 
   const formatTimeStr = (timeStr: string) => {
@@ -180,7 +191,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
           <h2 className="font-serif italic text-4xl text-gris mb-2">Finalizar Reserva</h2>
           <p className="text-gray-400 text-sm mb-8">Información para el recojo en tienda física.</p>
           
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handlePreSubmit} className="space-y-8">
             <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 flex items-center gap-4">
                 <UserCheck className="text-[#C5A059]" size={24} />
                 <div className="flex-1">
@@ -345,6 +356,74 @@ export default function ReservaClient({ userData }: { userData: any }) {
           </div>
         </div>
       </div>
+
+      {/* MODAL DE DOBLE CONFIRMACIÓN */}
+      <AnimatePresence>
+        {showConfirmModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-lg rounded-[2.5rem] overflow-hidden shadow-2xl"
+            >
+              <div className="p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="bg-[#C5A059]/10 p-3 rounded-2xl">
+                    <AlertTriangle className="text-[#C5A059]" size={24} />
+                  </div>
+                  <h3 className="font-serif italic text-2xl text-gris">¿Confirmar Reserva?</h3>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <p className="text-sm text-gray-500 leading-relaxed">
+                    Estás por reservar <strong>{items.length} producto(s)</strong> por un total de <strong>Bs {total}</strong>.
+                  </p>
+                  
+                  {/* Detalle de stock y cancelación */}
+                  <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex gap-3">
+                    <AlertCircle className="text-amber-600 shrink-0" size={18} />
+                    <p className="text-[11px] text-amber-800 font-medium">
+                      <strong>NOTA IMPORTANTE:</strong> En caso de falta de stock de alguna flor o material específico, se le notificará y el pedido podría ser cancelado o modificado.
+                    </p>
+                  </div>
+
+                  {/* Detalle de pago */}
+                  <div className="bg-blue-50 border border-blue-100 p-4 rounded-2xl">
+                    <p className="text-[10px] font-bold uppercase text-blue-600 mb-2 flex items-center gap-2">
+                       <Wallet size={12}/> Métodos de pago en tienda
+                    </p>
+                    <div className="flex gap-4">
+                        <span className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
+                            <Check size={14}/> Efectivo
+                        </span>
+                        <span className="text-xs font-bold text-blue-800 flex items-center gap-1.5">
+                            <Check size={14}/> Transferencia QR
+                        </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setShowConfirmModal(false)}
+                    className="py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] border border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors"
+                  >
+                    Revisar de nuevo
+                  </button>
+                  <button 
+                    onClick={handleFinalConfirm}
+                    className="py-4 rounded-2xl font-bold uppercase tracking-widest text-[10px] bg-[#C5A059] text-white hover:bg-[#b38f4d] transition-all"
+                  >
+                    Confirmar y Finalizar
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
