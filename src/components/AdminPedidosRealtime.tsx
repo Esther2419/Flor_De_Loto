@@ -1,0 +1,51 @@
+"use client";
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@supabase/supabase-js";
+
+export default function AdminPedidosRealtime() {
+  const router = useRouter();
+
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseKey) {
+      console.warn("Faltan credenciales de Supabase para Realtime");
+      return;
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const channel = supabase
+      .channel("realtime-pedidos")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "pedidos",
+        },
+        (payload) => {
+          // Al detectar un cambio, refrescamos los Server Components
+          router.refresh();
+
+          // Si es un nuevo pedido (INSERT), reproducir sonido
+          if (payload.eventType === "INSERT") {
+            const audio = new Audio("/notification.mp3");
+            audio.play().catch((error) => {
+              console.warn("Reproducción de audio bloqueada por el navegador:", error);
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [router]);
+
+  return null; // Este componente no renderiza nada visualmente
+}

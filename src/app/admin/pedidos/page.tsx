@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
 import { Flower2, Calendar, Clock, ArrowDownUp, ListFilter } from "lucide-react";
+import AdminPedidosRealtime from "@/components/AdminPedidosRealtime";
 
 export const dynamic = 'force-dynamic';
 
@@ -82,6 +83,7 @@ export default async function AdminPedidosPage({ searchParams }: { searchParams:
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+      <AdminPedidosRealtime />
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
         <div>
           <h2 className="text-3xl font-serif italic text-gray-800">Panel de Pedidos</h2>
