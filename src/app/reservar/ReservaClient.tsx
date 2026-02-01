@@ -1,19 +1,18 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { 
   Send, User, Phone, Clock, Loader2, Trash2, 
-  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle 
+  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar
 } from "lucide-react";
 import { createOrderAction } from "@/app/actions/orders";
 import { useToast } from "@/context/ToastContext";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
-import { parsePhoneNumberFromString } from "libphonenumber-js";
 
 const COUNTRIES = [
   { code: "BO", name: "Bolivia", prefix: "+591", flag: "https://flagcdn.com/bo.svg", limit: 8 },
@@ -58,6 +57,13 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // --- LÓGICA DE CALENDARIO ---
+  const fechaHoyBolivia = useMemo(() => {
+    const ahora = new Date();
+    const bolivia = new Date(ahora.toLocaleString("en-US", { timeZone: "America/La_Paz" }));
+    return bolivia.toISOString().split('T')[0];
+  }, []);
+
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES.find(c => c.code === "BO") || COUNTRIES[0]);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [searchCountry, setSearchCountry] = useState("");
@@ -66,6 +72,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [formData, setFormData] = useState({ 
     whatsapp: userData.celular?.replace(/\D/g, '') || "", 
     quienRecoge: "", 
+    fechaEntrega: fechaHoyBolivia, // Inicializado hoy
     horaRecojo: "" 
   });
 
@@ -76,12 +83,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
       const [h, m] = horaActualStr.split(':').map(Number);
       const minTotal = h * 60 + m;
       
-      // Aplicamos el margen de seguridad de 2 minutos aquí
       const buffer = minTotal + minutosPrep + 2;
-      
       const hStr = String(Math.floor(buffer / 60) % 24).padStart(2, '0');
       const mStr = String(buffer % 60).padStart(2, '0');
-      setMinTimeValid(`${hStr}:${mStr}`);
+      
+      // Solo aplicamos minTime si la fecha seleccionada es hoy
+      if (formData.fechaEntrega === fechaHoyBolivia) {
+        setMinTimeValid(`${hStr}:${mStr}`);
+      } else {
+        setMinTimeValid(horario.min);
+      }
 
       const [hA, mA] = horario.min.split(':').map(Number);
       const [hC, mC] = horario.max.split(':').map(Number);
@@ -91,7 +102,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
     checkStatus();
     const inv = setInterval(checkStatus, 30000);
     return () => clearInterval(inv);
-  }, [horario, minutosPrep]);
+  }, [horario, minutosPrep, formData.fechaEntrega, fechaHoyBolivia]);
 
   useEffect(() => {
     const fetchConfig = async () => {
@@ -108,14 +119,14 @@ export default function ReservaClient({ userData }: { userData: any }) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isSubmitting || !tiendaAbiertaBD || yaCerroPorHora) return;
+    if (isSubmitting || !tiendaAbiertaBD || (formData.fechaEntrega === fechaHoyBolivia && yaCerroPorHora)) return;
 
     setIsSubmitting(true);
     try {
       const result = await createOrderAction({
         nombre_contacto: userData.nombre,
         telefono_contacto: `${selectedCountry.prefix}${formData.whatsapp}`,
-        fecha_entrega: new Date().toISOString(),
+        fecha_entrega: formData.fechaEntrega,
         quien_recoge: formData.quienRecoge,
         hora_recojo: formData.horaRecojo,
         total: total,
@@ -136,7 +147,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
     }
   };
 
-  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && !yaCerroPorHora;
+  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
   const filteredCountries = COUNTRIES.filter(c => c.name.toLowerCase().includes(searchCountry.toLowerCase()) || c.prefix.includes(searchCountry));
 
   const formatTimeStr = (timeStr: string) => {
@@ -152,18 +163,17 @@ export default function ReservaClient({ userData }: { userData: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className={`lg:col-span-2 bg-white p-8 md:p-12 rounded-[2.5rem] border transition-all ${!estaRealmenteAbierto ? "opacity-60 grayscale pointer-events-none" : "border-gray-100 shadow-sm"}`}>
           
-          {/* BANNERS DE ESTADO */}
           {!tiendaAbiertaBD || cierreTemporal ? (
             <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl mb-6 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
               <AlertCircle size={14} /> LA TIENDA ESTÁ CERRADA TEMPORALMENTE.
             </div>
-          ) : yaCerroPorHora ? (
+          ) : yaCerroPorHora && formData.fechaEntrega === fechaHoyBolivia ? (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl mb-6 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
-              <Clock size={14} /> TIENDA CERRADA POR HOY.
+              <Clock size={14} /> TIENDA CERRADA POR HOY. PUEDES AGENDAR PARA MAÑANA.
             </div>
           ) : (
             <div className="bg-green-50 border border-green-100 text-green-700 px-4 py-3 rounded-2xl mb-6 text-center text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-              <Check size={14} /> TIENDA ABIERTA • ATENDEMOS HOY HASTA LAS {formatTimeStr(horario.max)}
+              <Check size={14} /> TIENDA ABIERTA • RECOJOS HASTA LAS {formatTimeStr(horario.max)}
             </div>
           )}
 
@@ -248,27 +258,51 @@ export default function ReservaClient({ userData }: { userData: any }) {
               </div>
             </div>
 
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2"><Clock size={12}/> Hora de Recojo Estimada (Hoy)</label>
-              <input 
-                type="time" required 
-                min={minTimeValid} max={horario.max} 
-                value={formData.horaRecojo}
-                onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})} 
-                className="w-full p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
-              />
-              
-              <div className="flex flex-col gap-1.5 mt-2">
-                <p className="text-[11px] text-[#C5A059] font-black italic flex items-center gap-2 uppercase tracking-tighter">
-                   <Clock size={13} className="animate-pulse" />
-                   Necesitamos por lo menos {minutosPrep + 2} minutos para realizar tu pedido.
-                </p>
-                <p className="text-[10px] text-gray-400 font-medium ml-5 uppercase">
-                  {estaRealmenteAbierto 
-                    ? `* Recojo disponible hoy: de ${formatTimeStr(minTimeValid)} a ${formatTimeStr(horario.max)}.`
-                    : "TIENDA CERRADA POR HOY."}
-                </p>
+            {/* SECCIÓN DE FECHA Y HORA */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                  <Calendar size={12}/> Fecha de Recojo
+                </label>
+                <div className="relative">
+                  <input 
+                    type="date" required 
+                    min={fechaHoyBolivia} // BLOQUEA FECHAS ANTERIORES
+                    value={formData.fechaEntrega}
+                    onChange={(e) => setFormData({...formData, fechaEntrega: e.target.value})} 
+                    className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
+                  />
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Calendar size={18} /></div>
+                </div>
               </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
+                  <Clock size={12}/> Hora Estimada
+                </label>
+                <div className="relative">
+                  <input 
+                    type="time" required 
+                    min={minTimeValid} max={horario.max} 
+                    value={formData.horaRecojo}
+                    onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})} 
+                    className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
+                  />
+                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Clock size={18} /></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5 mt-2">
+              <p className="text-[11px] text-[#C5A059] font-black italic flex items-center gap-2 uppercase tracking-tighter">
+                  <Clock size={13} className="animate-pulse" />
+                  Necesitamos por lo menos {minutosPrep + 2} minutos para realizar tu pedido.
+              </p>
+              <p className="text-[10px] text-gray-400 font-medium ml-5 uppercase">
+                {estaRealmenteAbierto 
+                  ? `* Recojo disponible para el ${formData.fechaEntrega === fechaHoyBolivia ? 'día de hoy' : formData.fechaEntrega}: de ${formatTimeStr(minTimeValid)} a ${formatTimeStr(horario.max)}.`
+                  : "LA TIENDA SE ENCUENTRA CERRADA."}
+              </p>
             </div>
 
             <button 
@@ -306,8 +340,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
             ))}
           </div>
           <div className="border-t border-gray-200/50 pt-6 flex justify-between items-center font-bold">
-             <span className="font-serif italic text-2xl text-gris">Total Final</span>
-             <span className="text-2xl font-bold text-[#C5A059]">Bs {total}</span>
+              <span className="font-serif italic text-2xl text-gris">Total Final</span>
+              <span className="text-2xl font-bold text-[#C5A059]">Bs {total}</span>
           </div>
         </div>
       </div>
