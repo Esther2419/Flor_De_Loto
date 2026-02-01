@@ -9,7 +9,6 @@ import BrandValues from "@/components/BrandValues";
 import LocationSection from "@/components/LocationSection"; 
 import NuestrosRamos from "@/components/NuestrosRamos";
 import NuestrasFlores from "@/components/NuestrasFlores";
-// 1. IMPORTAMOS TU COMPONENTE
 import NuestroTrabajo from "@/components/NuestroTrabajo"; 
 
 export const dynamic = 'force-dynamic';
@@ -52,6 +51,15 @@ export default async function HomePage() {
 
   const ramosRaw = await prisma.ramos.findMany({
     orderBy: { fecha_creacion: 'desc' },
+    // CORRECCIÓN: Incluimos las relaciones para obtener flores y colores
+    include: {
+      ramo_detalle: {
+        include: { flores: { select: { nombre: true, color: true } } }
+      },
+      ramo_envolturas: {
+        include: { envolturas: { select: { color: true } } }
+      }
+    }
   });
 
   const ramos = ramosRaw.map(r => ({
@@ -61,7 +69,13 @@ export default async function HomePage() {
     es_oferta: r.es_oferta || false,
     precio_oferta: r.precio_oferta ? Number(r.precio_oferta) : null,
     foto_principal: r.foto_principal,
-    activo: r.activo ?? true
+    activo: r.activo ?? true,
+    categoria_id: r.categoria_id ? r.categoria_id.toString() : "",
+    flores_nombres: r.ramo_detalle.map(d => d.flores.nombre),
+    colores: Array.from(new Set([
+      ...r.ramo_detalle.map(d => d.flores.color),
+      ...r.ramo_envolturas.map(e => e.envolturas.color)
+    ].filter((c): c is string => Boolean(c))))
   }));
 
   return (
@@ -73,7 +87,9 @@ export default async function HomePage() {
         <CategoryExplorer categories={categorias} />
       </div>
 
-      <NuestrosRamos ramos={ramos} />
+      {/* CORRECCIÓN: Pasamos ramos y categorias al componente */}
+      <NuestrosRamos ramos={ramos} categorias={categorias} />
+      
       <NuestrasFlores flores={flores} />
       
       {/* 2. INSERTAMOS LA GALERÍA AQUÍ */}
@@ -120,7 +136,6 @@ export default async function HomePage() {
             <ul className="space-y-1 md:space-y-2 text-[9px] md:text-sm text-white/70 mb-4 md:mb-8">
               <li><Link href="/#categorias" className="hover:text-[#C5A059] transition-colors">Categorías</Link></li>
               <li><Link href="/#ramos" className="hover:text-[#C5A059] transition-colors">Nuestros Ramos</Link></li>
-              {/* Añadimos el link directo a tu nueva sección */}
               <li><Link href="/#trabajo" className="hover:text-[#C5A059] transition-colors">Nuestro Trabajo</Link></li>
               <li><Link href="/#encuentranos" className="hover:text-[#C5A059] transition-colors">Ubicación</Link></li>
               <li>
@@ -134,10 +149,6 @@ export default async function HomePage() {
                 </a>
               </li>
             </ul>
-            
-            <div className="flex justify-start gap-2 md:gap-4">
-               {/* Tus redes sociales */}
-            </div>
           </div>
         </div>
 
