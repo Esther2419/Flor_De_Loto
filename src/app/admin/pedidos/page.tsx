@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
-import { Flower2 } from "lucide-react";
+import { Flower2, Calendar, Clock, ArrowDownUp, ListFilter } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,16 +37,91 @@ const COUNTRIES = [
   { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
-export default async function AdminPedidosPage() {
+export default async function AdminPedidosPage({ searchParams }: { searchParams: { filter?: string, sort?: string } }) {
+  const filter = searchParams.filter || 'all';
+  const sort = searchParams.sort || 'recent';
+
+  // Lógica para filtrar por fecha (Hoy en Bolivia)
+  let whereClause: any = {};
+  
+  if (filter === 'today') {
+    const now = new Date();
+    // Obtener fecha actual en zona horaria de Bolivia
+    const boliviaTimeStr = now.toLocaleString("en-US", { timeZone: "America/La_Paz" });
+    const boliviaDate = new Date(boliviaTimeStr);
+    
+    const yyyy = boliviaDate.getFullYear();
+    const mm = String(boliviaDate.getMonth() + 1).padStart(2, '0');
+    const dd = String(boliviaDate.getDate()).padStart(2, '0');
+    
+    // Construir rango UTC correspondiente al día en Bolivia (UTC-4)
+    const startIso = `${yyyy}-${mm}-${dd}T00:00:00.000-04:00`;
+    const endIso = `${yyyy}-${mm}-${dd}T23:59:59.999-04:00`;
+    
+    whereClause.fecha_entrega = {
+      gte: new Date(startIso),
+      lte: new Date(endIso)
+    };
+  }
+
+  // Lógica de ordenamiento
+  let orderByClause: any = { fecha_pedido: 'desc' };
+  
+  if (sort === 'delivery_asc') {
+    orderByClause = { fecha_entrega: 'asc' };
+  } else if (sort === 'delivery_desc') {
+    orderByClause = { fecha_entrega: 'desc' };
+  } else if (sort === 'recent') {
+    orderByClause = { fecha_pedido: 'desc' };
+  }
+
   const pedidos = await prisma.pedidos.findMany({
-    orderBy: { fecha_pedido: 'desc' },
+    where: whereClause,
+    orderBy: orderByClause,
   });
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-10">
-      <div>
-        <h2 className="text-3xl font-serif italic text-gray-800">Panel de Pedidos</h2>
-        <p className="text-sm text-gray-500">Gestión simplificada de pedidos.</p>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-4">
+        <div>
+          <h2 className="text-3xl font-serif italic text-gray-800">Panel de Pedidos</h2>
+          <p className="text-sm text-gray-500">Gestión simplificada de pedidos.</p>
+        </div>
+        
+        {/* Barra de Herramientas de Filtro y Orden */}
+        <div className="flex flex-wrap gap-3">
+          {/* Filtro de Fecha */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+            <Link 
+              href={`?filter=all&sort=${sort}`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <ListFilter size={14} /> Todos
+            </Link>
+            <Link 
+              href={`?filter=today&sort=${sort}`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'today' ? 'bg-[#C5A059] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <Calendar size={14} /> Para Hoy
+            </Link>
+          </div>
+
+          {/* Ordenamiento */}
+          <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+            <Link 
+              href={`?filter=${filter}&sort=recent`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sort === 'recent' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <ArrowDownUp size={14} /> Recientes
+            </Link>
+            <Link 
+              href={`?filter=${filter}&sort=delivery_asc`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${sort === 'delivery_asc' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <Clock size={14} /> Próxima Entrega
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -91,7 +166,7 @@ export default async function AdminPedidosPage() {
             <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entrega:</p>
                 <p className="text-xs text-gray-700 font-medium">
-                {format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
+                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
                 </p>
             </div>
 
@@ -109,7 +184,12 @@ export default async function AdminPedidosPage() {
             <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
               <Flower2 className="text-gray-200" size={40} />
             </div>
-            <p className="text-gray-400 font-serif italic text-xl">No hay pedidos registrados.</p>
+              <p className="text-gray-400 font-serif italic text-xl">No se encontraron pedidos con estos filtros.</p>
+              {(filter !== 'all' || sort !== 'recent') && (
+                <Link href="?filter=all&sort=recent" className="inline-block mt-4 text-xs font-bold text-[#C5A059] uppercase tracking-widest hover:underline">
+                  Limpiar filtros
+                </Link>
+              )}
           </div>
         )}
       </div>

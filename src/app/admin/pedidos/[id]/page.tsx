@@ -42,7 +42,6 @@ const COUNTRIES = [
 export default async function PedidoDetallePage({ params }: { params: { id: string } }) {
   const { id } = params;
 
-  // 1. Buscar el pedido por ID
   const pedido = await prisma.pedidos.findUnique({
     where: { id: BigInt(id) },
     include: {
@@ -61,7 +60,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
     notFound();
   }
 
-  // Obtener catálogos para mapear IDs de personalización
   const [flores, envolturas] = await Promise.all([
     prisma.flores.findMany(),
     prisma.envolturas.findMany()
@@ -80,7 +78,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
       </div>
 
       <div className="bg-white rounded-[2rem] border border-gray-100 shadow-sm overflow-hidden">
-        {/* Cabecera del Pedido */}
         <div className="bg-gray-50/50 px-8 py-6 border-b border-gray-100 flex flex-col md:flex-row justify-between gap-4">
           <div>
             <div className="flex items-center gap-3">
@@ -110,13 +107,12 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
              </div>
              <div className="flex items-center justify-end gap-2 text-[10px] mt-2">
                 <span className="font-black text-gray-400 uppercase tracking-tighter">Entrega:</span>
-                <span className="font-bold text-rose-600">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
+                <span className="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
              </div>
           </div>
         </div>
 
         <div className="p-8 space-y-6">
-          {/* Sección: Detalles de Productos */}
           <div className="space-y-4">
             <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] flex items-center gap-2">
               <Package size={14} /> Artículos del Pedido
@@ -127,6 +123,9 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               const nombreProducto = producto?.nombre || "Producto desconocido";
               const fotoProducto = detalle.ramos?.foto_principal || detalle.flores?.foto || detalle.envolturas?.foto;
               
+              // ENLACE AL DETALLE DEL RAMO
+              const productLink = detalle.ramos ? `/admin/ramo/${detalle.ramos.id.toString()}?pedidoId=${pedido.id.toString()}` : null;
+
               const infoPersonalizacion = detalle.personalizacion as any;
               
               let floresExtras: { nombre: string, cantidad: number, foto: string | null }[] = [];
@@ -161,16 +160,33 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
                 <div key={detalle.id.toString()} className="border border-gray-50 rounded-2xl p-4 bg-white">
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-xl bg-gray-50 relative overflow-hidden border border-gray-100">
+                      <div className="w-16 h-16 rounded-xl bg-gray-50 relative overflow-hidden border border-gray-100 group">
                         {fotoProducto ? (
-                          <Image src={fotoProducto} alt={nombreProducto} fill className="object-cover" />
+                          productLink ? (
+                            <Link href={productLink} className="block w-full h-full cursor-pointer">
+                              <Image src={fotoProducto} alt={nombreProducto} fill className="object-cover transition-transform group-hover:scale-110" />
+                            </Link>
+                          ) : (
+                            <Image src={fotoProducto} alt={nombreProducto} fill className="object-cover" />
+                          )
                         ) : (
                           <div className="flex items-center justify-center h-full text-gray-300"><Package size={24} /></div>
                         )}
                       </div>
                       <div>
-                        <p className="font-serif italic text-lg text-gray-800">{nombreProducto}</p>
+                        {productLink ? (
+                          <Link href={productLink} className="hover:text-[#C5A059] transition-colors group">
+                            <p className="font-serif italic text-lg text-gray-800 group-hover:underline decoration-[#C5A059]/50 underline-offset-4">{nombreProducto}</p>
+                          </Link>
+                        ) : (
+                          <p className="font-serif italic text-lg text-gray-800">{nombreProducto}</p>
+                        )}
                         <p className="text-xs text-gray-400">Cantidad: {detalle.cantidad} unidad(es)</p>
+                        {productLink && (
+                          <Link href={productLink} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-[#C5A059]/10 text-[#C5A059] rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-[#C5A059]/20 transition-colors">
+                            <Flower2 size={12} /> Ver Composición
+                          </Link>
+                        )}
                       </div>
                     </div>
                     <span className="font-bold text-[#C5A059]">Bs {Number(detalle.subtotal).toFixed(2)}</span>
@@ -237,7 +253,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
             })}
           </div>
 
-          {/* Información del Receptor */}
           <div className="bg-[#C5A059]/5 border border-[#C5A059]/10 rounded-2xl p-4 flex items-start gap-4">
             <div className="bg-white p-2 rounded-lg shadow-sm text-[#C5A059]">
               <Info size={20} />
@@ -251,7 +266,6 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
           </div>
         </div>
 
-        {/* Pie con Total */}
         <div className="bg-gray-900 px-8 py-5 flex justify-between items-center text-white">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Total a cobrar</span>
           <div className="flex items-baseline gap-2">
