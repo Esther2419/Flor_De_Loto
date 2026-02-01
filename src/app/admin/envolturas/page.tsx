@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import Link from "next/image";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase"; 
 import { getSession } from "next-auth/react";
 import { createEnvoltura, getEnvolturas, deleteEnvoltura, updateEnvoltura } from "./actions";
-import { Gift, Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon } from "lucide-react";
+import { Gift, Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
 import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
@@ -100,16 +100,14 @@ const getColorStyle = (nombreColor: string | null) => {
 
 export default function EnvolturasAdminPage() {
   const [activeTab, setActiveTab] = useState<"ver" | "crear" | "editar">("ver");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [envolturas, setEnvolturas] = useState<Envoltura[]>([]);
   const [selectedEnvoltura, setSelectedEnvoltura] = useState<Envoltura | null>(null);
   const [currentUser, setCurrentUser] = useState("");
 
-  // REFERENCIAS INPUTS
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // ESTADOS RECORTE
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -206,7 +204,6 @@ export default function EnvolturasAdminPage() {
       ? await updateEnvoltura(formData.id, formData, currentUser)
       : await createEnvoltura(formData, currentUser);
     if (res.success) {
-      alert(activeTab === "editar" ? "¡Envoltura actualizada!" : "¡Envoltura registrada!");
       resetForm(); setActiveTab("ver"); loadEnvolturas();
     } else alert(res.error);
     setLoading(false);
@@ -233,7 +230,7 @@ export default function EnvolturasAdminPage() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-
+      
       {/* MODAL CROP */}
       {imageToCrop && (
         <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-4 backdrop-blur-md">
@@ -266,9 +263,8 @@ export default function EnvolturasAdminPage() {
       </div>
 
       {(activeTab === "crear" || activeTab === "editar") && (
-        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm">
+        <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm animate-in slide-in-from-bottom-3">
             <form onSubmit={handleSubmit} className="max-w-2xl mx-auto space-y-6">
-                
                 {/* SECCIÓN FOTO DUAL */}
                 <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-200 rounded-3xl p-8 bg-gray-50 overflow-hidden relative min-h-[250px]">
                     {uploading ? (
@@ -340,7 +336,8 @@ export default function EnvolturasAdminPage() {
                   </div>
                 </div>
 
-                <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-2xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-xl">
+                <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-4 rounded-2xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-xl flex items-center justify-center gap-3">
+                  {loading && <Loader2 className="animate-spin" size={20} />}
                   {loading ? "GUARDANDO..." : "GUARDAR CAMBIOS"}
                 </button>
             </form>
@@ -349,41 +346,66 @@ export default function EnvolturasAdminPage() {
 
       {activeTab === "ver" && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 animate-in fade-in">
-            {envolturas.map((env) => (
-                <div key={env.id} onClick={() => setSelectedEnvoltura(env)} className={`bg-white border rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all relative cursor-pointer ${!env.disponible ? 'opacity-70 grayscale' : 'border-gray-100'}`}>
-                    <div className="relative h-48 bg-gray-50">
-                        {env.foto ? <Image src={env.foto} alt={env.nombre} fill className="object-cover" unoptimized /> : <div className="flex items-center justify-center h-full text-3xl">🎁</div>}
-                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase">Stock: {env.cantidad}</div>
+            {loading ? (
+              // --- SKELETON LOADER PARA ENVOLTURAS ---
+              Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="bg-white border border-gray-100 rounded-3xl overflow-hidden shadow-sm animate-pulse">
+                  <div className="h-48 bg-gray-200" />
+                  <div className="p-4 space-y-3">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mx-auto" />
+                    <div className="h-3 bg-gray-100 rounded w-1/2 mx-auto" />
+                    <div className="flex justify-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-gray-200" />
+                      <div className="h-2 bg-gray-50 rounded w-1/3" />
+                    </div>
+                  </div>
+                </div>
+              ))
+            ) : (
+              // --- CONTENIDO REAL ---
+              envolturas.map((env) => (
+                <div key={env.id} onClick={() => setSelectedEnvoltura(env)} className={`bg-white border rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all relative cursor-pointer group ${!env.disponible ? 'opacity-70 grayscale' : 'border-gray-100 hover:border-[#C5A059]/30'}`}>
+                    <div className="relative h-48 bg-gray-50 overflow-hidden">
+                        {env.foto ? (
+                          <Image src={env.foto} alt={env.nombre} fill className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized />
+                        ) : (
+                          <div className="flex items-center justify-center h-full text-3xl">🎁</div>
+                        )}
+                        <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase shadow-sm">
+                          Stock: {env.cantidad}
+                        </div>
                     </div>
                     <div className="p-4 text-center">
                         <h3 className="font-serif font-bold text-gray-800 truncate">{env.nombre}</h3>
                         <p className="text-[#C5A059] font-bold text-xs">{env.precio_unitario} Bs</p>
                         <div className="flex justify-center items-center gap-2 mt-2">
-                             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getColorStyle(env.color) }}></div>
+                             <div className="w-3 h-3 rounded-full border border-gray-100" style={{ backgroundColor: getColorStyle(env.color) }}></div>
                              <span className="text-[9px] text-gray-400 uppercase font-bold tracking-tighter">{env.color || 'Sin color'}</span>
                         </div>
                     </div>
                 </div>
-            ))}
+              ))
+            )}
         </div>
       )}
 
+      {/* MODAL DETALLE (Igual que antes pero optimizado) */}
       {selectedEnvoltura && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in" onClick={() => setSelectedEnvoltura(null)}>
           <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden relative animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
-            <button onClick={() => setSelectedEnvoltura(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-2"><X size={20}/></button>
+            <button onClick={() => setSelectedEnvoltura(null)} className="absolute top-4 right-4 z-10 bg-black/20 text-white rounded-full p-2 hover:bg-black/40 transition-colors"><X size={20}/></button>
             <div className="relative h-64 bg-gray-100">{selectedEnvoltura.foto && <Image src={selectedEnvoltura.foto} alt="P" fill className="object-cover" unoptimized />}</div>
             <div className="p-8">
               <div className="flex justify-between items-start mb-4"><h3 className="font-serif text-2xl text-[#0A0A0A] leading-tight">{selectedEnvoltura.nombre}</h3><span className="text-[#C5A059] font-bold text-xl">Bs {selectedEnvoltura.precio_unitario}</span></div>
               <div className="space-y-4 mb-8">
                 <div className="flex flex-wrap gap-3 text-[10px] font-bold uppercase tracking-widest text-gray-400">
-                  <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">Color: <div className="w-2 h-2 rounded-full" style={{backgroundColor: getColorStyle(selectedEnvoltura.color)}}></div> {selectedEnvoltura.color}</span>
+                  <span className="bg-gray-100 px-3 py-1 rounded-full flex items-center gap-1">Color: <div className="w-2 h-2 rounded-full border border-gray-300" style={{backgroundColor: getColorStyle(selectedEnvoltura.color)}}></div> {selectedEnvoltura.color}</span>
                   <span className="bg-gray-100 px-3 py-1 rounded-full">Diseño: {selectedEnvoltura.diseno || "Liso"}</span>
                   <span className="bg-gray-100 px-3 py-1 rounded-full">Stock: {selectedEnvoltura.cantidad}</span>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
-                <button onClick={() => handleEditClick(selectedEnvoltura)} className="bg-[#0A0A0A] text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-all flex items-center justify-center gap-2"><span>✏️</span> Editar</button>
+                <button onClick={() => handleEditClick(selectedEnvoltura)} className="bg-[#0A0A0A] text-white py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-[#C5A059] transition-all flex items-center justify-center gap-2 shadow-lg"><span>✏️</span> Editar</button>
                 <button onClick={() => handleDelete(selectedEnvoltura.id)} className="bg-red-50 text-red-500 border border-red-100 py-4 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2"><span>🗑️</span> Eliminar</button>
               </div>
             </div>

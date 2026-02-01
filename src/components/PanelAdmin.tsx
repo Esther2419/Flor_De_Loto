@@ -20,7 +20,8 @@ import {
   ClipboardList,
   Menu,
   X,
-  Users // Icono para la gestión de personal
+  Users,           // Icono para gestión de personal
+  Image as ImageIcon // Icono para la galería
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -35,11 +36,10 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- LÓGICA DE PERMISOS CORREGIDA ---
-  // Normalizamos el rol a minúsculas para que 'Admin' o 'AdminMenor' funcionen igual
+  // --- LÓGICA DE PERMISOS UNIFICADA ---
   const rolUsuario = session?.user?.rol?.toLowerCase();
-  const isSuperAdmin = rolUsuario === "admin"; // Solo tú (Admin principal)
-  const hasAdminAccess = rolUsuario === "admin" || rolUsuario === "adminmenor"; // Ambos
+  const isSuperAdmin = rolUsuario === "admin";
+  const hasAdminAccess = rolUsuario === "admin" || rolUsuario === "adminmenor";
 
   useEffect(() => {
     const errorParam = searchParams.get("error");
@@ -77,7 +77,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     }
   };
 
-  // 1. Pantalla de Carga
   if (status === "loading") {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-[#C5A059] gap-4">
@@ -87,7 +86,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
-  // 2. Pantalla de Login (Si no hay sesión)
   if (!session) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 relative overflow-hidden">
@@ -160,7 +158,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
-  // 3. BLOQUEO DE SEGURIDAD (Si no es Admin ni AdminMenor)
   if (session && !hasAdminAccess) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
@@ -181,7 +178,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
-  // 4. Configuración del Menú (Opciones Generales)
+  // --- CONFIGURACIÓN DEL MENÚ CON GALERÍA ---
   const menuItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
@@ -189,6 +186,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     { name: "Flores", href: "/admin/flores", icon: Flower2 },
     { name: "Categorías", href: "/admin/categorias", icon: Layers },
     { name: "Envolturas", href: "/admin/envolturas", icon: Gift },
+    { name: "Nuestro Trabajo", href: "/admin/galeria", icon: ImageIcon },
   ];
 
   return (
@@ -238,7 +236,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             );
           })}
 
-          {/* OPCIÓN: Gestionar Personal (SOLO VISIBLE PARA EL ADMIN PRINCIPAL) */}
+          {/* GESTIÓN DE PERSONAL (SÓLO SUPER ADMIN) */}
           {isSuperAdmin && (
             <div className="pt-4 mt-4 border-t border-white/5">
               <p className="px-4 mb-2 text-[9px] font-black text-gray-500 uppercase tracking-widest">Ajustes de Sistema</p>
@@ -262,7 +260,10 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
-              <p className="text-[10px] text-[#C5A059] font-bold uppercase tracking-wider">{session.user?.rol || "admin"}</p>
+              {/* Uso estandarizado de ROL */}
+              <p className="text-[10px] text-[#C5A059] font-bold uppercase tracking-wider">
+                {session.user?.rol?.toLowerCase() || "admin"}
+              </p>
             </div>
           </div>
         </div>

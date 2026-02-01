@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { createCategoria, getCategorias, deleteCategoria, updateCategoria } from "./actions";
-import { Layers, Plus, FolderTree, Camera, ImageIcon, Check, X, ZoomIn, Trash2 } from "lucide-react";
+import { Layers, Plus, FolderTree, Camera, ImageIcon, Check, X, ZoomIn, Trash2, Loader2 } from "lucide-react";
 import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
@@ -20,7 +20,6 @@ type Categoria = {
   categorias?: { nombre: string };
 };
 
-// --- UTILIDADES DE IMAGEN ---
 const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<File> => {
   const image = await new Promise<HTMLImageElement>((resolve) => {
     const img = new window.Image();
@@ -41,16 +40,14 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<File> =>
 
 export default function CategoriasAdminPage() {
   const [activeTab, setActiveTab] = useState<"ver" | "crear" | "editar">("ver");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   
-  // REFERENCIAS INPUTS
   const iconFileRef = useRef<HTMLInputElement>(null);
   const iconCamRef = useRef<HTMLInputElement>(null);
   const coverFileRef = useRef<HTMLInputElement>(null);
   const coverCamRef = useRef<HTMLInputElement>(null);
 
-  // ESTADOS RECORTE
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -208,7 +205,6 @@ export default function CategoriasAdminPage() {
 
             <form onSubmit={handleSubmit} className="max-w-3xl mx-auto space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  {/* ICONO CIRCULAR CON BORRADO VISIBLE */}
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest">Icono Circular (1:1)</span>
                     <div className="relative w-32 h-32 md:w-40 md:h-40 rounded-full border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden shadow-inner">
@@ -240,7 +236,6 @@ export default function CategoriasAdminPage() {
                     </div>
                   </div>
 
-                  {/* PORTADA */}
                   <div className="flex flex-col items-center">
                     <span className="text-[10px] font-bold uppercase text-gray-400 mb-3 tracking-widest">Portada Horizontal (16:9)</span>
                     <div className="relative w-full h-32 md:h-40 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center overflow-hidden group">
@@ -287,19 +282,36 @@ export default function CategoriasAdminPage() {
                   </div>
                 </div>
 
-                <button disabled={loading || uploadingFoto || uploadingPortada} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-5 rounded-2xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-xl">
+                <button disabled={loading || uploadingFoto || uploadingPortada} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-5 rounded-2xl font-bold tracking-[0.2em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-xl flex items-center justify-center gap-3">
+                  {loading && <Loader2 className="animate-spin" size={18} />}
                   {loading ? "GUARDANDO..." : "CONFIRMAR"}
                 </button>
             </form>
         </div>
       )}
 
-      {/* VISTA LISTA CON DESCRIPCIÓN COMPLETA (Arreglada) */}
+      {/* VISTA LISTA CON SKELETON LOADING */}
       {activeTab === "ver" && (
-        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden min-h-[400px]">
             <div className="divide-y divide-gray-50">
-                {categorias.map((cat) => (
-                    <div key={cat.id} className="grid grid-cols-12 gap-3 items-start p-4 md:px-6 hover:bg-gray-50 transition-colors">
+                {loading ? (
+                  // --- SKELETON LOADER ---
+                  Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="grid grid-cols-12 gap-3 items-start p-4 md:px-6 animate-pulse">
+                      <div className="col-span-3 md:col-span-1 pt-1">
+                        <div className="w-12 h-12 md:w-10 md:h-10 rounded-full bg-gray-200" />
+                      </div>
+                      <div className="col-span-9 md:col-span-9 pr-2 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-1/3" />
+                        <div className="h-3 bg-gray-100 rounded w-1/4" />
+                        <div className="h-3 bg-gray-50 rounded w-full" />
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  // --- CONTENIDO REAL ---
+                  categorias.map((cat) => (
+                    <div key={cat.id} className="grid grid-cols-12 gap-3 items-start p-4 md:px-6 hover:bg-gray-50 transition-colors group">
                         <div className="col-span-3 md:col-span-1 pt-1">
                             <div className="relative w-12 h-12 md:w-10 md:h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-200 aspect-square">
                                 {cat.foto ? <Image src={cat.foto} alt="" fill className="object-cover" unoptimized /> : <Layers className="m-auto text-gray-300 w-5 h-5" />}
@@ -315,7 +327,6 @@ export default function CategoriasAdminPage() {
                                         <span className="text-[8px] bg-black text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-widest shrink-0">Principal</span>
                                     )}
                                 </div>
-                                {/* DESCRIPCIÓN COMPLETA CON AJUSTE DE LÍNEAS */}
                                 <p className="text-[11px] text-gray-500 leading-relaxed break-words whitespace-pre-wrap">
                                     {cat.descripcion || "Sin descripción establecida."}
                                 </p>
@@ -330,8 +341,14 @@ export default function CategoriasAdminPage() {
                             </button>
                         </div>
                     </div>
-                ))}
-                {categorias.length === 0 && <div className="p-20 text-center text-gray-400 font-serif italic uppercase text-[10px] tracking-widest">No hay categorías registradas.</div>}
+                  ))
+                )}
+                
+                {!loading && categorias.length === 0 && (
+                  <div className="p-20 text-center text-gray-400 font-serif italic uppercase text-[10px] tracking-widest">
+                    No hay categorías registradas.
+                  </div>
+                )}
             </div>
         </div>
       )}
