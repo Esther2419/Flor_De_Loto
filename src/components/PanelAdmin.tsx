@@ -19,7 +19,8 @@ import {
   AlertCircle,
   ClipboardList,
   Menu,
-  X
+  X,
+  Users // Icono para la gestión de personal
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -34,11 +35,17 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // --- LÓGICA DE PERMISOS CORREGIDA ---
+  // Normalizamos el rol a minúsculas para que 'Admin' o 'AdminMenor' funcionen igual
+  const rolUsuario = session?.user?.rol?.toLowerCase();
+  const isSuperAdmin = rolUsuario === "admin"; // Solo tú (Admin principal)
+  const hasAdminAccess = rolUsuario === "admin" || rolUsuario === "adminmenor"; // Ambos
+
   useEffect(() => {
     const errorParam = searchParams.get("error");
     
     if (errorParam === "AccessDenied") {
-      setLoginError("Acceso Denegado: Esta cuenta no tiene permisos de administrador.");
+      setLoginError("Acceso Denegado: Esta cuenta no tiene permisos administrativos.");
       
       const timer = setTimeout(() => {
         setLoginError("");
@@ -92,7 +99,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
                <Image src="/LogoSinLetra.png" alt="Flor de Loto" fill className="object-contain" />
             </div>
             <h1 className="font-serif text-3xl text-[#C5A059] italic mb-2">Flor de Loto</h1>
-            <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel Admin</p>
+            <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel de Gestión</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -110,7 +117,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-black/40 border border-[#C5A059]/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] transition-all text-sm"
-                placeholder="Correo electrónico"
+                placeholder="Correo corporativo"
                 required
               />
             </div>
@@ -153,8 +160,8 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
-  // 3. BLOQUEO DE SEGURIDAD: Si hay sesión pero NO es ADMIN (Insensible a mayúsculas)
-  if (session && session.user.rol?.toLowerCase() !== "admin") {
+  // 3. BLOQUEO DE SEGURIDAD (Si no es Admin ni AdminMenor)
+  if (session && !hasAdminAccess) {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
         <div className="relative w-24 h-24 mb-6">
@@ -162,7 +169,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
         </div>
         <h2 className="text-[#C5A059] font-serif italic text-3xl mb-4">Acceso Denegado</h2>
         <p className="text-white/60 text-sm mb-8 max-w-xs mx-auto">
-          Esta cuenta no tiene permisos para acceder al panel administrativo de Flor de Loto.
+          Esta cuenta no tiene permisos administrativos para acceder a Flor de Loto.
         </p>
         <button 
           onClick={() => signOut({ callbackUrl: '/' })}
@@ -174,7 +181,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
-  // 4. Panel Administrativo (Si es ADMIN)
+  // 4. Configuración del Menú (Opciones Generales)
   const menuItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
@@ -230,6 +237,22 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
               </Link>
             );
           })}
+
+          {/* OPCIÓN: Gestionar Personal (SOLO VISIBLE PARA EL ADMIN PRINCIPAL) */}
+          {isSuperAdmin && (
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <p className="px-4 mb-2 text-[9px] font-black text-gray-500 uppercase tracking-widest">Ajustes de Sistema</p>
+              <Link
+                href="/admin/usuarios"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                  ${pathname === "/admin/usuarios" ? "bg-white text-black" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+              >
+                <Users size={18} />
+                Gestionar Personal
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-white/10 bg-black/20 mt-auto">
@@ -239,8 +262,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
-              {/* Mostramos el rol original pero en minúsculas para consistencia */}
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{session.user?.rol?.toLowerCase() || "admin"}</p>
+              <p className="text-[10px] text-[#C5A059] font-bold uppercase tracking-wider">{session.user?.rol || "admin"}</p>
             </div>
           </div>
         </div>
@@ -282,8 +304,12 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
         <main className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
              {children || (
-               <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center">
-                 <h2 className="text-2xl font-serif italic text-gray-400">Selecciona una opción del menú para comenzar</h2>
+               <div className="bg-white p-20 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
+                 <div className="bg-[#C5A059]/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-[#C5A059]">
+                    <LayoutDashboard size={40} />
+                 </div>
+                 <h2 className="text-3xl font-serif italic text-gray-800 mb-2">Bienvenido al Panel de Control</h2>
+                 <p className="text-gray-400 max-w-sm mx-auto">Selecciona una opción del menú lateral para gestionar las operaciones de Flor de Loto.</p>
                </div>
              )}
           </div>

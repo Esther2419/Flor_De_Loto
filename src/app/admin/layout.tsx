@@ -14,7 +14,11 @@ export default async function AdminLayout({
     redirect("/login");
   }
 
-  if (session.user.rol !== "Admin") {
+  const rolUsuario = session.user.rol?.toLowerCase();
+
+  const tienePermisoAdmin = rolUsuario === "admin" || rolUsuario === "adminmenor";
+
+  if (!tienePermisoAdmin) {
     redirect("/");
   }
 
