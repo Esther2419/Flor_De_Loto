@@ -102,8 +102,11 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               </span>
             </div>
             
-            {/* Botonera de Acciones */}
-            <BotoneraAdmin pedidoId={pedido.id.toString()} estadoActual={pedido.estado || 'pendiente'} />
+            <BotoneraAdmin 
+              pedido={pedido} 
+              pedidoId={pedido.id.toString()} 
+              estadoActual={pedido.estado || 'pendiente'} 
+            />
             
             <p className="text-xs text-gray-400 mt-4 font-medium">
               Solicitado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
