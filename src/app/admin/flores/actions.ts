@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 function serialize(data: any) {
@@ -47,6 +48,9 @@ export async function createFlor(formData: any, usuario: string) {
 
 export async function updateFlor(id: string, formData: any, usuario: string) {
   try {
+    // 1. Obtener datos anteriores para comparar la foto
+    const florAnterior = await prisma.flores.findUnique({ where: { id: BigInt(id) } });
+
     const cantidad = parseInt(formData.cantidad) || 0;
     const disponible = cantidad === 0 ? false : formData.disponible;
 
@@ -67,6 +71,13 @@ export async function updateFlor(id: string, formData: any, usuario: string) {
         fecha_actualizacion: fechaAjustada
       }
     });
+
+    // 3. Si la foto cambió y existía una anterior, borrarla del bucket
+    if (florAnterior?.foto && florAnterior.foto !== formData.foto) {
+      const fileName = florAnterior.foto.split('/').pop();
+      if (fileName) await supabase.storage.from('flores').remove([fileName]);
+    }
+
     revalidatePath('/admin/flores');
     return { success: true };
   } catch (error) {

@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 function serialize(data: any) {
@@ -50,6 +51,9 @@ export async function createEnvoltura(formData: any, usuario: string) {
 // --- ACTUALIZAR ---
 export async function updateEnvoltura(id: string, formData: any, usuario: string) {
   try {
+    // 1. Obtener datos anteriores
+    const envAnterior = await prisma.envolturas.findUnique({ where: { id: BigInt(id) } });
+
     const cantidad = parseInt(formData.cantidad) || 0;
     const disponible = cantidad === 0 ? false : formData.disponible;
 
@@ -70,6 +74,13 @@ export async function updateEnvoltura(id: string, formData: any, usuario: string
         fecha_actualizacion: fechaAjustada
       }
     });
+
+    // 3. Limpieza de imagen anterior
+    if (envAnterior?.foto && envAnterior.foto !== formData.foto) {
+      const fileName = envAnterior.foto.split('/').pop();
+      if (fileName) await supabase.storage.from('envolturas').remove([fileName]);
+    }
+
     revalidatePath('/admin/envolturas');
     return { success: true };
   } catch (error) {
