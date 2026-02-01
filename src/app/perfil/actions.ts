@@ -7,6 +7,7 @@ import { revalidatePath } from "next/cache";
 import { isValidNumber } from "libphonenumber-js";
 import bcrypt from "bcrypt";
 
+// Acción para actualizar datos personales
 export async function updateProfile(formData: FormData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) throw new Error("No autorizado");
@@ -38,6 +39,7 @@ export async function updateProfile(formData: FormData) {
   }
 }
 
+// Acción para actualizar la contraseña (La que faltaba)
 export async function updatePasswordAction(formData: FormData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { error: "No autorizado" };
@@ -52,14 +54,10 @@ export async function updatePasswordAction(formData: FormData) {
 
     if (!usuario) return { error: "Usuario no encontrado" };
 
-    // Si el usuario ya tiene contraseña, verificar la actual
+    // Si tiene contraseña (no es solo Google), verificar la actual
     if (usuario.password && usuario.password !== "") {
       const isMatch = await bcrypt.compare(currentPassword, usuario.password);
       if (!isMatch) return { error: "La contraseña actual es incorrecta" };
-    }
-
-    if (newPassword.length < 8) {
-      return { error: "La nueva contraseña debe tener al menos 8 caracteres" };
     }
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
@@ -71,7 +69,6 @@ export async function updatePasswordAction(formData: FormData) {
 
     return { success: "Contraseña actualizada correctamente" };
   } catch (error) {
-    console.error(error);
-    return { error: "Ocurrió un error al procesar la solicitud" };
+    return { error: "Error al procesar la solicitud" };
   }
 }
