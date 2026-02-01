@@ -154,7 +154,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   }
 
   // 3. BLOQUEO DE SEGURIDAD: Si hay sesión pero NO es ADMIN (Insensible a mayúsculas)
-  if (session && session.user.role?.toLowerCase() !== "admin") {
+  if (session && session.user.rol?.toLowerCase() !== "admin") {
     return (
       <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
         <div className="relative w-24 h-24 mb-6">
@@ -240,7 +240,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
               {/* Mostramos el rol original pero en minúsculas para consistencia */}
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{session.user?.role?.toLowerCase() || "admin"}</p>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{session.user?.rol?.toLowerCase() || "admin"}</p>
             </div>
           </div>
         </div>
