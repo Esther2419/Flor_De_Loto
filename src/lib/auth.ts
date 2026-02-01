@@ -29,7 +29,6 @@ export const authOptions: NextAuthOptions = {
         const passwordMatch = await bcrypt.compare(credentials.password, usuario.password);
         if (!passwordMatch) throw new Error("Contraseña incorrecta");
 
-        // IMPORTANTE: Retornamos 'rol' para que coincida con tu interfaz User
         return {
           id: usuario.id.toString(),
           name: usuario.nombre_completo,
@@ -53,7 +52,7 @@ export const authOptions: NextAuthOptions = {
               email: user.email,
               nombre_completo: user.name,
               rol: "cliente",
-              password: "", // Usuarios de Google no usan pass local
+              password: "", 
             }
           });
         }
@@ -61,7 +60,6 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, trigger, session }: any) {
-      // Maneja la actualización en tiempo real cuando editas el perfil
       if (trigger === "update" && session) {
         token.name = session.user.name;
         token.celular = session.user.celular;
@@ -69,26 +67,27 @@ export const authOptions: NextAuthOptions = {
 
       if (user) {
         token.id = user.id;
-        token.rol = user.rol; // Coincide con tu JWT interface
+        token.rol = user.rol;
         token.celular = user.celular;
-      } else if (token.email) {
-        // Refresca datos desde la DB si no vienen en el objeto user
+      } 
+      if (!token.rol && token.email) {
         const dbUser = await prisma.usuarios.findUnique({ 
           where: { email: token.email } 
         });
         if (dbUser) {
-          token.rol = dbUser.rol || "cliente";
           token.id = dbUser.id.toString();
+          token.rol = dbUser.rol || "cliente";
           token.celular = dbUser.celular;
           token.name = dbUser.nombre_completo;
         }
       }
+      
       return token;
     },
     async session({ session, token }: any) {
       if (session.user) {
         session.user.id = token.id;
-        session.user.rol = token.rol; // Coincide con tu Session interface
+        session.user.rol = token.rol;
         session.user.celular = token.celular;
       }
       return session;
@@ -97,6 +96,9 @@ export const authOptions: NextAuthOptions = {
   pages: {
     signIn: '/login',
     error: '/login',
+  },
+  session: {
+    strategy: "jwt",
   },
   secret: process.env.NEXTAUTH_SECRET,
 };
