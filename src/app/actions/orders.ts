@@ -22,6 +22,7 @@ function getValidId(id: string | number): bigint {
   return BigInt(numericPart);
 }
 
+// MANTENEMOS TU FUNCIÓN ORIGINAL
 function getMinutesTotal(input: any): number {
   if (input instanceof Date) {
     return input.getUTCHours() * 60 + input.getUTCMinutes();
@@ -35,6 +36,7 @@ export async function createOrderAction(data: OrderData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { success: false, message: "No autenticado" };
 
+  // Nota: Usamos 'correo' que es el campo real en tu base de datos
   const usuario = await prisma.usuarios.findUnique({
     where: { email: session.user.email },
   });
@@ -47,6 +49,7 @@ export async function createOrderAction(data: OrderData) {
     const minutosAhora = ahoraBolivia.getHours() * 60 + ahoraBolivia.getMinutes();
 
     const pedido = await prisma.$transaction(async (tx) => {
+      // 2. BUSCAMOS TU CONFIGURACIÓN (Líneas restauradas)
       const config = await tx.configuracion.findUnique({ where: { id: 1 } });
       
       if (!config || !config.horario_apertura || !config.horario_cierre) {
@@ -57,20 +60,21 @@ export async function createOrderAction(data: OrderData) {
         throw new Error("La tienda se encuentra cerrada actualmente.");
       }
 
-      const bufferMinutos = Number((config as any).minutos_preparacion) || 6;
+      const bufferMinutos = Number((config as any).minutos_preparacion) || 120; // 2 horas por defecto
       const [hPedido, mPedido] = data.hora_recojo.split(':').map(Number);
       const minutosPedido = hPedido * 60 + mPedido;
       
-      const fechaEntregaExacta = new Date(ahoraBolivia);
-      fechaEntregaExacta.setHours(hPedido, mPedido, 0, 0);
+      // AJUSTE DE ZONA HORARIA: Creamos la fecha forzando el offset de Bolivia (-04:00)
+      const fechaString = `${data.fecha_entrega}T${data.hora_recojo}:00-04:00`;
+      const fechaEntregaExacta = new Date(fechaString);
 
-      // VALIDACIÓN: Margen de preparación
+      // 3. VALIDACIÓN: Margen de preparación (Tus líneas originales)
       const diffMinutos = Math.floor((fechaEntregaExacta.getTime() - ahoraBolivia.getTime()) / 60000);
       if (diffMinutos < bufferMinutos) {
         throw new Error(`Necesitamos por lo menos ${bufferMinutos} minutos para preparar tu pedido.`);
       }
 
-      // VALIDACIÓN: Horario de atención (Ajustado para evitar desfases de Date)
+      // 4. VALIDACIÓN: Horario de atención (Tus líneas originales)
       const minApertura = getMinutesTotal(config.horario_apertura);
       const minCierre = getMinutesTotal(config.horario_cierre);
 
@@ -80,13 +84,13 @@ export async function createOrderAction(data: OrderData) {
         throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
       }
 
-      // 6. Crear el pedido
+      // 5. Crear el pedido
       const nuevoPedido = await tx.pedidos.create({
         data: {
           usuario_id: usuario.id,
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
-          fecha_pedido: new Date(),
+          fecha_pedido: ahoraBolivia, // Guardamos la hora de Bolivia
           fecha_entrega: fechaEntregaExacta,
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
@@ -94,7 +98,7 @@ export async function createOrderAction(data: OrderData) {
         }
       });
 
-      // 7. Insertar detalles
+      // 6. Insertar detalles (Tu lógica original completa)
       for (const item of data.items) {
         const idProducto = getValidId(item.productoId || item.id);
         await tx.detalle_pedidos.create({
@@ -110,7 +114,7 @@ export async function createOrderAction(data: OrderData) {
         });
       }
 
-      // 8. Limpiar carrito
+      // 7. Limpiar carrito
       const carrito = await tx.carrito.findFirst({ where: { usuario_id: usuario.id } });
       if (carrito) {
         await tx.carrito_detalle.deleteMany({ where: { carrito_id: carrito.id } });

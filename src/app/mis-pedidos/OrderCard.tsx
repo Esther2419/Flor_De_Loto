@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
+import { formatInTimeZone } from 'date-fns-tz';
 import { Package, Calendar, Clock, UserCheck, Eye, X, Palette, Flower2, MessageSquare } from "lucide-react";
 import Image from "next/image";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
 export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }: any) {
   const [showModal, setShowModal] = useState(false);
+  const zonaHoraria = 'America/La_Paz';
 
   // Helper para buscar datos completos de la FLOR
   const getFlorData = (id: string) => {
@@ -45,13 +47,15 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               <div className="flex items-center gap-2">
                 <Calendar size={14} />
                 <span className="text-xs font-medium">
-                  {format(new Date(pedido.fecha_entrega), "dd 'de' MMMM", { locale: es })}
+                  {/* Fecha formateada para Bolivia */}
+                  {formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "dd 'de' MMMM", { locale: es })}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={14} />
-                <span className="text-xs font-medium">
-                   Hora: {format(new Date(pedido.fecha_entrega), "hh:mm aa")}
+                <span className="text-xs font-medium uppercase">
+                   {/* FIX: Ahora mostrará 02:04 AM en lugar de 10:04 PM */}
+                   Hora: {formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "hh:mm aa")}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -111,15 +115,32 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
             </div>
 
             <div className="p-6 space-y-8">
+              {/* Información de entrega dentro del modal corregida también */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-50">
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="p-2 bg-gray-50 rounded-lg"><Calendar size={18} /></div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-gray-400">Fecha de Entrega</p>
+                    <p className="text-sm font-semibold">{formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "PPPP", { locale: es })}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 text-gray-600">
+                  <div className="p-2 bg-gray-50 rounded-lg"><Clock size={18} /></div>
+                  <div>
+                    <p className="text-[10px] uppercase font-bold text-gray-400">Hora de Recojo</p>
+                    <p className="text-sm font-semibold">{formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "hh:mm aa")}</p>
+                  </div>
+                </div>
+              </div>
+
               {pedido.detalle_pedidos.map((detalle: any, idx: number) => {
                 const producto = detalle.ramos || detalle.flores;
                 const nombre = producto?.nombre || "Producto";
-                // Mostrar color concatenado si es flor principal (ej: Rosa Roja)
                 const nombreCompleto = detalle.flores?.color 
                   ? `${nombre} ${detalle.flores.color}` 
                   : nombre;
                 
-                const foto = producto?.foto_principal || producto?.foto || detalle.ramos?.ramo_imagenes[0]?.url_foto;
+                const foto = producto?.foto_principal || producto?.foto || detalle.ramos?.ramo_imagenes?.[0]?.url_foto;
                 const pers = detalle.personalizacion as any;
 
                 return (
@@ -136,8 +157,7 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
 
                     {pers ? (
                       <div className="grid gap-3 sm:grid-cols-2">
-                        
-                        {/* Envolturas (CON FOTO) */}
+                        {/* Envolturas */}
                         {pers.envolturas && Object.keys(pers.envolturas).length > 0 && (
                           <div className="bg-white p-3 rounded-xl border border-gray-100">
                             <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 flex items-center gap-1">
@@ -159,7 +179,7 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                           </div>
                         )}
 
-                        {/* Flores Extra (CON FOTO Y NOMBRE CONCATENADO) */}
+                        {/* Flores Extra */}
                         {pers.floresExtra && Object.keys(pers.floresExtra).length > 0 && (
                           <div className="bg-white p-3 rounded-xl border border-gray-100">
                             <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 flex items-center gap-1">
@@ -168,9 +188,7 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                             <ul className="space-y-2">
                               {Object.keys(pers.floresExtra).map(id => {
                                 const { nombre, color, foto } = getFlorData(id);
-                                // Concatenar nombre + color
                                 const nombreExtra = color ? `${nombre} ${color}` : nombre;
-                                
                                 return (
                                   <li key={id} className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-lg border border-gray-100">
                                     <div className="w-6 h-6 relative rounded overflow-hidden border border-white shrink-0">
