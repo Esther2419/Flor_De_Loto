@@ -1,10 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { formatInTimeZone } from 'date-fns-tz';
-import { Package, Calendar, Clock, UserCheck, Eye, X, Palette, Flower2, MessageSquare } from "lucide-react";
+import { Package, Calendar, Clock, UserCheck, Eye, X, Palette, Flower2, MessageSquare, Ban } from "lucide-react";
 import Image from "next/image";
 import WhatsAppButton from "@/components/WhatsAppButton";
 
@@ -12,13 +11,15 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
   const [showModal, setShowModal] = useState(false);
   const zonaHoraria = 'America/La_Paz';
 
-  // Helper para buscar datos completos de la FLOR
+  // LÓGICA DE BLOQUEO DE WHATSAPP
+  const estadosBloqueados = ["aceptado", "terminado", "entregado", "rechazado"];
+  const estaBloqueado = estadosBloqueados.includes(pedido.estado || "");
+
   const getFlorData = (id: string) => {
     const flor = catalogoFlores.find((f: any) => f.id.toString() === id);
     return flor || { nombre: "Flor desconocida", color: null, foto: null };
   };
 
-  // Helper para buscar datos completos de la ENVOLTURA
   const getEnvolturaData = (id: string) => {
     const env = catalogoEnvolturas.find((e: any) => e.id.toString() === id);
     return env || { nombre: "Envoltura desconocida", foto: null };
@@ -26,7 +27,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
 
   return (
     <>
-      {/* TARJETA DEL PEDIDO */}
       <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow p-6 md:p-8">
         <div className="flex flex-col md:flex-row justify-between gap-6">
           <div className="space-y-4 flex-1">
@@ -36,8 +36,10 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               </span>
               <span className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${
                 pedido.estado === 'pendiente' ? 'bg-orange-50 text-orange-600 border-orange-100' : 
-                pedido.estado === 'completado' ? 'bg-green-50 text-green-600 border-green-100' :
-                'bg-gray-50 text-gray-600 border-gray-100'
+                pedido.estado === 'entregado' ? 'bg-green-50 text-green-600 border-green-100' :
+                pedido.estado === 'aceptado' ? 'bg-blue-50 text-blue-600 border-blue-100' :
+                pedido.estado === 'terminado' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                'bg-red-50 text-red-600 border-red-100'
               }`}>
                 {pedido.estado}
               </span>
@@ -47,15 +49,13 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               <div className="flex items-center gap-2">
                 <Calendar size={14} />
                 <span className="text-xs font-medium">
-                  {/* Fecha formateada para Bolivia */}
                   {formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "dd 'de' MMMM", { locale: es })}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <Clock size={14} />
                 <span className="text-xs font-medium uppercase">
-                   {/* FIX: Ahora mostrará 02:04 AM en lugar de 10:04 PM */}
-                   Hora: {formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "hh:mm aa")}
+                  Hora: {formatInTimeZone(new Date(pedido.fecha_entrega), zonaHoraria, "hh:mm aa")}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -65,6 +65,14 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                 </span>
               </div>
             </div>
+
+            {/* MOSTRAR MOTIVO DE RECHAZO SI EXISTE */}
+            {pedido.estado === 'rechazado' && pedido.motivo_rechazo && (
+              <div className="bg-red-50 p-3 rounded-xl border border-red-100 animate-pulse">
+                <p className="text-[9px] font-black text-red-700 uppercase mb-1">Motivo del rechazo:</p>
+                <p className="text-xs text-red-600 italic">"{pedido.motivo_rechazo}"</p>
+              </div>
+            )}
 
             <div className="pt-4 border-t border-gray-50">
               <p className="text-[10px] font-bold uppercase text-gray-300 tracking-widest mb-2">Resumen:</p>
@@ -93,7 +101,15 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               >
                 <Eye size={16} /> Ver Detalles Completos
               </button>
-              <WhatsAppButton pedido={pedido} />
+
+              {/* BOTÓN DE WHATSAPP CON LÓGICA DE BLOQUEO */}
+              {!estaBloqueado ? (
+                <WhatsAppButton pedido={pedido} />
+              ) : (
+                <div className="flex items-center justify-center gap-2 w-full bg-gray-100 text-gray-400 px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[9px] border border-gray-200 cursor-not-allowed">
+                  <Ban size={14} /> WhatsApp Deshabilitado
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -103,7 +119,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl flex flex-col">
-            
             <div className="p-6 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <div>
                 <h3 className="text-xl font-serif italic text-gray-800">Detalles del Pedido #{pedido.id.toString()}</h3>
@@ -115,7 +130,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
             </div>
 
             <div className="p-6 space-y-8">
-              {/* Información de entrega dentro del modal corregida también */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-4 border-b border-gray-50">
                 <div className="flex items-center gap-3 text-gray-600">
                   <div className="p-2 bg-gray-50 rounded-lg"><Calendar size={18} /></div>
@@ -136,10 +150,7 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               {pedido.detalle_pedidos.map((detalle: any, idx: number) => {
                 const producto = detalle.ramos || detalle.flores;
                 const nombre = producto?.nombre || "Producto";
-                const nombreCompleto = detalle.flores?.color 
-                  ? `${nombre} ${detalle.flores.color}` 
-                  : nombre;
-                
+                const nombreCompleto = detalle.flores?.color ? `${nombre} ${detalle.flores.color}` : nombre;
                 const foto = producto?.foto_principal || producto?.foto || detalle.ramos?.ramo_imagenes?.[0]?.url_foto;
                 const pers = detalle.personalizacion as any;
 
@@ -157,7 +168,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
 
                     {pers ? (
                       <div className="grid gap-3 sm:grid-cols-2">
-                        {/* Envolturas */}
                         {pers.envolturas && Object.keys(pers.envolturas).length > 0 && (
                           <div className="bg-white p-3 rounded-xl border border-gray-100">
                             <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 flex items-center gap-1">
@@ -179,7 +189,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                           </div>
                         )}
 
-                        {/* Flores Extra */}
                         {pers.floresExtra && Object.keys(pers.floresExtra).length > 0 && (
                           <div className="bg-white p-3 rounded-xl border border-gray-100">
                             <p className="text-[10px] uppercase font-bold text-gray-400 mb-2 flex items-center gap-1">
@@ -204,7 +213,6 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                           </div>
                         )}
 
-                        {/* Dedicatoria */}
                         {pers.dedicatoria && (
                           <div className="bg-yellow-50/50 p-3 rounded-xl border border-yellow-100 sm:col-span-2">
                              <p className="text-[10px] uppercase font-bold text-yellow-600 mb-2 flex items-center gap-1">

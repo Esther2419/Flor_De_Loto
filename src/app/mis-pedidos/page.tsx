@@ -6,6 +6,7 @@ import Navbar from "@/components/Navbar";
 import { ClipboardList, AlertCircle, Package } from "lucide-react";
 import Link from "next/link";
 import OrderCard from "./OrderCard";
+import ClientePedidosRealtime from "@/components/ClientePedidosRealtime";
 
 export default async function MisPedidosPage() {
   const session = await getServerSession(authOptions);
@@ -14,6 +15,7 @@ export default async function MisPedidosPage() {
     redirect("/login?callbackUrl=/mis-pedidos");
   }
 
+  // Obtenemos los pedidos incluyendo el ID del usuario para el Realtime
   const pedidos = await prisma.pedidos.findMany({
     where: {
       usuarios: { email: session.user?.email! }
@@ -34,9 +36,15 @@ export default async function MisPedidosPage() {
     prisma.envolturas.findMany({ select: { id: true, nombre: true, foto: true } })
   ]);
 
+  // ID del usuario para la suscripción de Supabase
+  const usuarioId = session.user?.id;
+
   return (
     <div className="min-h-screen bg-crema">
       <Navbar />
+      {/* Activamos el tiempo real */}
+      {usuarioId && <ClientePedidosRealtime usuarioId={usuarioId} />}
+      
       <main className="max-w-5xl mx-auto pt-32 pb-20 px-4 animate-in fade-in duration-700">
         <div className="mb-10">
           <h1 className="font-serif italic text-4xl text-gris flex items-center gap-4">
@@ -49,7 +57,7 @@ export default async function MisPedidosPage() {
         <div className="bg-[#C5A059]/10 border border-[#C5A059]/20 p-5 rounded-[1.5rem] flex gap-4 items-start shadow-sm mb-8">
           <AlertCircle className="text-[#C5A059] shrink-0 mt-0.5" size={22} />
           <p className="text-sm text-gris/80 leading-relaxed">
-            <span className="font-bold text-[#C5A059] uppercase tracking-wider">Aviso importante:</span> Si quieres que tu pedido sea visto lo antes posible, notifica al administrador por WhatsApp usando el botón de cada pedido.
+            <span className="font-bold text-[#C5A059] uppercase tracking-wider">Seguimiento en vivo:</span> Tu panel se actualizará automáticamente cuando el administrador procese tu pedido.
           </p>
         </div>
 
