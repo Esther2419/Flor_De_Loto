@@ -2,7 +2,7 @@ import React from "react";
 import prisma from "@/lib/prisma";
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowLeft, Flower2, Tag, Gift } from "lucide-react";
+import { ArrowLeft, Flower2, Tag, Gift, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
@@ -95,10 +95,18 @@ export default async function AdminRamoDetallePage({ params, searchParams }: { p
                                                 <Flower2 size={14} />
                                             </div>
                                         )}
-                                        <span className="font-medium">
-                                            {rd.flores.nombre}
-                                            {rd.flores.color && <span className="text-gray-500 font-normal ml-1">({rd.flores.color})</span>}
-                                        </span>
+                                        <div className="flex flex-col">
+                                            <span className="font-medium">
+                                                {rd.flores.nombre}
+                                                {rd.flores.color && <span className="text-gray-500 font-normal ml-1">({rd.flores.color})</span>}
+                                            </span>
+                                            <Link 
+                                                href={`/admin/flor/${rd.flores.id.toString()}?ramoId=${ramo.id.toString()}${searchParams.pedidoId ? `&pedidoId=${searchParams.pedidoId}` : ''}`}
+                                                className="text-[10px] text-[#C5A059] font-bold hover:underline flex items-center gap-1 mt-0.5"
+                                            >
+                                                <Eye size={10} /> (Ver flor)
+                                            </Link>
+                                        </div>
                                     </div>
                                     <span className="font-bold text-rose-600 text-xs bg-rose-50 px-2 py-1 rounded-md">x{rd.cantidad_base || 1}</span>
                                 </li>

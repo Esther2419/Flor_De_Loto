@@ -4,7 +4,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Image from "next/image";
 import Link from "next/link";
-import { Package, Flower2, MessageSquare, Info, Gift, ArrowLeft } from "lucide-react";
+import { Package, Flower2, MessageSquare, Info, Gift, ArrowLeft, Eye } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
@@ -123,18 +123,23 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               const nombreProducto = producto?.nombre || "Producto desconocido";
               const fotoProducto = detalle.ramos?.foto_principal || detalle.flores?.foto || detalle.envolturas?.foto;
               
-              // ENLACE AL DETALLE DEL RAMO
-              const productLink = detalle.ramos ? `/admin/ramo/${detalle.ramos.id.toString()}?pedidoId=${pedido.id.toString()}` : null;
+              // ENLACE AL DETALLE DEL RAMO O FLOR
+              let productLink = null;
+              if (detalle.ramos) {
+                 productLink = `/admin/ramo/${detalle.ramos.id.toString()}?pedidoId=${pedido.id.toString()}`;
+              } else if (detalle.flores) {
+                 productLink = `/admin/flor/${detalle.flores.id.toString()}?pedidoId=${pedido.id.toString()}`;
+              }
 
               const infoPersonalizacion = detalle.personalizacion as any;
               
-              let floresExtras: { nombre: string, cantidad: number, foto: string | null }[] = [];
+              let floresExtras: { id: string, nombre: string, cantidad: number, foto: string | null }[] = [];
               if (infoPersonalizacion?.floresExtra) {
                  Object.entries(infoPersonalizacion.floresExtra).forEach(([id, qty]) => {
                     if (Number(qty) > 0) {
                        const flor = flores.find(f => f.id.toString() === id);
                        const nombre = flor ? (flor.color ? `${flor.nombre} ${flor.color}` : flor.nombre) : `Flor ID: ${id}`;
-                       floresExtras.push({ nombre, cantidad: Number(qty), foto: flor?.foto || null });
+                       floresExtras.push({ id, nombre, cantidad: Number(qty), foto: flor?.foto || null });
                     }
                  });
               }
@@ -184,7 +189,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
                         <p className="text-xs text-gray-400">Cantidad: {detalle.cantidad} unidad(es)</p>
                         {productLink && (
                           <Link href={productLink} className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 bg-[#C5A059]/10 text-[#C5A059] rounded-lg text-[10px] font-bold uppercase tracking-wider hover:bg-[#C5A059]/20 transition-colors">
-                            <Flower2 size={12} /> Ver Composición
+                            <Flower2 size={12} /> {detalle.ramos ? "Ver Composición" : "(Ver flor)"}
                           </Link>
                         )}
                       </div>
@@ -209,7 +214,15 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
                                         <Image src={f.foto} alt="" fill className="object-cover" />
                                       </div>
                                     )}
-                                    <span>• {f.nombre}</span>
+                                    <div className="flex flex-col">
+                                      <span>• {f.nombre}</span>
+                                      <Link 
+                                          href={`/admin/flor/${f.id}?pedidoId=${pedido.id.toString()}`}
+                                          className="text-[10px] text-[#C5A059] font-bold hover:underline flex items-center gap-1"
+                                      >
+                                          <Eye size={10} /> (Ver flor)
+                                      </Link>
+                                    </div>
                                   </div>
                                   <span className="font-bold">x{f.cantidad}</span>
                                 </li>
