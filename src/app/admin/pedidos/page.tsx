@@ -38,6 +38,13 @@ const COUNTRIES = [
   { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
+// Función para forzar la visualización en hora de Bolivia (UTC-4)
+function toBoliviaTime(date: Date) {
+  const boliviaOffset = 4 * 60 * 60 * 1000;
+  const serverOffset = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - boliviaOffset + serverOffset);
+}
+
 export default async function AdminPedidosPage({ searchParams }: { searchParams: { filter?: string, sort?: string } }) {
   const filter = searchParams.filter || 'all';
   const sort = searchParams.sort || 'recent';
@@ -168,7 +175,7 @@ export default async function AdminPedidosPage({ searchParams }: { searchParams:
             <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entrega:</p>
                 <p className="text-xs text-gray-700 font-medium">
-                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
+                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold">{format(toBoliviaTime(new Date(pedido.fecha_entrega)), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
                 </p>
             </div>
 

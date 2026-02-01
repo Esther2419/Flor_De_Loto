@@ -33,9 +33,10 @@ export default function AdminPedidosRealtime() {
 
           // Si es un nuevo pedido (INSERT), reproducir sonido
           if (payload.eventType === "INSERT") {
+            console.log("🔔 Nuevo pedido detectado. Intentando reproducir sonido...");
             const audio = new Audio("/notification.mp3");
             audio.play().catch((error) => {
-              console.warn("Reproducción de audio bloqueada por el navegador:", error);
+              console.error("Error al reproducir sonido (verificar archivo /public/notification.mp3):", error);
             });
           }
         }
