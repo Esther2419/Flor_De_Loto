@@ -7,6 +7,36 @@ import { Flower2 } from "lucide-react";
 
 export const dynamic = 'force-dynamic';
 
+const COUNTRIES = [
+  { code: "BO", name: "Bolivia", prefix: "+591", flag: "https://flagcdn.com/bo.svg", limit: 8 },
+  { code: "AR", name: "Argentina", prefix: "+54", flag: "https://flagcdn.com/ar.svg", limit: 10 },
+  { code: "CL", name: "Chile", prefix: "+56", flag: "https://flagcdn.com/cl.svg", limit: 9 },
+  { code: "PE", name: "Perú", prefix: "+51", flag: "https://flagcdn.com/pe.svg", limit: 9 },
+  { code: "CO", name: "Colombia", prefix: "+57", flag: "https://flagcdn.com/co.svg", limit: 10 },
+  { code: "MX", name: "México", prefix: "+52", flag: "https://flagcdn.com/mx.svg", limit: 10 },
+  { code: "ES", name: "España", prefix: "+34", flag: "https://flagcdn.com/es.svg", limit: 9 },
+  { code: "US", name: "Estados Unidos", prefix: "+1", flag: "https://flagcdn.com/us.svg", limit: 10 },
+  { code: "BR", name: "Brasil", prefix: "+55", flag: "https://flagcdn.com/br.svg", limit: 11 },
+  { code: "UY", name: "Uruguay", prefix: "+598", flag: "https://flagcdn.com/uy.svg", limit: 8 },
+  { code: "PY", name: "Paraguay", prefix: "+595", flag: "https://flagcdn.com/py.svg", limit: 9 },
+  { code: "EC", name: "Ecuador", prefix: "+593", flag: "https://flagcdn.com/ec.svg", limit: 9 },
+  { code: "VE", name: "Venezuela", prefix: "+58", flag: "https://flagcdn.com/ve.svg", limit: 10 },
+  { code: "PA", name: "Panamá", prefix: "+507", flag: "https://flagcdn.com/pa.svg", limit: 8 },
+  { code: "CR", name: "Costa Rica", prefix: "+506", flag: "https://flagcdn.com/cr.svg", limit: 8 },
+  { code: "DO", name: "Rep. Dominicana", prefix: "+1", flag: "https://flagcdn.com/do.svg", limit: 10 },
+  { code: "GT", name: "Guatemala", prefix: "+502", flag: "https://flagcdn.com/gt.svg", limit: 8 },
+  { code: "HN", name: "Honduras", prefix: "+504", flag: "https://flagcdn.com/hn.svg", limit: 8 },
+  { code: "SV", name: "El Salvador", prefix: "+503", flag: "https://flagcdn.com/sv.svg", limit: 8 },
+  { code: "NI", name: "Nicaragua", prefix: "+505", flag: "https://flagcdn.com/ni.svg", limit: 8 },
+  { code: "PR", name: "Puerto Rico", prefix: "+1", flag: "https://flagcdn.com/pr.svg", limit: 10 },
+  { code: "IT", name: "Italia", prefix: "+39", flag: "https://flagcdn.com/it.svg", limit: 10 },
+  { code: "FR", name: "Francia", prefix: "+33", flag: "https://flagcdn.com/fr.svg", limit: 9 },
+  { code: "DE", name: "Alemania", prefix: "+49", flag: "https://flagcdn.com/de.svg", limit: 11 },
+  { code: "GB", name: "Reino Unido", prefix: "+44", flag: "https://flagcdn.com/gb.svg", limit: 10 },
+  { code: "CA", name: "Canadá", prefix: "+1", flag: "https://flagcdn.com/ca.svg", limit: 10 },
+  { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
+].sort((a, b) => a.name.localeCompare(b.name));
+
 export default async function AdminPedidosPage() {
   const pedidos = await prisma.pedidos.findMany({
     orderBy: { fecha_pedido: 'desc' },
@@ -20,7 +50,11 @@ export default async function AdminPedidosPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pedidos.map((pedido) => (
+        {pedidos.map((pedido) => {
+          const country = COUNTRIES.find(c => pedido.telefono_contacto?.startsWith(c.prefix));
+          const displayPhone = country ? `${country.prefix} ${pedido.telefono_contacto?.slice(country.prefix.length)}` : pedido.telefono_contacto;
+
+          return (
           <div key={pedido.id.toString()} className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4 font-sans hover:shadow-md transition-all">
             <div className="flex justify-between items-start">
                 <div>
@@ -38,19 +72,26 @@ export default async function AdminPedidosPage() {
             <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Solicitado el:</p>
                 <p className="text-xs text-gray-700 font-medium">
-                {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}
+                {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
                 </p>
             </div>
 
             <div className="space-y-0.5">
                 <p className="text-base font-bold text-gray-800">{pedido.nombre_contacto}</p>
-                <p className="text-xs text-gray-500 font-mono">{pedido.telefono_contacto}</p>
+                <div className="flex items-center gap-2">
+                  {country && (
+                    <div className="w-4 h-3 relative shadow-sm shrink-0">
+                        <img src={country.flag} alt={country.name} className="w-full h-full object-cover rounded-[2px]" />
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500 font-mono">{displayPhone}</p>
+                </div>
             </div>
 
             <div>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entrega:</p>
                 <p className="text-xs text-gray-700 font-medium">
-                {format(new Date(pedido.fecha_entrega), "dd/MM/yyyy - HH:mm")}
+                {format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
                 </p>
             </div>
 
@@ -61,7 +102,7 @@ export default async function AdminPedidosPage() {
                 <span className="text-sm font-serif italic text-gray-400">Bs {Number(pedido.total_pagar).toFixed(2)}</span>
             </div>
           </div>
-        ))}
+        )})}
 
         {pedidos.length === 0 && (
           <div className="col-span-full text-center py-32 bg-white rounded-[3rem] border border-dashed border-gray-200">

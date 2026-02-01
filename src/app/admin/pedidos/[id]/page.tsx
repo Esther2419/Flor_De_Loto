@@ -9,6 +9,36 @@ import { notFound } from "next/navigation";
 
 export const dynamic = 'force-dynamic';
 
+const COUNTRIES = [
+  { code: "BO", name: "Bolivia", prefix: "+591", flag: "https://flagcdn.com/bo.svg", limit: 8 },
+  { code: "AR", name: "Argentina", prefix: "+54", flag: "https://flagcdn.com/ar.svg", limit: 10 },
+  { code: "CL", name: "Chile", prefix: "+56", flag: "https://flagcdn.com/cl.svg", limit: 9 },
+  { code: "PE", name: "Perú", prefix: "+51", flag: "https://flagcdn.com/pe.svg", limit: 9 },
+  { code: "CO", name: "Colombia", prefix: "+57", flag: "https://flagcdn.com/co.svg", limit: 10 },
+  { code: "MX", name: "México", prefix: "+52", flag: "https://flagcdn.com/mx.svg", limit: 10 },
+  { code: "ES", name: "España", prefix: "+34", flag: "https://flagcdn.com/es.svg", limit: 9 },
+  { code: "US", name: "Estados Unidos", prefix: "+1", flag: "https://flagcdn.com/us.svg", limit: 10 },
+  { code: "BR", name: "Brasil", prefix: "+55", flag: "https://flagcdn.com/br.svg", limit: 11 },
+  { code: "UY", name: "Uruguay", prefix: "+598", flag: "https://flagcdn.com/uy.svg", limit: 8 },
+  { code: "PY", name: "Paraguay", prefix: "+595", flag: "https://flagcdn.com/py.svg", limit: 9 },
+  { code: "EC", name: "Ecuador", prefix: "+593", flag: "https://flagcdn.com/ec.svg", limit: 9 },
+  { code: "VE", name: "Venezuela", prefix: "+58", flag: "https://flagcdn.com/ve.svg", limit: 10 },
+  { code: "PA", name: "Panamá", prefix: "+507", flag: "https://flagcdn.com/pa.svg", limit: 8 },
+  { code: "CR", name: "Costa Rica", prefix: "+506", flag: "https://flagcdn.com/cr.svg", limit: 8 },
+  { code: "DO", name: "Rep. Dominicana", prefix: "+1", flag: "https://flagcdn.com/do.svg", limit: 10 },
+  { code: "GT", name: "Guatemala", prefix: "+502", flag: "https://flagcdn.com/gt.svg", limit: 8 },
+  { code: "HN", name: "Honduras", prefix: "+504", flag: "https://flagcdn.com/hn.svg", limit: 8 },
+  { code: "SV", name: "El Salvador", prefix: "+503", flag: "https://flagcdn.com/sv.svg", limit: 8 },
+  { code: "NI", name: "Nicaragua", prefix: "+505", flag: "https://flagcdn.com/ni.svg", limit: 8 },
+  { code: "PR", name: "Puerto Rico", prefix: "+1", flag: "https://flagcdn.com/pr.svg", limit: 10 },
+  { code: "IT", name: "Italia", prefix: "+39", flag: "https://flagcdn.com/it.svg", limit: 10 },
+  { code: "FR", name: "Francia", prefix: "+33", flag: "https://flagcdn.com/fr.svg", limit: 9 },
+  { code: "DE", name: "Alemania", prefix: "+49", flag: "https://flagcdn.com/de.svg", limit: 11 },
+  { code: "GB", name: "Reino Unido", prefix: "+44", flag: "https://flagcdn.com/gb.svg", limit: 10 },
+  { code: "CA", name: "Canadá", prefix: "+1", flag: "https://flagcdn.com/ca.svg", limit: 10 },
+  { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
+].sort((a, b) => a.name.localeCompare(b.name));
+
 export default async function PedidoDetallePage({ params }: { params: { id: string } }) {
   const { id } = params;
 
@@ -37,6 +67,9 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
     prisma.envolturas.findMany()
   ]);
 
+  const country = COUNTRIES.find(c => pedido.telefono_contacto?.startsWith(c.prefix));
+  const displayPhone = country ? `${country.prefix} ${pedido.telefono_contacto?.slice(country.prefix.length)}` : pedido.telefono_contacto;
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 pb-10">
       <div className="flex items-center gap-4">
@@ -61,16 +94,23 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-2 font-medium">
-              Solicitado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - HH:mm", { locale: es })}
+              Solicitado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
             </p>
           </div>
           
           <div className="text-right">
              <p className="text-sm font-bold text-gray-800">{pedido.nombre_contacto}</p>
-             <p className="text-xs text-[#C5A059] font-bold">{pedido.telefono_contacto}</p>
+             <div className="flex items-center justify-end gap-2">
+                {country && (
+                  <div className="w-5 h-3.5 relative shadow-sm">
+                      <img src={country.flag} alt={country.name} className="w-full h-full object-cover rounded-[2px]" />
+                  </div>
+                )}
+                <p className="text-xs text-[#C5A059] font-bold">{displayPhone}</p>
+             </div>
              <div className="flex items-center justify-end gap-2 text-[10px] mt-2">
                 <span className="font-black text-gray-400 uppercase tracking-tighter">Entrega:</span>
-                <span className="font-bold text-rose-600">{format(new Date(pedido.fecha_entrega), "dd/MM/yyyy - HH:mm")}</span>
+                <span className="font-bold text-rose-600">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
              </div>
           </div>
         </div>
@@ -205,7 +245,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
             <div>
                <p className="text-[10px] font-black text-[#C5A059] uppercase tracking-widest">Información de Recepción</p>
                <p className="text-sm text-gray-700 font-medium mt-1">
-                 Este pedido será entregado a/recogido por: <span className="font-bold text-gray-900">{pedido.nombre_receptor || "Mismo contacto"}</span>
+                 Este pedido será recogido por: <span className="font-bold text-gray-900">{pedido.nombre_receptor || "Mismo contacto"}</span>
                </p>
             </div>
           </div>
@@ -213,7 +253,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
 
         {/* Pie con Total */}
         <div className="bg-gray-900 px-8 py-5 flex justify-between items-center text-white">
-          <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Total Recaudado</span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] opacity-60">Total a cobrar</span>
           <div className="flex items-baseline gap-2">
             <span className="text-xs opacity-60 font-bold underline decoration-[#C5A059]">BS.</span>
             <span className="text-2xl font-serif italic text-[#C5A059]">{Number(pedido.total_pagar).toFixed(2)}</span>
