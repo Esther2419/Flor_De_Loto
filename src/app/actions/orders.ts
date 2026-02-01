@@ -43,7 +43,6 @@ export async function createOrderAction(data: OrderData) {
 
   try {
     const ahoraBolivia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
-    const minutosAhora = ahoraBolivia.getHours() * 60 + ahoraBolivia.getMinutes();
 
     const pedido = await prisma.$transaction(async (tx) => {
       const config = await tx.configuracion.findUnique({ where: { id: 1 } });
@@ -58,19 +57,19 @@ export async function createOrderAction(data: OrderData) {
 
       const bufferMinutos = Number((config as any).minutos_preparacion) || 120;
       
-      // --- CORRECCIÓN PARA "INVALID DATE" ---
-      // Limpiamos posibles espacios y aseguramos formato YYYY-MM-DDTHH:mm:00-04:00
-      const fechaLimpia = data.fecha_entrega.trim();
+      // --- FIX DEFINITIVO PARA EL FORMATO DE FECHA ---
+      // Si data.fecha_entrega viene como "2026-02-01T06:10...", tomamos solo "2026-02-01"
+      const soloFecha = data.fecha_entrega.split('T')[0].trim();
       const horaLimpia = data.hora_recojo.trim();
       
-      const fechaString = `${fechaLimpia}T${horaLimpia}:00-04:00`;
+      // Armamos el string ISO correcto para Bolivia
+      const fechaString = `${soloFecha}T${horaLimpia}:00-04:00`;
       const fechaEntregaExacta = new Date(fechaString);
 
-      // Verificamos si la fecha es válida antes de seguir
       if (isNaN(fechaEntregaExacta.getTime())) {
-        throw new Error(`Formato de fecha u hora inválido: ${fechaString}`);
+        throw new Error(`Error de formato. Recibido: ${data.fecha_entrega}, Procesado: ${fechaString}`);
       }
-      // ---------------------------------------
+      // -----------------------------------------------
 
       const diffMinutos = Math.floor((fechaEntregaExacta.getTime() - ahoraBolivia.getTime()) / 60000);
       if (diffMinutos < bufferMinutos) {
