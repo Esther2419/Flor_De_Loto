@@ -3,11 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase"; 
 import { getSession } from "next-auth/react";
 import { createFlor, getFlores, deleteFlor, updateFlor } from "./actions";
+import { uploadToBucket, deleteFromBucket } from "@/lib/storage";
 import { Flower2, Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon, Loader2 } from "lucide-react";
-import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
 // --- TIPOS ---
@@ -137,10 +136,7 @@ export default function FloresAdminPage() {
 
   const deleteImageFromStorage = async (url: string) => {
     if (!url) return;
-    try {
-      const fileName = url.split('/').pop();
-      if (fileName) await supabase.storage.from('flores').remove([fileName]);
-    } catch (e) { console.error("Error al borrar:", e); }
+    await deleteFromBucket(url, 'flores');
   };
 
   const analyzeColor = (url: string) => {
@@ -184,18 +180,14 @@ export default function FloresAdminPage() {
 
     try {
       const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
-      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1000, useWebWorker: true, fileType: "image/webp" };
-      const compressedFile = await imageCompression(croppedFile, options);
 
       if (formData.foto) await deleteImageFromStorage(formData.foto);
 
-      const fileName = `flor_${Date.now()}.webp`;
-      const { error } = await supabase.storage.from('flores').upload(fileName, compressedFile);
-      if (error) throw error;
-      const { data } = supabase.storage.from('flores').getPublicUrl(fileName);
-
-      setFormData(prev => ({ ...prev, foto: data.publicUrl }));
-      analyzeColor(data.publicUrl);
+      const url = await uploadToBucket(croppedFile, 'flores');
+      if (url) {
+        setFormData(prev => ({ ...prev, foto: url }));
+        analyzeColor(url);
+      }
     } catch (err) { alert("Error al procesar imagen"); } finally { setUploading(false); }
   };
 

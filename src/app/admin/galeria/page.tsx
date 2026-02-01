@@ -2,10 +2,9 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { supabase } from "@/lib/supabase"; 
 import { getGaleria, createGaleriaItem, deleteGaleriaItem, updateGaleriaItem } from "./actions";
+import { uploadToBucket, deleteFromBucket } from "@/lib/storage";
 import { Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon, Loader2, Edit3 } from "lucide-react";
-import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
 // --- UTILIDADES DE IMAGEN ---
@@ -89,15 +88,9 @@ export default function GaleriaAdminPage() {
     setUploading(true);
     try {
       const croppedFile = await getCroppedImg(imageToCrop, croppedAreaPixels);
-      const options = { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true, fileType: "image/webp" };
-      const compressedFile = await imageCompression(croppedFile, options);
-
-      const fileName = `gal_${Date.now()}_${Math.random().toString(36).substring(7)}.webp`;
-      const { error } = await supabase.storage.from(BUCKET_NAME).upload(fileName, compressedFile);
-      if (error) throw error;
-
-      const { data: publicUrlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(fileName);
-      setFormData(prev => ({ ...prev, foto: publicUrlData.publicUrl }));
+      const url = await uploadToBucket(croppedFile, BUCKET_NAME);
+      
+      if (url) setFormData(prev => ({ ...prev, foto: url }));
       setImageToCrop(null);
     } catch (err) { 
       alert("No se pudo procesar la imagen.");
@@ -127,8 +120,7 @@ export default function GaleriaAdminPage() {
 
   const handleDelete = async (id: string, url: string) => {
     if (confirm("¿Eliminar permanentemente de la galería?")) {
-        const fileName = url.split('/').pop();
-        if (fileName) await supabase.storage.from(BUCKET_NAME).remove([fileName]);
+        await deleteFromBucket(url, BUCKET_NAME);
         const res = await deleteGaleriaItem(id);
         if (res.success) { setSelectedItem(null); loadData(); }
     }
