@@ -8,9 +8,12 @@ import { useState } from "react";
 import Image from "next/image";
 
 interface AddToCartProps {
-  id: string;
+  id: string; 
+  productoId?: string;
   nombre: string;
-  precio: number;
+  precioBase: number;
+  precioOferta?: number;
+  esOferta?: boolean;
   foto: string | null;
   type?: string;
   className?: string;
@@ -18,52 +21,86 @@ interface AddToCartProps {
   personalizacion?: any;
 }
 
-export default function AddToCartButton({ id, nombre, precio, foto, className, onAfterAdd, personalizacion }: AddToCartProps) {
+export default function AddToCartButton({ 
+  id, 
+  productoId, 
+  nombre, 
+  precioBase, 
+  precioOferta,
+  esOferta,
+  foto, 
+  type, 
+  className, 
+  onAfterAdd, 
+  personalizacion 
+}: AddToCartProps) {
   const { addToCart } = useCart();
   const { toast } = useToast();
   const router = useRouter();
   
-  const [isAnimating, setIsAnimating] = useState(false);
   const [isPending, setIsPending] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [startPos, setStartPos] = useState({ x: 0, y: 0 });
   const [showCheck, setShowCheck] = useState(false);
 
   const handleAction = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     
-    // Si ya se está procesando, no hacer nada
     if (isPending || showCheck) return;
 
     try {
-      setIsPending(true); // Bloqueamos el botón inmediatamente
+      setIsPending(true); 
 
-      // Captura posición para la animación
       const rect = e.currentTarget.getBoundingClientRect();
       setStartPos({ x: rect.left, y: rect.top });
-      
       setIsAnimating(true);
 
-      // Agrega al carrito (la lógica del ID ahora vive en el Contexto)
+      const finalProductoId = productoId || id; 
+      const precioFinal = esOferta && precioOferta ? precioOferta : precioBase;
+
+      // --- LÓGICA DE LIMPIEZA DE PERSONALIZACIÓN ---
+      let realPersonalizacion = null;
+      
+      if (personalizacion) {
+        const tieneFlores = personalizacion.floresExtra && 
+                           Object.values(personalizacion.floresExtra).some((cant: any) => cant > 0);
+        
+        const tieneEnvolturas = personalizacion.envolturas && 
+                               Object.keys(personalizacion.envolturas).length > 0;
+        
+        const tieneDedicatoria = personalizacion.dedicatoria && 
+                                personalizacion.dedicatoria.trim() !== "";
+
+        // Solo si tiene algo de lo anterior, guardamos el objeto
+        if (tieneFlores || tieneEnvolturas || tieneDedicatoria) {
+          realPersonalizacion = {
+            floresExtra: tieneFlores ? personalizacion.floresExtra : null,
+            envolturas: tieneEnvolturas ? personalizacion.envolturas : null,
+            dedicatoria: tieneDedicatoria ? personalizacion.dedicatoria : null
+          };
+        }
+      }
+
       await addToCart({ 
         id, 
-        nombre: personalizacion ? `${nombre} (Personalizado)` : nombre, 
-        precio, 
+        productoId: finalProductoId,
+        // Solo añade "(Personalizado)" al nombre si realPersonalizacion no es null
+        nombre: realPersonalizacion ? `${nombre} (Personalizado)` : nombre, 
+        precio: precioFinal,
+        precioOriginal: precioBase,
+        esOferta: !!esOferta,
         foto,
-        personalizacion 
+        tipo: (type as 'ramo' | 'flor') || 'ramo', 
+        personalizacion: realPersonalizacion 
       });
 
       setShowCheck(true);
 
-      // Espera a que termine la animación para limpiar estados y redirigir
       setTimeout(() => {
         setIsAnimating(false);
         setIsPending(false);
-        
-        toast("¡Ramo agregado! Revise su carrito para finalizar el pedido.", "success");
-        
-        // Redirige al homepage
+        toast("¡Agregado con éxito!", "success");
         router.push("/");
-
         if (onAfterAdd) onAfterAdd();
       }, 800);
 
@@ -98,7 +135,6 @@ export default function AddToCartButton({ id, nombre, precio, foto, className, o
         )}
       </button>
 
-      {/* Animación de la imagen volando al carrito */}
       {isAnimating && foto && (
         <div
           className="fixed z-[9999] pointer-events-none rounded-full overflow-hidden border-2 border-[#D4AF37] shadow-xl animate-fly-to-cart"

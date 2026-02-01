@@ -19,7 +19,9 @@ import {
   AlertCircle,
   ClipboardList,
   Menu,
-  X
+  X,
+  Users,           // Icono para gestión de personal
+  Image as ImageIcon // Icono para la galería
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -34,11 +36,16 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // --- LÓGICA DE PERMISOS UNIFICADA ---
+  const rolUsuario = session?.user?.rol?.toLowerCase();
+  const isSuperAdmin = rolUsuario === "admin";
+  const hasAdminAccess = rolUsuario === "admin" || rolUsuario === "adminmenor";
+
   useEffect(() => {
     const errorParam = searchParams.get("error");
     
     if (errorParam === "AccessDenied") {
-      setLoginError("Acceso Denegado: Esta cuenta no tiene permisos de administrador.");
+      setLoginError("Acceso Denegado: Esta cuenta no tiene permisos administrativos.");
       
       const timer = setTimeout(() => {
         setLoginError("");
@@ -90,7 +97,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
                <Image src="/LogoSinLetra.png" alt="Flor de Loto" fill className="object-contain" />
             </div>
             <h1 className="font-serif text-3xl text-[#C5A059] italic mb-2">Flor de Loto</h1>
-            <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel Admin</p>
+            <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel de Gestión</p>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-4">
@@ -108,7 +115,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full bg-black/40 border border-[#C5A059]/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] transition-all text-sm"
-                placeholder="Correo electrónico"
+                placeholder="Correo corporativo"
                 required
               />
             </div>
@@ -151,6 +158,27 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     );
   }
 
+  if (session && !hasAdminAccess) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
+        <div className="relative w-24 h-24 mb-6">
+          <Image src="/LogoSinLetra.png" alt="Acceso Denegado" fill className="object-contain grayscale opacity-50" />
+        </div>
+        <h2 className="text-[#C5A059] font-serif italic text-3xl mb-4">Acceso Denegado</h2>
+        <p className="text-white/60 text-sm mb-8 max-w-xs mx-auto">
+          Esta cuenta no tiene permisos administrativos para acceder a Flor de Loto.
+        </p>
+        <button 
+          onClick={() => signOut({ callbackUrl: '/' })}
+          className="bg-[#C5A059] text-black px-8 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-lg shadow-[#C5A059]/20"
+        >
+          Volver al Inicio
+        </button>
+      </div>
+    );
+  }
+
+  // --- CONFIGURACIÓN DEL MENÚ CON GALERÍA ---
   const menuItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
@@ -158,12 +186,12 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     { name: "Flores", href: "/admin/flores", icon: Flower2 },
     { name: "Categorías", href: "/admin/categorias", icon: Layers },
     { name: "Envolturas", href: "/admin/envolturas", icon: Gift },
+    { name: "Nuestro Trabajo", href: "/admin/galeria", icon: ImageIcon },
   ];
 
   return (
     <div className="min-h-screen bg-gray-50 flex font-sans relative">
       
-      {/* Overlay oscuro para móvil cuando el menú está abierto */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
@@ -171,7 +199,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
         />
       )}
 
-      {/* Sidebar Responsivo */}
       <aside className={`
         fixed md:sticky top-0 z-50 h-screen md:h-screen
         w-64 bg-[#0A0A0A] text-white flex flex-col flex-shrink-0 border-r border-white/5
@@ -183,7 +210,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             <h2 className="text-2xl font-serif italic text-[#C5A059]">Flor de Loto</h2>
             <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">Admin Panel</p>
           </div>
-          {/* Botón cerrar solo visible en móvil */}
           <button 
             onClick={() => setIsMobileMenuOpen(false)}
             className="md:hidden text-gray-400 hover:text-white absolute right-4"
@@ -200,7 +226,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al hacer clic en móvil
+                onClick={() => setIsMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
                   ${isActive ? "bg-[#C5A059] text-black shadow-lg" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
               >
@@ -209,6 +235,22 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
               </Link>
             );
           })}
+
+          {/* GESTIÓN DE PERSONAL (SÓLO SUPER ADMIN) */}
+          {isSuperAdmin && (
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <p className="px-4 mb-2 text-[9px] font-black text-gray-500 uppercase tracking-widest">Ajustes de Sistema</p>
+              <Link
+                href="/admin/usuarios"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                  ${pathname === "/admin/usuarios" ? "bg-white text-black" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+              >
+                <Users size={18} />
+                Gestionar Personal
+              </Link>
+            </div>
+          )}
         </nav>
 
         <div className="p-4 border-t border-white/10 bg-black/20 mt-auto">
@@ -218,7 +260,10 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider">{session.user?.role || "Admin"}</p>
+              {/* Uso estandarizado de ROL */}
+              <p className="text-[10px] text-[#C5A059] font-bold uppercase tracking-wider">
+                {session.user?.rol?.toLowerCase() || "admin"}
+              </p>
             </div>
           </div>
         </div>
@@ -227,7 +272,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <header className="bg-white border-b border-gray-200 h-20 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-sm md:shadow-none">
           <div className="flex items-center gap-3">
-            {/* Botón Hamburguesa para Móvil */}
             <button 
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="md:hidden text-gray-600 hover:text-[#C5A059] transition-colors p-1"
@@ -237,7 +281,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
 
             <div>
               <h1 className="text-lg md:text-xl font-bold text-gray-800 leading-tight">
-                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 👋
+                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 
               </h1>
               <p className="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest hidden sm:block">Gestión de Floristería</p>
             </div>
@@ -261,8 +305,12 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
         <main className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
              {children || (
-               <div className="bg-white p-10 rounded-2xl border border-gray-100 shadow-sm text-center">
-                 <h2 className="text-2xl font-serif italic text-gray-400">Selecciona una opción del menú para comenzar</h2>
+               <div className="bg-white p-20 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
+                 <div className="bg-[#C5A059]/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-[#C5A059]">
+                    <LayoutDashboard size={40} />
+                 </div>
+                 <h2 className="text-3xl font-serif italic text-gray-800 mb-2">Bienvenido al Panel de Control</h2>
+                 <p className="text-gray-400 max-w-sm mx-auto">Selecciona una opción del menú lateral para gestionar las operaciones de Flor de Loto.</p>
                </div>
              )}
           </div>

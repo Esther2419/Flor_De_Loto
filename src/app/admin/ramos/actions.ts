@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 function serialize(data: any) {
@@ -93,6 +94,12 @@ export async function createRamo(data: any) {
 // --- ACTUALIZAR RAMO ---
 export async function updateRamo(id: string, data: any) {
   try {
+    // 1. Obtener estado anterior del ramo e imágenes
+    const ramoAnterior = await prisma.ramos.findUnique({ 
+      where: { id: BigInt(id) },
+      include: { ramo_imagenes: true }
+    });
+
     await prisma.ramos.update({
       where: { id: BigInt(id) },
       data: {
@@ -136,6 +143,29 @@ export async function updateRamo(id: string, data: any) {
         fecha_actualizacion: new Date()
       }
     });
+
+    // 3. Lógica de Limpieza de Imágenes (Bucket 'ramos')
+    
+    // A) Foto Principal
+    if (ramoAnterior?.foto_principal && ramoAnterior.foto_principal !== data.foto_principal) {
+      const fileName = ramoAnterior.foto_principal.split('/').pop();
+      if (fileName) await supabase.storage.from('ramos').remove([fileName]);
+    }
+
+    // B) Imágenes Extra (Galería del ramo)
+    if (ramoAnterior?.ramo_imagenes) {
+      const nuevasUrls = (data.imagenes_extra || []) as string[];
+      const viejasUrls = ramoAnterior.ramo_imagenes.map(img => img.url_foto);
+
+      // Identificar las que estaban antes pero NO están ahora
+      const paraBorrar = viejasUrls.filter(url => !nuevasUrls.includes(url));
+      
+      const archivosParaBorrar = paraBorrar.map(url => url.split('/').pop()).filter(Boolean) as string[];
+      if (archivosParaBorrar.length > 0) {
+        await supabase.storage.from('ramos').remove(archivosParaBorrar);
+      }
+    }
+
     revalidatePath('/admin/ramos');
     return { success: true };
   } catch (error: any) {

@@ -19,7 +19,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollContainerRef.current) {
-      const scrollAmount = 200; 
+      const scrollAmount = 300; 
       scrollContainerRef.current.scrollBy({
         left: direction === 'right' ? scrollAmount : -scrollAmount,
         behavior: 'smooth'
@@ -28,7 +28,8 @@ export default function CategoryExplorer({ categories }: { categories: Category[
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2 md:px-4 pt-1 pb-4 md:pt-2 md:pb-8 relative group/section">
+    /* Eliminamos px-10 y usamos w-full para que ocupe todo el ancho */
+    <div className="w-full max-w-[1400px] mx-auto px-2 md:px-4 pt-1 pb-4 md:pt-2 md:pb-8 relative group/section">
       
       {/* --- TÍTULO --- */}
       <div className="text-center mb-2 md:mb-6">
@@ -45,20 +46,19 @@ export default function CategoryExplorer({ categories }: { categories: Category[
       {/* --- CONTENEDOR CARRUSEL --- */}
       <div className="relative"> 
         
-        {/* Flechas (Solo desktop) */}
+        {/* Flecha Izquierda: Pegada al borde izquierdo absoluto */}
         <button 
           onClick={() => scroll('left')}
-          className="absolute left-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#9f7321ff] text-[#9f7321ff] hover:text-white p-1.5 rounded-full shadow-md border border-[#9f7321ff]/30 transition-all duration-300 backdrop-blur-sm -ml-2 md:-ml-6 opacity-0 group-hover/section:opacity-100 hidden md:block"
+          className="absolute left-0 top-[40%] -translate-y-1/2 z-20 bg-white/95 hover:bg-[#9f7321ff] text-[#9f7321ff] hover:text-white p-2 rounded-full shadow-lg border border-[#9f7321ff]/30 transition-all duration-300 backdrop-blur-sm opacity-0 group-hover/section:opacity-100 hidden md:block"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M15 19l-7-7 7-7" />
           </svg>
         </button>
 
-        {/* Se eliminó 'touch-pan-y' para permitir el scroll horizontal en móviles */}
         <div 
           ref={scrollContainerRef}
-          className="flex gap-2 md:gap-6 overflow-x-auto overflow-y-hidden pb-2 snap-x snap-mandatory px-4 md:px-12 scrollbar-hide scroll-smooth items-center justify-start md:justify-center" 
+          className="flex gap-4 md:gap-8 overflow-x-auto overflow-y-hidden pb-4 snap-x snap-mandatory px-4 md:px-10 scrollbar-hide scroll-smooth items-center justify-start" 
         >
           {categories.map((cat) => (
             <Link 
@@ -74,7 +74,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
                  </div>
               )}
 
-              {/* Tooltip (Solo desktop) */}
+              {/* Tooltip */}
               <div className="absolute top-0 left-1/2 -translate-x-1/2 w-56 bg-white rounded-lg shadow-xl border border-[#9f7321ff]/20 overflow-hidden z-50 pointer-events-none
                               opacity-0 scale-75 translate-y-8 
                               group-hover:opacity-100 group-hover:scale-100 group-hover:-translate-y-4
@@ -116,7 +116,7 @@ export default function CategoryExplorer({ categories }: { categories: Category[
                         </div>
                       )}
                     </div>
-                  </div>
+                 </div>
               </div>
 
               {/* Nombre Texto */}
@@ -127,15 +127,14 @@ export default function CategoryExplorer({ categories }: { categories: Category[
               </div>
             </Link>
           ))}
-          <div className="w-2 flex-none" />
         </div>
         
-        {/* Flecha Derecha (Solo desktop) */}
+        {/* Flecha Derecha: Pegada al borde derecho absoluto */}
         <button 
           onClick={() => scroll('right')}
-          className="absolute right-0 top-1/2 -translate-y-1/2 z-20 bg-white/90 hover:bg-[#9f7321ff] text-[#9f7321ff] hover:text-white p-1.5 rounded-full shadow-md border border-[#9f7321ff]/30 transition-all duration-300 backdrop-blur-sm -mr-2 md:-mr-6 opacity-0 group-hover/section:opacity-100 hidden md:block"
+          className="absolute right-0 top-[40%] -translate-y-1/2 z-20 bg-white/95 hover:bg-[#9f7321ff] text-[#9f7321ff] hover:text-white p-2 rounded-full shadow-lg border border-[#9f7321ff]/30 transition-all duration-300 backdrop-blur-sm opacity-0 group-hover/section:opacity-100 hidden md:block"
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
             <path d="M9 5l7 7-7 7" />
           </svg>
         </button>

@@ -3,31 +3,37 @@
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
-function getValidRamoId(id: string | number): bigint {
+// Función auxiliar para validar IDs
+function getValidId(id: string | number): bigint {
   const stringId = String(id);
   const numericPart = stringId.match(/^\d+/)?.[0];
-  if (!numericPart) throw new Error(`ID de producto inválido: ${id}`);
+  if (!numericPart) throw new Error(`ID inválido: ${id}`);
   return BigInt(numericPart);
 }
 
-// Obtener el carrito del usuario
+// ----------------------------------------------------------------------
+// 1. Obtener el carrito del usuario
+// ----------------------------------------------------------------------
 export async function getCartAction() {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return null;
+  if (!session?.user?.email) return [];
 
   const usuario = await prisma.usuarios.findUnique({
     where: { email: session.user.email },
   });
 
-  if (!usuario) return null;
+  if (!usuario) return [];
 
   const carrito = await prisma.carrito.findFirst({
     where: { usuario_id: usuario.id },
     include: {
       carrito_detalle: {
         include: {
-          ramos: true
+          ramos: { include: { ramo_imagenes: true } },
+          flores: true,
+          envolturas: true
         }
       }
     }
@@ -35,18 +41,48 @@ export async function getCartAction() {
 
   if (!carrito) return [];
 
-  // Mapeamos incluyendo la personalización y un ID único de base de datos si es necesario
-  return carrito.carrito_detalle.map((detalle) => ({
-    id: detalle.ramo_id.toString(),
-    nombre: detalle.ramos.nombre,
-    precio: Number(detalle.ramos.precio_base),
-    foto: detalle.ramos.foto_principal,
-    cantidad: detalle.cantidad,
-    personalizacion: detalle.personalizacion
-  }));
+  return carrito.carrito_detalle.map((detalle) => {
+    const esFlor = !!detalle.flores;
+    
+    let nombre = "Producto desconocido";
+    let foto = null;
+    let productoId = "";
+    let precioBaseDB = 0;
+
+    if (esFlor && detalle.flores) {
+      nombre = detalle.flores.nombre;
+      precioBaseDB = Number(detalle.flores.precio_unitario);
+      foto = detalle.flores.foto;
+      productoId = detalle.flores.id.toString();
+    } else if (detalle.ramos) {
+      nombre = detalle.ramos.nombre;
+      precioBaseDB = Number(detalle.ramos.precio_base);
+      foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
+      productoId = detalle.ramos.id.toString();
+    }
+
+    // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
+    const pers = detalle.personalizacion as any;
+    
+    return {
+      id: detalle.id.toString(),
+      productoId: productoId, 
+      nombre: nombre,
+      // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
+      precio: pers?.precioComprado || precioBaseDB, 
+      precioOriginal: pers?.precioOriginal || precioBaseDB,
+      esOferta: pers?.esOferta || false,
+      foto: foto,
+      cantidad: detalle.cantidad,
+      tipo: esFlor ? 'flor' : 'ramo',
+      personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined
+    };
+  });
 }
 
-// Sincronizar carrito local con BD
+// ----------------------------------------------------------------------
+// 2. Sincronizar carrito local
+// ----------------------------------------------------------------------
 export async function syncCartAction(localItems: any[]) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return;
@@ -54,13 +90,11 @@ export async function syncCartAction(localItems: any[]) {
   const usuario = await prisma.usuarios.findUnique({ where: { email: session.user.email } });
   if (!usuario) return;
 
-  // Buscar o crear carrito
   let carrito = await prisma.carrito.findFirst({ where: { usuario_id: usuario.id } });
   if (!carrito) {
     carrito = await prisma.carrito.create({ data: { usuario_id: usuario.id } });
   }
 
-  // Insertar items locales uno por uno usando la lógica de addToCartAction
   for (const item of localItems) {
     await addToCartAction(item);
   }
@@ -68,7 +102,9 @@ export async function syncCartAction(localItems: any[]) {
   return getCartAction();
 }
 
-// Agregar item (con soporte para personalización)
+// ----------------------------------------------------------------------
+// 3. Agregar item (CORREGIDO: Sin el campo 'precio' que da error)
+// ----------------------------------------------------------------------
 export async function addToCartAction(item: any) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return;
@@ -81,92 +117,90 @@ export async function addToCartAction(item: any) {
     carrito = await prisma.carrito.create({ data: { usuario_id: usuario.id } });
   }
 
-  const ramoId = getValidRamoId(item.id);
-  const personalizacionJson = item.personalizacion ? JSON.parse(JSON.stringify(item.personalizacion)) : null;
+  const idProducto = getValidId(item.productoId || item.id);
+  const esFlor = item.tipo === 'flor';
 
-  // Buscamos si ya existe este ramo en el carrito
+  // GUARDADO: Metemos el precio de oferta y el flag dentro del JSON de personalización
+  const personalizacionJson = {
+    ...(item.personalizacion || {}),
+    esOferta: item.esOferta || false,
+    precioOriginal: item.precioOriginal || item.precio,
+    precioComprado: item.precio // Este es el valor de oferta (Bs. 20)
+  };
+
   const itemsExistentes = await prisma.carrito_detalle.findMany({
-    where: { carrito_id: carrito.id, ramo_id: ramoId }
+    where: { 
+      carrito_id: carrito.id, 
+      ramo_id: !esFlor ? idProducto : undefined, 
+      flor_id: esFlor ? idProducto : undefined
+    }
   });
 
   let itemEncontrado = null;
+  const persNuevaStr = JSON.stringify(personalizacionJson);
 
-  // Verificamos si alguno tiene la misma personalización
   for (const existente of itemsExistentes) {
-    const persExistente = JSON.stringify(existente.personalizacion);
-    const persNueva = JSON.stringify(personalizacionJson);
-    if (persExistente === persNueva) {
+    if (JSON.stringify(existente.personalizacion) === persNuevaStr) {
       itemEncontrado = existente;
       break;
     }
   }
 
   if (itemEncontrado) {
-    // Si existe igual, sumamos cantidad
     await prisma.carrito_detalle.update({
       where: { id: itemEncontrado.id },
-      data: { cantidad: itemEncontrado.cantidad + 1 }
+      data: { cantidad: itemEncontrado.cantidad + (item.cantidad || 1) }
     });
   } else {
-    // Si es nuevo o tiene personalización distinta, creamos nueva línea
     await prisma.carrito_detalle.create({
       data: {
         carrito_id: carrito.id,
-        ramo_id: ramoId,
+        ramo_id: !esFlor ? idProducto : undefined,
+        flor_id: esFlor ? idProducto : undefined,
         cantidad: item.cantidad || 1,
-        personalizacion: personalizacionJson || undefined
+        // Eliminado el campo 'precio' ya que no existe en tu tabla
+        personalizacion: personalizacionJson,
       }
     });
   }
+  
+  revalidatePath("/");
 }
 
-// Remover item
+// ----------------------------------------------------------------------
+// 4. Remover item
+// ----------------------------------------------------------------------
 export async function removeFromCartAction(itemId: string) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return;
-
-  const usuario = await prisma.usuarios.findUnique({ where: { email: session.user.email } });
-  if (!usuario) return;
-
-  const carrito = await prisma.carrito.findFirst({ where: { usuario_id: usuario.id } });
-  if (!carrito) return;
-
-  const ramoId = getValidRamoId(itemId);
-
-  // Nota: Al borrar por ID de ramo, se borrarán todas las variantes de ese ramo.
-  // Para borrar una variante específica necesitaríamos el ID de la fila (carrito_detalle.id).
-  // Por seguridad y consistencia con el ID que recibe la función, borramos por ramo_id.
-  await prisma.carrito_detalle.deleteMany({
-    where: { 
-      carrito_id: carrito.id, 
-      ramo_id: ramoId 
-    }
-  });
+  try {
+    await prisma.carrito_detalle.delete({
+      where: { id: BigInt(itemId) }
+    });
+    revalidatePath("/");
+  } catch (error) {
+    console.error("Error al eliminar item:", error);
+  }
 }
 
+// ----------------------------------------------------------------------
+// 5. Actualizar cantidad
+// ----------------------------------------------------------------------
 export async function updateQuantityAction(itemId: string, delta: number) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return;
+  try {
+    const detalle = await prisma.carrito_detalle.findUnique({
+      where: { id: BigInt(itemId) }
+    });
 
-  const usuario = await prisma.usuarios.findUnique({ where: { email: session.user.email } });
-  if (!usuario) return;
-
-  const carrito = await prisma.carrito.findFirst({ where: { usuario_id: usuario.id } });
-  if (!carrito) return;
-
-  const ramoId = getValidRamoId(itemId);
-
-  const detalles = await prisma.carrito_detalle.findMany({
-    where: { carrito_id: carrito.id, ramo_id: ramoId }
-  });
-
-  for (const detalle of detalles) {
-    const nuevaCantidad = detalle.cantidad + delta;
-    if (nuevaCantidad > 0) {
-      await prisma.carrito_detalle.update({
-        where: { id: detalle.id },
-        data: { cantidad: nuevaCantidad }
-      });
+    if (detalle) {
+      const nuevaCantidad = detalle.cantidad + delta;
+      if (nuevaCantidad > 0) {
+        await prisma.carrito_detalle.update({
+          where: { id: detalle.id },
+          data: { cantidad: nuevaCantidad }
+        });
+      }
     }
+    revalidatePath("/");
+  } catch (error) {
+    console.error("Error actualizando cantidad:", error);
   }
 }

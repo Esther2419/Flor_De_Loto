@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -57,6 +58,9 @@ export async function createCategoria(formData: any) {
 
 export async function updateCategoria(id: string, formData: any) {
   try {
+    // 1. Obtener anterior
+    const catAnterior = await prisma.categorias.findUnique({ where: { id: BigInt(id) } });
+
     const usuarioId = await getCurrentUserId();
     const padreId = formData.padreId ? BigInt(formData.padreId) : null;
 
@@ -76,6 +80,17 @@ export async function updateCategoria(id: string, formData: any) {
         usuario_actualizacion_id: usuarioId
       }
     });
+
+    // 3. Limpieza de imágenes
+    if (catAnterior?.foto && catAnterior.foto !== formData.foto) {
+        const fileName = catAnterior.foto.split('/').pop();
+        if (fileName) await supabase.storage.from('categorias').remove([fileName]);
+    }
+    if (catAnterior?.portada && catAnterior.portada !== formData.portada) {
+        const fileName = catAnterior.portada.split('/').pop();
+        if (fileName) await supabase.storage.from('categorias').remove([fileName]);
+    }
+
     revalidatePath('/admin/categorias');
     return { success: true };
   } catch (error) {
@@ -93,6 +108,6 @@ export async function deleteCategoria(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error eliminando:", error);
-    return { success: false, error: "No se puede eliminar porque tiene subcategorías o productos asociados." };
+    return { success: false, error: "No se puede eliminar porque tiene subcategorías asociadas." };
   }
 }

@@ -3,7 +3,6 @@
 import React from "react";
 import { MessageCircle } from "lucide-react";
 import { format, addMinutes } from "date-fns";
-import { es } from "date-fns/locale";
 
 interface WhatsAppButtonProps {
   pedido: any;
@@ -18,7 +17,14 @@ export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
 
     const productosTexto = pedido.detalle_pedidos
       .map((detalle: any) => {
-        let itemStr = `- ${detalle.cantidad}x ${detalle.ramos.nombre} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
+        const nombreProducto = detalle.ramos?.nombre || detalle.flores?.nombre || "Producto desconocido";
+        
+        // Verificamos si es oferta en la relación o en el JSON de personalización del detalle
+        const esOferta = detalle.ramos?.es_oferta || (detalle.personalizacion as any)?.esOferta;
+        const etiquetaOferta = esOferta ? " 🔥[OFERTA]🔥" : "";
+        
+        let itemStr = `- ${detalle.cantidad}x ${nombreProducto}${etiquetaOferta} (Bs ${Number(detalle.precio_unitario).toFixed(0)})`;
+        
         if (detalle.personalizacion) {
           itemStr += `\n  _Personalizado_`;
         }
@@ -38,9 +44,7 @@ ${productosTexto}
 
 *TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*`;
 
-    const mensajeCodificado = encodeURIComponent(mensaje);
-    
-    window.open(`https://wa.me/59162646545?text=${mensajeCodificado}`, "_blank");
+    window.open(`https://wa.me/59162646545?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
 
   return (

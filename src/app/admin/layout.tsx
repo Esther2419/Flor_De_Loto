@@ -1,12 +1,30 @@
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import PanelAdmin from "@/components/PanelAdmin";
-import { Suspense } from "react";
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await getServerSession(authOptions);
+
+  if (!session) {
+    redirect("/login");
+  }
+
+  const rolUsuario = session.user.rol?.toLowerCase();
+
+  const tienePermisoAdmin = rolUsuario === "admin" || rolUsuario === "adminmenor";
+
+  if (!tienePermisoAdmin) {
+    redirect("/");
+  }
+
   return (
-    <Suspense fallback={<div className="min-h-screen bg-[#050505]" />}>
-      <PanelAdmin>
-        {children}
-      </PanelAdmin>
-    </Suspense>
+    <PanelAdmin>
+      {children}
+    </PanelAdmin>
   );
 }
