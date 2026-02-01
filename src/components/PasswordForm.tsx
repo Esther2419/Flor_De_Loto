@@ -20,13 +20,18 @@ export default function PasswordForm({ email, hasPassword }: { email: string, ha
     setLoading(true);
     setMessage(null);
 
-    const result = await updatePasswordAction(email, password);
+    const result = await updatePasswordAction({ email, password });
     
     if (result.success) {
-      setMessage({ type: 'success', text: result.message });
+
+      setMessage({ type: 'success', text: result.message || "Contraseña actualizada" });
       setPassword("");
     } else {
-      setMessage({ type: 'error', text: result.message });
+      // Manejamos el caso de error capturando result.error o result.message
+      setMessage({ 
+        type: 'error', 
+        text: result.error || result.message || "Error al procesar la solicitud" 
+      });
     }
     setLoading(false);
   };
@@ -70,7 +75,11 @@ export default function PasswordForm({ email, hasPassword }: { email: string, ha
           disabled={loading}
           className="w-full bg-[#C5A059] text-white py-3 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-[#b38f4d] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[#C5A059]/20"
         >
-          {loading ? <Loader2 className="animate-spin" size={16} /> : (hasPassword ? "Actualizar" : "Guardar Contraseña")}
+          {loading ? (
+            <Loader2 className="animate-spin" size={16} />
+          ) : (
+            hasPassword ? "Actualizar" : "Guardar Contraseña"
+          )}
         </button>
       </form>
     </div>

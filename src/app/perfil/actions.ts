@@ -39,13 +39,14 @@ export async function updateProfile(formData: FormData) {
   }
 }
 
-// Acción para actualizar la contraseña (La que faltaba)
-export async function updatePasswordAction(formData: FormData) {
+// Acción para actualizar la contraseña corregida para tipos TS
+export async function updatePasswordAction({ email, password }: { email: string, password: string }) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return { error: "No autorizado" };
-
-  const currentPassword = formData.get("currentPassword") as string;
-  const newPassword = formData.get("newPassword") as string;
+  
+  // Verificación de seguridad: el email debe coincidir con la sesión activa
+  if (!session?.user?.email || session.user.email !== email) {
+    return { error: "No autorizado" };
+  }
 
   try {
     const usuario = await prisma.usuarios.findUnique({
@@ -54,21 +55,17 @@ export async function updatePasswordAction(formData: FormData) {
 
     if (!usuario) return { error: "Usuario no encontrado" };
 
-    // Si tiene contraseña (no es solo Google), verificar la actual
-    if (usuario.password && usuario.password !== "") {
-      const isMatch = await bcrypt.compare(currentPassword, usuario.password);
-      if (!isMatch) return { error: "La contraseña actual es incorrecta" };
-    }
-
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    // Encriptar la nueva contraseña
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     await prisma.usuarios.update({
       where: { email: session.user.email },
       data: { password: hashedPassword },
     });
 
-    return { success: "Contraseña actualizada correctamente" };
+    return { success: true, message: "Contraseña actualizada correctamente" };
   } catch (error) {
+    console.error("Error en updatePasswordAction:", error);
     return { error: "Error al procesar la solicitud" };
   }
 }
