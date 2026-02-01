@@ -19,7 +19,8 @@ import {
   AlertCircle,
   ClipboardList,
   Menu,
-  X
+  X,
+  Image as ImageIcon // Importamos el icono para la galería
 } from "lucide-react";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
@@ -182,6 +183,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
     { name: "Flores", href: "/admin/flores", icon: Flower2 },
     { name: "Categorías", href: "/admin/categorias", icon: Layers },
     { name: "Envolturas", href: "/admin/envolturas", icon: Gift },
+    { name: "Nuestro Trabajo", href: "/admin/galeria", icon: ImageIcon }, // <-- NUEVA OPCIÓN AÑADIDA
   ];
 
   return (
@@ -239,7 +241,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
-              {/* Mostramos el rol original pero en minúsculas para consistencia */}
               <p className="text-[10px] text-gray-500 uppercase tracking-wider">{session.user?.role?.toLowerCase() || "admin"}</p>
             </div>
           </div>

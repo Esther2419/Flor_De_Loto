@@ -93,6 +93,6 @@ export async function deleteCategoria(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error eliminando:", error);
-    return { success: false, error: "No se puede eliminar porque tiene subcategorías o productos asociados." };
+    return { success: false, error: "No se puede eliminar porque tiene subcategorías asociadas." };
   }
 }
