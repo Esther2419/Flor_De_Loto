@@ -258,7 +258,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
 
             <div>
               <h1 className="text-lg md:text-xl font-bold text-gray-800 leading-tight">
-                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 👋
+                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 
               </h1>
               <p className="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest hidden sm:block">Gestión de Floristería</p>
             </div>

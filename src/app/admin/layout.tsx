@@ -10,25 +10,17 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions);
 
-
-  const esAdmin = 
-    session?.user?.rol === "admin" || 
-    session?.user?.email === "miguelangelmassigeronimo@gmail.com";
-
   if (!session) {
     redirect("/login");
   }
 
-  if (!esAdmin) {
+  if (session.user.rol !== "Admin") {
     redirect("/");
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-      <PanelAdmin />
-      <main className="flex-1 p-8 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+    <PanelAdmin>
+      {children}
+    </PanelAdmin>
   );
 }
