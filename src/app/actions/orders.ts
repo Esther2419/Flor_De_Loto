@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { revalidatePath } from "next/cache";
 
 interface OrderData {
   nombre_contacto: string;
@@ -16,66 +17,100 @@ interface OrderData {
 
 function getValidId(id: string | number): bigint {
   const stringId = String(id);
-  const numericPart = stringId.match(/^\d+/)?.[0];
+  const numericPart = stringId.match(/\d+/)?.[0];
   if (!numericPart) throw new Error(`ID inválido: ${id}`);
   return BigInt(numericPart);
 }
 
+function getMinutesTotal(input: any): number {
+  if (input instanceof Date) {
+    return input.getUTCHours() * 60 + input.getUTCMinutes();
+  }
+  const parts = String(input).split(':');
+  if (parts.length < 2) return 0;
+  return Number(parts[0]) * 60 + Number(parts[1]);
+}
+
 export async function createOrderAction(data: OrderData) {
   const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return { success: false, message: "No autenticado" };
-  }
+  if (!session?.user?.email) return { success: false, message: "No autenticado" };
 
   const usuario = await prisma.usuarios.findUnique({
     where: { email: session.user.email },
   });
 
-  if (!usuario) {
-    return { success: false, message: "Usuario no encontrado" };
-  }
+  if (!usuario) return { success: false, message: "Usuario no encontrado" };
 
   try {
-    const pedido = await prisma.$transaction(async (tx) => {
-      // 1. Configurar fecha exacta
-      const fechaExacta = new Date(data.fecha_entrega);
-      const [horas, minutos] = data.hora_recojo.split(':').map(Number);
-      fechaExacta.setHours(horas, minutos, 0, 0);
+    // 1. Hora actual en Bolivia
+    const ahoraBolivia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
+    const minutosAhora = ahoraBolivia.getHours() * 60 + ahoraBolivia.getMinutes();
 
-      // 2. Crear cabecera del pedido
+    const pedido = await prisma.$transaction(async (tx) => {
+      const config = await tx.configuracion.findUnique({ where: { id: 1 } });
+      
+      if (!config || !config.horario_apertura || !config.horario_cierre) {
+        throw new Error("Configuración de horarios no disponible.");
+      }
+
+      if (!config.tienda_abierta || (config as any).cierre_temporal) {
+        throw new Error("La tienda se encuentra cerrada actualmente.");
+      }
+
+      const bufferMinutos = Number((config as any).minutos_preparacion) || 6;
+      const [hPedido, mPedido] = data.hora_recojo.split(':').map(Number);
+      const minutosPedido = hPedido * 60 + mPedido;
+      
+      const fechaEntregaExacta = new Date(ahoraBolivia);
+      fechaEntregaExacta.setHours(hPedido, mPedido, 0, 0);
+
+      // VALIDACIÓN: Margen de preparación
+      const diffMinutos = Math.floor((fechaEntregaExacta.getTime() - ahoraBolivia.getTime()) / 60000);
+      if (diffMinutos < bufferMinutos) {
+        throw new Error(`Necesitamos por lo menos ${bufferMinutos} minutos para preparar tu pedido.`);
+      }
+
+      // VALIDACIÓN: Horario de atención (Ajustado para evitar desfases de Date)
+      const minApertura = getMinutesTotal(config.horario_apertura);
+      const minCierre = getMinutesTotal(config.horario_cierre);
+
+      console.log(`Debug Horario: Ahora(${minutosAhora}) | Pedido(${minutosPedido}) | Rango(${minApertura}-${minCierre})`);
+
+      if (minutosPedido < minApertura || minutosPedido >= minCierre) {
+        throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
+      }
+
+      // 6. Crear el pedido
       const nuevoPedido = await tx.pedidos.create({
         data: {
           usuario_id: usuario.id,
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
-          fecha_entrega: fechaExacta,
+          fecha_pedido: new Date(),
+          fecha_entrega: fechaEntregaExacta,
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
           estado: "pendiente"
         }
       });
 
-      // 3. Crear detalles (Mapeando correctamente Flor vs Ramo)
+      // 7. Insertar detalles
       for (const item of data.items) {
-        // Detectamos tipo
-        const esFlor = item.tipo === 'flor';
         const idProducto = getValidId(item.productoId || item.id);
-        
         await tx.detalle_pedidos.create({
           data: {
             pedido_id: nuevoPedido.id,
-            // Asignar al campo correcto según el tipo
-            ramo_id: !esFlor ? idProducto : null,
-            flor_id: esFlor ? idProducto : null,
-            cantidad: item.cantidad,
-            precio_unitario: item.precio,
-            subtotal: item.precio * item.cantidad,
+            ramo_id: item.tipo !== 'flor' ? idProducto : null,
+            flor_id: item.tipo === 'flor' ? idProducto : null,
+            cantidad: Number(item.cantidad),
+            precio_unitario: Number(item.precio),
+            subtotal: Number(item.precio) * Number(item.cantidad),
             personalizacion: item.personalizacion ? JSON.parse(JSON.stringify(item.personalizacion)) : undefined
           }
         });
       }
 
-      // 4. Limpiar carrito tras pedido exitoso
+      // 8. Limpiar carrito
       const carrito = await tx.carrito.findFirst({ where: { usuario_id: usuario.id } });
       if (carrito) {
         await tx.carrito_detalle.deleteMany({ where: { carrito_id: carrito.id } });
@@ -84,10 +119,11 @@ export async function createOrderAction(data: OrderData) {
       return nuevoPedido;
     });
 
+    revalidatePath("/mis-pedidos");
     return { success: true, orderId: pedido.id.toString() };
 
-  } catch (error) {
-    console.error("Error creando pedido:", error);
-    return { success: false, message: "Error interno al procesar el pedido" };
+  } catch (error: any) {
+    console.error("Error en createOrderAction:", error.message);
+    return { success: false, message: error.message || "Error al procesar el pedido" };
   }
 }
