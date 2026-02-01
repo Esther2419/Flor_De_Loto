@@ -128,7 +128,7 @@ export default function Navbar() {
                       <div className="absolute right-0 top-full w-52 bg-[#050505] border border-[#C5A059]/30 rounded-xl shadow-2xl py-3 z-50 animate-in fade-in slide-in-from-top-2">
                         <Link href="/perfil" className="flex items-center gap-3 px-4 py-2 text-[10px] text-white hover:bg-[#C5A059]/10 hover:text-[#D4AF37] font-bold uppercase"><User size={14} /> Perfil</Link>
                         <Link href="/mis-pedidos" className="flex items-center gap-3 px-4 py-2 text-[10px] text-white hover:bg-[#C5A059]/10 hover:text-[#D4AF37] font-bold uppercase"><ClipboardList size={14} /> Pedidos</Link>
-                        {session.user?.role === "admin" && <Link href="/admin" className="flex items-center gap-3 px-4 py-2 text-[10px] text-[#D4AF37] font-bold uppercase border-t border-white/5 mt-1 pt-2"><LayoutDashboard size={14} /> Panel Admin</Link>}
+                        {session.user?.rol === "admin" && <Link href="/admin" className="flex items-center gap-3 px-4 py-2 text-[10px] text-[#D4AF37] font-bold uppercase border-t border-white/5 mt-1 pt-2"><LayoutDashboard size={14} /> Panel Admin</Link>}
                         <button onClick={() => signOut({ callbackUrl: "/" })} className="w-full text-left px-4 py-2 text-[10px] text-red-500 hover:bg-red-500/10 flex items-center gap-3 border-t border-white/10 mt-2 font-bold uppercase"><LogOut size={14} /> Salir</button>
                       </div>
                     )}
