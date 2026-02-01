@@ -32,6 +32,13 @@ export default function HeroCarousel() {
       subtitle: "Detalles que Enamoran",
       desc: "Expresa tus sentimientos con el lenguaje de las flores."
     },
+    {
+      id: 4,
+      image: "/portada.jpg",
+      title: "Momentos Inolvidables",
+      subtitle: "Elegancia en cada pétalo",
+      desc: "Diseños exclusivos que transforman tus sentimientos en arte floral."
+    },
   ];
 
   const resetTimeout = () => {
@@ -42,7 +49,6 @@ export default function HeroCarousel() {
 
   useEffect(() => {
     resetTimeout();
-
     timeoutRef.current = setTimeout(
       () =>
         setCurrentSlide((prevIndex) =>
@@ -50,7 +56,6 @@ export default function HeroCarousel() {
         ),
       5000
     );
-
     return () => {
       resetTimeout();
     };
@@ -76,7 +81,7 @@ export default function HeroCarousel() {
   };
 
   return (
-    <div className="relative h-[50vh] w-full overflow-hidden bg-negro group"
+    <div className="relative h-[25vh] md:h-[35vh] w-full overflow-hidden bg-negro group transition-all duration-300"
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
@@ -111,28 +116,32 @@ export default function HeroCarousel() {
                 : "translate-y-8 opacity-0"
             } absolute w-full`}
           >
-            <h2 className="font-serif text-4xl md:text-6xl text-[#F3E5AB] drop-shadow-md tracking-wide italic mb-2">
+            {/* Tamaños de texto ajustados para móvil y PC */}
+            <h2 className="font-serif text-2xl md:text-5xl text-[#F3E5AB] drop-shadow-md tracking-wide italic mb-1 md:mb-2">
               {slide.title}
             </h2>
-            <p className="text-white/90 font-sans tracking-[0.2em] text-sm md:text-base uppercase mb-4">
+            
+            <p className="text-white/90 font-sans tracking-[0.2em] text-[10px] md:text-sm uppercase mb-2 md:mb-4">
               {slide.subtitle}
             </p>
-            <div className="w-16 h-[1px] bg-[#C5A059] mx-auto mb-4" />
-            <p className="text-white/80 font-serif text-lg italic max-w-lg mx-auto">
+            
+            <div className="w-10 md:w-16 h-[1px] bg-[#C5A059] mx-auto mb-2 md:mb-4" />
+            
+            <p className="text-white/80 font-serif text-xs md:text-base italic max-w-lg mx-auto px-4 md:px-0 line-clamp-2 md:line-clamp-none">
               {slide.desc}
             </p>
           </div>
         ))}
       </div>
 
-      {/* --- PUNTITOS DE NAVEGACIÓN (con delay) --- */}
-      <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-3 z-20">
+      {/* --- PUNTITOS DE NAVEGACIÓN --- */}
+      <div className="absolute bottom-3 md:bottom-6 left-0 right-0 flex justify-center gap-2 md:gap-3 z-20">
         {slides.map((_, index) => (
           <button
             key={index}
             onClick={() => setCurrentSlide(index)}
-            className={`h-2 rounded-full transition-all duration-500 cursor-pointer ${
-              index === currentSlide ? "bg-[#C5A059] w-8" : "bg-white/30 hover:bg-white w-2"
+            className={`h-1.5 md:h-2 rounded-full transition-all duration-500 cursor-pointer ${
+              index === currentSlide ? "bg-[#C5A059] w-6 md:w-8" : "bg-white/30 hover:bg-white w-1.5 md:w-2"
             }`}
             aria-label={`Ir a diapositiva ${index + 1}`}
           />

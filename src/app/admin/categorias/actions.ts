@@ -3,7 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 function serialize(data: any) {
   return JSON.parse(JSON.stringify(data, (key, value) =>
@@ -93,6 +93,6 @@ export async function deleteCategoria(id: string) {
     return { success: true };
   } catch (error) {
     console.error("Error eliminando:", error);
-    return { success: false, error: "No se puede eliminar porque tiene subcategorías o productos asociados." };
+    return { success: false, error: "No se puede eliminar porque tiene subcategorías asociadas." };
   }
 }

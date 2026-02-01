@@ -82,8 +82,15 @@ export async function deleteFlor(id: string) {
     });
     revalidatePath('/admin/flores');
     return { success: true };
-  } catch (error) {
+  } catch (error: any) {
+    // Si el error es P2003 significa que hay una llave foránea (esta en un ramo)
+    if (error.code === 'P2003') {
+      return { 
+        success: false, 
+        error: "No se puede eliminar la flor porque está siendo utilizada en uno o más ramos del catálogo." 
+      };
+    }
     console.error("Error eliminando flor:", error);
-    return { success: false, error: "Error al eliminar" };
+    return { success: false, error: "Error al intentar eliminar la flor" };
   }
 }

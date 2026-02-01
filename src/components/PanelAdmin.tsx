@@ -1,166 +1,320 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { signIn, signOut, getSession } from "next-auth/react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { signIn, signOut, useSession } from "next-auth/react";
+import { 
+  LayoutDashboard, 
+  Flower2, 
+  Package, 
+  Layers, 
+  Gift, 
+  LogOut, 
+  User,
+  Loader2,
+  Lock,
+  Mail,
+  AlertCircle,
+  ClipboardList,
+  Menu,
+  X,
+  Users,           // Icono para gestión de personal
+  Image as ImageIcon // Icono para la galería
+} from "lucide-react";
 
-export default function PanelAdmin() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
+  const { data: session, status } = useSession();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [userData, setUserData] = useState<{name?: string | null, image?: string | null} | null>(null);
-  const searchParams = useSearchParams();
+  const [loginError, setLoginError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // --- LÓGICA DE PERMISOS UNIFICADA ---
+  const rolUsuario = session?.user?.rol?.toLowerCase();
+  const isSuperAdmin = rolUsuario === "admin";
+  const hasAdminAccess = rolUsuario === "admin" || rolUsuario === "adminmenor";
 
   useEffect(() => {
-    getSession().then((session) => {
-      if (session) {
-        setIsLoggedIn(true);
-        setUserData(session.user || null);
-      }
-    });
-  }, []);
+    const errorParam = searchParams.get("error");
+    
+    if (errorParam === "AccessDenied") {
+      setLoginError("Acceso Denegado: Esta cuenta no tiene permisos administrativos.");
+      
+      const timer = setTimeout(() => {
+        setLoginError("");
+        if (typeof window !== "undefined") {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("error");
+          window.history.replaceState({}, '', url.pathname);
+        }
+      }, 5000);
 
-  useEffect(() => {
-    if (searchParams.get("error") === "AccessDenied") {
-      setError("Tu cuenta de Google no tiene permisos de administrador.");
+      return () => clearTimeout(timer);
     }
   }, [searchParams]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setLoginError("");
+    setIsSubmitting(true);
     
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          email: email.trim(), 
-          password: password.trim() 
-        }),
-      });
+    const res = await signIn("credentials", {
+      email: email.trim(),
+      password: password.trim(),
+      redirect: false,
+    });
 
-      const data = await res.json();
-
-      if (res.ok && data.success) setIsLoggedIn(true);
-      else setError(data.message || "Error de autenticación");
-      
-    } catch (err) {
-      console.error("Error detallado del login:", err);
-      setError("Error de conexión con el servidor");
+    if (res?.error) {
+      setLoginError("Credenciales incorrectas o acceso denegado.");
+      setIsSubmitting(false);
     }
   };
 
-  // --- VISTA: DASHBOARD ---
-  if (isLoggedIn) {
+  if (status === "loading") {
     return (
-      <div className="min-h-screen bg-[#F9F6EE]">
-        <nav className="bg-[#0A0A0A] text-white p-4 flex justify-between items-center border-b border-[#C5A059]">
-          <div className="flex items-center gap-3">
-            <h1 className="font-serif text-xl text-[#C5A059] italic">Flor de Loto</h1>
-            <span className="text-white/30 text-xs tracking-widest uppercase">| Panel Admin</span>
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-[#C5A059] gap-4">
+        <Loader2 className="animate-spin" size={40} />
+        <p className="font-serif italic text-lg">Verificando credenciales...</p>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[url('/pattern-bg.png')] opacity-5 pointer-events-none" />
+        <div className="max-w-md w-full bg-white/5 border border-[#C5A059]/30 rounded-2xl p-8 backdrop-blur-md shadow-2xl relative z-10">
+          
+          <div className="text-center mb-8">
+            <div className="relative w-20 h-20 mx-auto mb-4">
+               <Image src="/LogoSinLetra.png" alt="Flor de Loto" fill className="object-contain" />
+            </div>
+            <h1 className="font-serif text-3xl text-[#C5A059] italic mb-2">Flor de Loto</h1>
+            <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel de Gestión</p>
           </div>
-          <div className="flex items-center gap-4">
-            {userData?.name && <span className="text-xs text-[#C5A059]">{userData.name}</span>}
-            <button 
-              onClick={async () => {
-                await signOut({ redirect: false });
-                setIsLoggedIn(false);
-                setUserData(null);
-              }}
-              className="text-[10px] border border-[#C5A059]/50 px-3 py-1 rounded hover:bg-[#C5A059] hover:text-white transition-colors uppercase tracking-widest"
-            >
-              Salir
-            </button>
-          </div>
-        </nav>
 
-        <div className="p-8 max-w-7xl mx-auto">
-          <h2 className="text-3xl font-serif text-[#0A0A0A] mb-2">Resumen General</h2>
-          <p className="text-[#2D2D2D] font-light text-sm mb-10">Selecciona un módulo para gestionar</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            
-            {/* MÓDULO 1: FLORES */}
-            <Link href="/admin/flores" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
-              
-              <div className="w-16 h-16 bg-[#F9F6EE] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-3xl">🌷</span>
+          <form onSubmit={handleLogin} className="space-y-4">
+            {loginError && (
+              <div className="flex items-center gap-2 text-red-400 text-xs bg-red-500/10 py-3 px-4 rounded border border-red-500/20 animate-in fade-in zoom-in duration-300">
+                <AlertCircle size={16} className="shrink-0" />
+                <p>{loginError}</p>
               </div>
-              
-              <h3 className="font-serif text-lg text-[#0A0A0A] group-hover:text-[#C5A059] transition-colors mb-2 leading-tight">
-                Administrar flores y catálogo
-              </h3>
-              <p className="text-xs text-gray-400 font-light leading-relaxed">
-                Gestión completa de inventario, altas, bajas y edición.
-              </p>
-            </Link>
+            )}
 
-            {/* MÓDULO 2: RAMOS (Próximamente) */}
-            <div className="bg-white/50 p-8 rounded-xl border border-dashed border-gray-200 flex flex-col items-center text-center grayscale opacity-60 cursor-not-allowed">
-              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <span className="text-3xl text-gray-300">💐</span>
-              </div>
-              <h3 className="font-serif text-lg text-gray-400 mb-2">Ramos</h3>
-              <span className="text-[10px] bg-gray-200 px-2 py-1 rounded text-gray-500 uppercase tracking-widest">Próximamente</span>
+            <div className="relative">
+              <Mail className="absolute left-3 top-3.5 text-[#C5A059]/50" size={18} />
+              <input 
+                type="email" 
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full bg-black/40 border border-[#C5A059]/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] transition-all text-sm"
+                placeholder="Correo corporativo"
+                required
+              />
             </div>
 
-            {/* MÓDULO 3: CATEGORÍAS (AHORA ACTIVO) */}
-            <Link href="/admin/categorias" className="group bg-white p-8 rounded-xl shadow-sm hover:shadow-xl border border-[#C5A059]/10 hover:border-[#C5A059] transition-all duration-300 flex flex-col items-center text-center cursor-pointer relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#C5A059] to-[#F3E5AB] opacity-0 group-hover:opacity-100 transition-opacity" />
-              
-              <div className="w-16 h-16 bg-[#F9F6EE] rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-                <span className="text-3xl">🏷️</span>
-              </div>
-              
-              <h3 className="font-serif text-lg text-[#0A0A0A] group-hover:text-[#C5A059] transition-colors mb-2">
-                Categorías
-              </h3>
-              <p className="text-xs text-gray-400 font-light leading-relaxed">
-                Crear estructura del menú, asignar fotos y portadas.
-              </p>
-            </Link>
+            <div className="relative">
+              <Lock className="absolute left-3 top-3.5 text-[#C5A059]/50" size={18} />
+              <input 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full bg-black/40 border border-[#C5A059]/20 rounded-lg pl-10 pr-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] transition-all text-sm"
+                placeholder="Contraseña"
+                required
+              />
+            </div>
 
+            <button 
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full bg-[#C5A059] text-black font-bold py-3 rounded-lg hover:bg-[#b38f4d] transition-all text-xs tracking-widest uppercase flex justify-center items-center"
+            >
+              {isSubmitting ? <Loader2 className="animate-spin" size={18} /> : "Ingresar al Panel"}
+            </button>
+          </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
+            <div className="relative flex justify-center text-xs"><span className="px-2 bg-[#050505] text-white/40 uppercase tracking-widest">O</span></div>
           </div>
+
+          <button
+            onClick={() => signIn("google")}
+            className="w-full bg-white text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 text-sm"
+          >
+            <Image src="https://www.google.com/favicon.ico" alt="Google" width={18} height={18} />
+            Continuar con Google
+          </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-[#050505] flex items-center justify-center px-4 relative overflow-hidden">
-      <div className="absolute top-0 left-0 w-full h-full bg-[url('/pattern-bg.png')] opacity-5 pointer-events-none" />
-      <div className="max-w-md w-full bg-white/5 border border-[#C5A059]/30 rounded-2xl p-8 backdrop-blur-md shadow-2xl relative z-10">
-        <div className="text-center mb-8">
-          <div className="relative w-20 h-20 mx-auto mb-4 group">
-             <Image src="/LogoSinLetra.png" alt="Flor de Loto Admin" fill className="object-contain drop-shadow-[0_0_15px_rgba(197,160,89,0.3)]" />
-          </div>
-          <h1 className="font-serif text-3xl text-[#C5A059] italic mb-2">Flor de Loto</h1>
-          <p className="text-white/60 text-[10px] font-sans tracking-[0.3em] uppercase">Panel Admin</p>
+  if (session && !hasAdminAccess) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center text-center p-4">
+        <div className="relative w-24 h-24 mb-6">
+          <Image src="/LogoSinLetra.png" alt="Acceso Denegado" fill className="object-contain grayscale opacity-50" />
         </div>
-        <form onSubmit={handleLogin} className="space-y-5">
-          <div>
-            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/20 border border-[#C5A059]/20 rounded-lg px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] focus:bg-black/40 transition-all text-sm" placeholder="Correo electrónico" />
-          </div>
-          <div>
-            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-black/20 border border-[#C5A059]/20 rounded-lg px-4 py-3 text-white placeholder-white/20 focus:outline-none focus:border-[#C5A059] focus:bg-black/40 transition-all text-sm" placeholder="Contraseña" />
-          </div>
-          {error && <p className="text-red-400 text-xs text-center bg-red-500/10 py-2 rounded border border-red-500/20 animate-pulse">{error}</p>}
-          <button type="submit" className="w-full bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] text-[#050505] font-bold py-3 rounded-lg hover:shadow-[0_0_20px_rgba(191,149,63,0.4)] transition-all duration-500 bg-[length:200%_auto] hover:bg-right text-xs tracking-widest uppercase">Ingresar al Panel</button>
-        </form>
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10"></div></div>
-          <div className="relative flex justify-center text-sm"><span className="px-2 bg-[#050505] text-white/40 text-xs uppercase tracking-widest">O continúa con</span></div>
-        </div>
-        <button type="button" onClick={() => signIn("google")} className="w-full bg-white text-[#5D4E4E] font-bold py-3 rounded-lg hover:bg-gray-100 transition-all flex items-center justify-center gap-3 text-sm">
-          <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
-          Google
+        <h2 className="text-[#C5A059] font-serif italic text-3xl mb-4">Acceso Denegado</h2>
+        <p className="text-white/60 text-sm mb-8 max-w-xs mx-auto">
+          Esta cuenta no tiene permisos administrativos para acceder a Flor de Loto.
+        </p>
+        <button 
+          onClick={() => signOut({ callbackUrl: '/' })}
+          className="bg-[#C5A059] text-black px-8 py-3 rounded-xl font-bold uppercase text-[10px] tracking-widest hover:scale-105 transition-all shadow-lg shadow-[#C5A059]/20"
+        >
+          Volver al Inicio
         </button>
+      </div>
+    );
+  }
+
+  // --- CONFIGURACIÓN DEL MENÚ CON GALERÍA ---
+  const menuItems = [
+    { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Pedidos", href: "/admin/pedidos", icon: ClipboardList },
+    { name: "Ramos", href: "/admin/ramos", icon: Package },
+    { name: "Flores", href: "/admin/flores", icon: Flower2 },
+    { name: "Categorías", href: "/admin/categorias", icon: Layers },
+    { name: "Envolturas", href: "/admin/envolturas", icon: Gift },
+    { name: "Nuestro Trabajo", href: "/admin/galeria", icon: ImageIcon },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex font-sans relative">
+      
+      {isMobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden backdrop-blur-sm transition-opacity"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
+
+      <aside className={`
+        fixed md:sticky top-0 z-50 h-screen md:h-screen
+        w-64 bg-[#0A0A0A] text-white flex flex-col flex-shrink-0 border-r border-white/5
+        transition-transform duration-300 ease-in-out
+        ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+      `}>
+        <div className="h-20 flex items-center justify-between px-4 border-b border-white/10 bg-[#0A0A0A]">
+          <div className="text-center w-full md:w-auto">
+            <h2 className="text-2xl font-serif italic text-[#C5A059]">Flor de Loto</h2>
+            <p className="text-[10px] uppercase tracking-[0.2em] text-gray-500 mt-1">Admin Panel</p>
+          </div>
+          <button 
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="md:hidden text-gray-400 hover:text-white absolute right-4"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
+          {menuItems.map((item) => {
+            const isActive = pathname === item.href;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                  ${isActive ? "bg-[#C5A059] text-black shadow-lg" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+              >
+                <Icon size={18} />
+                {item.name}
+              </Link>
+            );
+          })}
+
+          {/* GESTIÓN DE PERSONAL (SÓLO SUPER ADMIN) */}
+          {isSuperAdmin && (
+            <div className="pt-4 mt-4 border-t border-white/5">
+              <p className="px-4 mb-2 text-[9px] font-black text-gray-500 uppercase tracking-widest">Ajustes de Sistema</p>
+              <Link
+                href="/admin/usuarios"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                  ${pathname === "/admin/usuarios" ? "bg-white text-black" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+              >
+                <Users size={18} />
+                Gestionar Personal
+              </Link>
+            </div>
+          )}
+        </nav>
+
+        <div className="p-4 border-t border-white/10 bg-black/20 mt-auto">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-[#C5A059]/10 flex items-center justify-center text-[#C5A059] border border-[#C5A059]/20">
+              <User size={18} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{session.user?.name || "Admin"}</p>
+              {/* Uso estandarizado de ROL */}
+              <p className="text-[10px] text-[#C5A059] font-bold uppercase tracking-wider">
+                {session.user?.rol?.toLowerCase() || "admin"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        <header className="bg-white border-b border-gray-200 h-20 flex items-center justify-between px-4 md:px-6 sticky top-0 z-30 shadow-sm md:shadow-none">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="md:hidden text-gray-600 hover:text-[#C5A059] transition-colors p-1"
+            >
+              <Menu size={24} />
+            </button>
+
+            <div>
+              <h1 className="text-lg md:text-xl font-bold text-gray-800 leading-tight">
+                Hola, <span className="text-[#C5A059]">{session.user?.name?.split(' ')[0] || "Admin"}</span> 
+              </h1>
+              <p className="text-[10px] md:text-[11px] text-gray-400 uppercase tracking-widest hidden sm:block">Gestión de Floristería</p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3 md:gap-4">
+            <div className="hidden lg:block text-right">
+              <p className="text-xs font-bold text-gray-700">{session.user?.email}</p>
+              <span className="text-[10px] text-green-500 font-bold uppercase">Sesión Activa</span>
+            </div>
+            <button 
+              onClick={() => signOut({ callbackUrl: '/' })}
+              className="flex items-center gap-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 px-3 md:px-4 py-2 md:py-2.5 rounded-lg transition-all font-semibold"
+            >
+              <LogOut size={18} />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-auto p-4 md:p-8">
+          <div className="max-w-7xl mx-auto">
+             {children || (
+               <div className="bg-white p-20 rounded-[2.5rem] border border-gray-100 shadow-sm text-center">
+                 <div className="bg-[#C5A059]/10 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 text-[#C5A059]">
+                    <LayoutDashboard size={40} />
+                 </div>
+                 <h2 className="text-3xl font-serif italic text-gray-800 mb-2">Bienvenido al Panel de Control</h2>
+                 <p className="text-gray-400 max-w-sm mx-auto">Selecciona una opción del menú lateral para gestionar las operaciones de Flor de Loto.</p>
+               </div>
+             )}
+          </div>
+        </main>
       </div>
     </div>
   );

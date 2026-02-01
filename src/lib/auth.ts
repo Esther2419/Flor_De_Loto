@@ -1,0 +1,104 @@
+import { NextAuthOptions } from "next-auth";
+import CredentialsProvider from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+import prisma from "@/lib/prisma";
+import bcrypt from "bcrypt";
+
+export const authOptions: NextAuthOptions = {
+  providers: [
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      authorization: { params: { prompt: "select_account" } },
+    }),
+    CredentialsProvider({
+      name: "Credentials",
+      credentials: {
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email || !credentials?.password) return null;
+
+        const usuario = await prisma.usuarios.findUnique({
+          where: { email: credentials.email }
+        });
+
+        if (!usuario || !usuario.password) throw new Error("Credenciales inválidas");
+
+        const passwordMatch = await bcrypt.compare(credentials.password, usuario.password);
+        if (!passwordMatch) throw new Error("Contraseña incorrecta");
+
+        return {
+          id: usuario.id.toString(),
+          name: usuario.nombre_completo,
+          email: usuario.email,
+          rol: usuario.rol || "cliente", 
+          celular: usuario.celular, 
+        };
+      }
+    })
+  ],
+  callbacks: {
+    async signIn({ user, account }: any) {
+      if (account?.provider === "google") {
+        const usuarioBD = await prisma.usuarios.findUnique({
+          where: { email: user.email }
+        });
+
+        if (!usuarioBD) {
+          await prisma.usuarios.create({
+            data: {
+              email: user.email,
+              nombre_completo: user.name,
+              rol: "cliente",
+              password: "", 
+            }
+          });
+        }
+      }
+      return true;
+    },
+    async jwt({ token, user, trigger, session }: any) {
+      if (trigger === "update" && session) {
+        token.name = session.user.name;
+        token.celular = session.user.celular;
+      }
+
+      if (user) {
+        token.id = user.id;
+        token.rol = user.rol;
+        token.celular = user.celular;
+      } 
+      if (!token.rol && token.email) {
+        const dbUser = await prisma.usuarios.findUnique({ 
+          where: { email: token.email } 
+        });
+        if (dbUser) {
+          token.id = dbUser.id.toString();
+          token.rol = dbUser.rol || "cliente";
+          token.celular = dbUser.celular;
+          token.name = dbUser.nombre_completo;
+        }
+      }
+      
+      return token;
+    },
+    async session({ session, token }: any) {
+      if (session.user) {
+        session.user.id = token.id;
+        session.user.rol = token.rol;
+        session.user.celular = token.celular;
+      }
+      return session;
+    }
+  },
+  pages: {
+    signIn: '/login',
+    error: '/login',
+  },
+  session: {
+    strategy: "jwt",
+  },
+  secret: process.env.NEXTAUTH_SECRET,
+};

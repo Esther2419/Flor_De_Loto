@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Playfair_Display, Lato, Cinzel } from "next/font/google";
 import "./globals.css";
+import { Providers } from "@/components/Providers";
+import CartSidebar from "@/components/CartSidebar";
+import { ToastProvider } from "@/context/ToastContext";
 
 const playfair = Playfair_Display({ 
   subsets: ["latin"], 
@@ -22,8 +25,38 @@ const cinzel = Cinzel({
 });
 
 export const metadata: Metadata = {
-  title: "Flor de Loto | Floristería Boutique",
-  description: "Arreglos florales exclusivos.",
+  metadataBase: new URL(
+    process.env.NODE_ENV === "production" 
+      ? "https://www.floreriaflordeloto.com" 
+      : "http://localhost:3000"
+  ),
+  title: {
+    default: "Flor de Loto | Floristería en Cochabamba",
+    template: "%s | Flor de Loto"
+  },
+  description: "La mejor floristería en Cochabamba. Arreglos florales exclusivos, ramos de rosas, tulipanes y regalos personalizados con entrega a domicilio. Frescura y elegancia garantizada.",
+  
+  icons: {
+    icon: '/LogoSinLetra.png',
+    apple: '/LogoSinLetra.png',
+    shortcut: '/LogoSinLetra.png',
+  },
+
+  openGraph: {
+    title: "Flor de Loto | Floristería Boutique",
+    description: "Arreglos florales exclusivos y frescos en Cochabamba.",
+    url: 'https://www.floreriaflordeloto.com',
+    siteName: 'Flor de Loto',
+    images: [
+      {
+        url: '/LogoSinLetra.png',
+        width: 800,
+        height: 800,
+      },
+    ],
+    locale: 'es_BO',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({
@@ -33,9 +66,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      {}
       <body className={`${playfair.variable} ${lato.variable} ${cinzel.variable} bg-crema text-gris font-sans antialiased`}>
-        {children}
+        <Providers>
+          <ToastProvider>
+            <CartSidebar />
+            {children}
+          </ToastProvider>
+        </Providers>
       </body>
     </html>
   );

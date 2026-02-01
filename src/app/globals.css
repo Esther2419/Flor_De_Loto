@@ -37,3 +37,35 @@
     scrollbar-width: none;
   }
 }
+@keyframes flyToCart {
+  0% {
+    transform: translate(0, 0) scale(1);
+    opacity: 1;
+  }
+  20% {
+    transform: translate(0, -50px) scale(1.1);
+  }
+  100% {
+    transform: translate(calc(100vw - var(--target-x, 50px) - 100%), calc(-1 * var(--target-y, 500px))) scale(0.1);
+    top: 20px; 
+    left: 90%; 
+    opacity: 0;
+  }
+}
+
+.animate-fly-to-cart {
+  animation: flyToCart 1.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #E5E7EB;
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #C5A059;
+}
