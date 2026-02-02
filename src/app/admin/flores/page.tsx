@@ -147,6 +147,11 @@ export default function FloresAdminPage() {
   useEffect(() => { if (activeTab === "ver") loadFlores(); }, [activeTab]);
   useEffect(() => { getSession().then((s) => { if (s?.user?.email) setCurrentUser(s.user.email); }); }, []);
 
+  useEffect(() => {
+    const qty = parseInt(formData.cantidad) || 0;
+    if (qty === 0) setFormData(p => ({ ...p, disponible: false }));
+  }, [formData.cantidad]);
+
   const showAlert = (msg: string) => setAlert({ open: true, msg });
 
   const loadFlores = async () => {
@@ -334,6 +339,17 @@ export default function FloresAdminPage() {
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Descripción</label>
                     <textarea value={formData.descripcion} onChange={e => setFormData({...formData, descripcion: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 outline-none" rows={4} />
                   </div>
+
+                  <div className={`col-span-full p-4 rounded-2xl flex items-center justify-between border transition-colors ${isStockZero ? 'bg-red-50 border-red-100' : 'bg-gray-50/50 border-gray-100'}`}>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-gray-800">Disponibilidad</span>
+                      <span className="text-[10px] text-gray-400">{isStockZero ? "Desactivado por falta de stock." : "¿Visible para ventas?"}</span>
+                    </div>
+                    <label className={`relative inline-flex items-center ${isStockZero ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}>
+                        <input type="checkbox" checked={formData.disponible} onChange={e => setFormData({...formData, disponible: e.target.checked})} disabled={isStockZero} className="sr-only peer" />
+                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:bg-[#25D366] after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all"></div>
+                    </label>
+                  </div>
                 </div>
 
                 <button disabled={loading || uploading} type="submit" className="w-full bg-[#0A0A0A] text-[#C5A059] py-6 rounded-2xl font-bold tracking-[0.3em] uppercase hover:bg-[#C5A059] hover:text-white transition-all shadow-2xl flex items-center justify-center gap-4 disabled:opacity-50">
@@ -357,6 +373,17 @@ export default function FloresAdminPage() {
                     </div>
                     <div className="relative h-64 overflow-hidden bg-gray-50">
                         {flor.foto ? <Image src={flor.foto} alt={flor.nombre} fill className="object-cover group-hover:scale-105 transition-transform duration-1000" unoptimized /> : <div className="flex items-center justify-center h-full text-5xl">🌸</div>}
+                        <div className="absolute bottom-3 right-3 z-10">
+                          {flor.disponible ? (
+                            <span className="bg-[#25D366]/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-widest shadow-sm border border-white/20">
+                              Disponible
+                            </span>
+                          ) : (
+                            <span className="bg-red-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-widest shadow-sm border border-white/20">
+                              No Disponible
+                            </span>
+                          )}
+                        </div>
                     </div>
                     <div className="p-8 text-center">
                         <h3 className="font-serif font-bold text-xl text-gray-800 mb-2 truncate">{flor.nombre}</h3>
