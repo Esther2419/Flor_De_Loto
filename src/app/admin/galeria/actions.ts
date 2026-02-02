@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -59,6 +60,9 @@ export async function createGaleriaItem(url: string, descripcion: string) {
 // --- EDITAR REGISTRO (NUEVA FUNCIÓN) ---
 export async function updateGaleriaItem(id: string, url: string, descripcion: string) {
   try {
+    // 1. Obtener item anterior
+    const itemAnterior = await prisma.galeria.findUnique({ where: { id: id } });
+
     await prisma.galeria.update({
       where: { 
         id: id // Usamos el ID (string/UUID) para localizar el registro
@@ -68,6 +72,12 @@ export async function updateGaleriaItem(id: string, url: string, descripcion: st
         descripcion: descripcion,
       },
     });
+
+    // 3. Borrar foto anterior si cambió
+    if (itemAnterior?.url_foto && itemAnterior.url_foto !== url) {
+      const fileName = itemAnterior.url_foto.split('/').pop();
+      if (fileName) await supabase.storage.from('galeria').remove([fileName]);
+    }
 
     // Revalidamos las rutas para que el cambio sea instantáneo en toda la web
     revalidatePath("/admin/galeria");

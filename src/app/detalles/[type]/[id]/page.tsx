@@ -23,7 +23,8 @@ export default async function DetallePage({ params }: { params: { type: string, 
         include: {
           ramo_envolturas: { include: { envolturas: true } },
           ramo_detalle: { include: { flores: true } },
-          categorias: true
+          categorias: true,
+          ramo_imagenes: true
         }
       }),
       getDetalleRamoConOpciones(id)

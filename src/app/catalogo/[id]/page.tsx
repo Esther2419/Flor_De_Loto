@@ -30,12 +30,12 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
     include: {
       ramo_envolturas: {
         include: {
-          envolturas: { select: { nombre: true, foto: true } }
+          envolturas: { select: { nombre: true, foto: true, color: true } }
         }
       },
       ramo_detalle: {
         include: {
-          flores: { select: { nombre: true, foto: true } }
+          flores: { select: { nombre: true, foto: true, color: true } }
         }
       }
     },
@@ -67,7 +67,14 @@ export default async function CatalogoPage({ params }: { params: { id: string } 
       flores: r.ramo_detalle.map(d => ({
         texto: `${d.cantidad_base} ${d.flores.nombre}`,
         foto: d.flores.foto
-      }))
+      })),
+
+      // SOLUCIÓN AL ERROR DE TIPOS (Type Guard)
+      flores_nombres: r.ramo_detalle.map(d => d.flores.nombre),
+      colores: Array.from(new Set([
+        ...r.ramo_detalle.map(d => d.flores.color),
+        ...r.ramo_envolturas.map(e => e.envolturas.color)
+      ].filter((c): c is string => Boolean(c)))) 
     };
   });
 

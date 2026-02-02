@@ -3,10 +3,9 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { supabase } from "@/lib/supabase";
 import { createRamo, getRamos, updateRamo, deleteRamo, getAuxData } from "./actions";
+import { uploadToBucket, deleteFromBucket } from "@/lib/storage";
 import { Package, Plus, LayoutGrid, Search, Camera, ImageIcon, X, Check, Trash2, Loader2 } from "lucide-react";
-import imageCompression from 'browser-image-compression';
 import Cropper from 'react-easy-crop';
 
 // --- TIPOS ---
@@ -116,17 +115,15 @@ export default function RamosAdminPage() {
     try {
       const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels);
       const file = new File([croppedBlob], "image.jpg", { type: "image/jpeg" });
-      const compressedFile = await imageCompression(file, { maxSizeMB: 0.8, maxWidthOrHeight: 1200, useWebWorker: true });
-      const fileName = `ramo_${Date.now()}.${compressedFile.name.split('.').pop()}`;
       
-      const { error } = await supabase.storage.from('ramos').upload(fileName, compressedFile);
-      if (error) throw error;
-
-      const { data } = supabase.storage.from('ramos').getPublicUrl(fileName);
-      if (isPrincipal) {
-        setFormData(prev => ({ ...prev, foto_principal: data.publicUrl }));
-      } else {
-        setImagenesExtra(prev => [...prev, data.publicUrl]);
+      const url = await uploadToBucket(file, 'ramos');
+      
+      if (url) {
+        if (isPrincipal) {
+          setFormData(prev => ({ ...prev, foto_principal: url }));
+        } else {
+          setImagenesExtra(prev => [...prev, url]);
+        }
       }
     } catch (error) {
       alert("Error al procesar la imagen.");
@@ -189,7 +186,19 @@ export default function RamosAdminPage() {
     setActiveTab("editar");
   };
 
-  const handleDelete = async (id: string) => { if (confirm("¿Eliminar este ramo?")) { await deleteRamo(id); loadData(); } };
+  const handleDelete = async (id: string) => { 
+    if (confirm("¿Eliminar este ramo?")) { 
+      const ramo = ramos.find(r => r.id === id);
+      if (ramo) {
+        if (ramo.foto_principal) await deleteFromBucket(ramo.foto_principal, 'ramos');
+        if (ramo.ramo_imagenes?.length > 0) {
+          for (const img of ramo.ramo_imagenes) await deleteFromBucket(img.url_foto, 'ramos');
+        }
+      }
+      await deleteRamo(id); 
+      loadData(); 
+    } 
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">

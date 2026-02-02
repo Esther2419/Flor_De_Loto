@@ -65,8 +65,9 @@ export default function AddToCartButton({
         const tieneFlores = personalizacion.floresExtra && 
                            Object.values(personalizacion.floresExtra).some((cant: any) => cant > 0);
         
-        const tieneEnvolturas = personalizacion.envolturas && 
-                               Object.keys(personalizacion.envolturas).length > 0;
+        // CORRECCIÓN: Detectar si hay envoltura seleccionada (ID string) o estructura antigua
+        const tieneEnvolturas = (personalizacion.envolturaSeleccionada && personalizacion.envolturaSeleccionada !== "") ||
+                                (personalizacion.envolturas && Object.keys(personalizacion.envolturas).length > 0);
         
         const tieneDedicatoria = personalizacion.dedicatoria && 
                                 personalizacion.dedicatoria.trim() !== "";
@@ -75,14 +76,22 @@ export default function AddToCartButton({
         if (tieneFlores || tieneEnvolturas || tieneDedicatoria) {
           realPersonalizacion = {
             floresExtra: tieneFlores ? personalizacion.floresExtra : null,
-            envolturas: tieneEnvolturas ? personalizacion.envolturas : null,
+            envolturaSeleccionada: personalizacion.envolturaSeleccionada || null,
+            // IMPORTANTE: Preservar estructura antigua si existe y no hay nueva selección
+            envolturas: (!personalizacion.envolturaSeleccionada && personalizacion.envolturas) ? personalizacion.envolturas : null,
             dedicatoria: tieneDedicatoria ? personalizacion.dedicatoria : null
           };
         }
       }
 
+      // Generar ID único para el carrito si hay personalización
+      // Esto evita que se agrupen items con diferentes dedicatorias o extras
+      const cartItemId = realPersonalizacion 
+        ? `${id}-${JSON.stringify(realPersonalizacion)}`
+        : id;
+
       await addToCart({ 
-        id, 
+        id: cartItemId,
         productoId: finalProductoId,
         // Solo añade "(Personalizado)" al nombre si realPersonalizacion no es null
         nombre: realPersonalizacion ? `${nombre} (Personalizado)` : nombre, 

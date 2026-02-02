@@ -150,23 +150,28 @@ model reservas {
 }
 
 model usuarios {
-  id                                                   BigInt       @id @default(autoincrement())
-  nombre_completo                                      String       @db.VarChar(150)
-  email                                                String       @unique @db.VarChar(150)
-  password                                             String       @db.VarChar(255)
-  celular                                              String?      @db.VarChar(20)
-  rol                                                  String?      @default("cliente") @db.VarChar(20)
+  id                                                   BigInt              @id @default(autoincrement())
+  nombre_completo                                      String              @db.VarChar(150)
+  email                                                String              @unique @db.VarChar(150)
+  password                                             String              @db.VarChar(255)
+  celular                                              String?             @db.VarChar(20)
+  rol                                                  String?             @default("cliente") @db.VarChar(20)
   foto                                                 String?
-  activo                                               Boolean?     @default(true)
-  fecha_registro                                       DateTime?    @default(now()) @db.Timestamp(6)
+  activo                                               Boolean?            @default(true)
+  fecha_registro                                       DateTime?           @default(now()) @db.Timestamp(6)
   carrito                                              carrito[]
   categorias                                           categorias[]
   envolturas                                           envolturas[]
   flores                                               flores[]
+  pedidos_pedidos_aceptado_por_idTousuarios            pedidos[]           @relation("pedidos_aceptado_por_idTousuarios")
+  pedidos_pedidos_entregado_por_idTousuarios           pedidos[]           @relation("pedidos_entregado_por_idTousuarios")
+  pedidos_pedidos_rechazado_por_idTousuarios           pedidos[]           @relation("pedidos_rechazado_por_idTousuarios")
+  pedidos_pedidos_terminado_por_idTousuarios           pedidos[]           @relation("pedidos_terminado_por_idTousuarios")
   pedidos                                              pedidos[]
+  pedidos_historial                                    pedidos_historial[]
   ramos                                                ramos[]
-  reservas_reservas_usuario_actualizacion_idTousuarios reservas[]   @relation("reservas_usuario_actualizacion_idTousuarios")
-  reservas_reservas_usuario_idTousuarios               reservas[]   @relation("reservas_usuario_idTousuarios")
+  reservas_reservas_usuario_actualizacion_idTousuarios reservas[]          @relation("reservas_usuario_actualizacion_idTousuarios")
+  reservas_reservas_usuario_idTousuarios               reservas[]          @relation("reservas_usuario_idTousuarios")
 }
 
 model configuracion {
@@ -196,17 +201,31 @@ model detalle_pedidos {
 }
 
 model pedidos {
-  id                BigInt            @id @default(autoincrement())
-  usuario_id        BigInt?
-  nombre_contacto   String            @db.VarChar
-  telefono_contacto String            @db.VarChar
-  nombre_receptor   String?
-  fecha_pedido      DateTime?         @default(now()) @db.Timestamp(6)
-  fecha_entrega     DateTime          @db.Timestamp(6)
-  total_pagar       Decimal           @db.Decimal
-  estado            String?           @default("pendiente") @db.VarChar
-  detalle_pedidos   detalle_pedidos[]
-  usuarios          usuarios?         @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_pedido")
+  id                                          BigInt              @id @default(autoincrement())
+  usuario_id                                  BigInt?
+  nombre_contacto                             String              @db.VarChar
+  telefono_contacto                           String              @db.VarChar
+  nombre_receptor                             String?
+  fecha_pedido                                DateTime?           @default(now()) @db.Timestamp(6)
+  fecha_entrega                               DateTime            @db.Timestamp(6)
+  total_pagar                                 Decimal             @db.Decimal
+  estado                                      String?             @default("pendiente") @db.VarChar
+  aceptado_por_id                             BigInt?
+  terminado_por_id                            BigInt?
+  entregado_por_id                            BigInt?
+  rechazado_por_id                            BigInt?
+  fecha_aceptado                              DateTime?           @db.Timestamp(6)
+  fecha_terminado                             DateTime?           @db.Timestamp(6)
+  fecha_entregado                             DateTime?           @db.Timestamp(6)
+  fecha_rechazado                             DateTime?           @db.Timestamp(6)
+  motivo_rechazo                              String?
+  detalle_pedidos                             detalle_pedidos[]
+  usuarios_pedidos_aceptado_por_idTousuarios  usuarios?           @relation("pedidos_aceptado_por_idTousuarios", fields: [aceptado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_aceptado")
+  usuarios_pedidos_entregado_por_idTousuarios usuarios?           @relation("pedidos_entregado_por_idTousuarios", fields: [entregado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_entregado")
+  usuarios_pedidos_rechazado_por_idTousuarios usuarios?           @relation("pedidos_rechazado_por_idTousuarios", fields: [rechazado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_rechazado")
+  usuarios_pedidos_terminado_por_idTousuarios usuarios?           @relation("pedidos_terminado_por_idTousuarios", fields: [terminado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_terminado")
+  usuarios                                    usuarios?           @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_usuario_pedido")
+  pedidos_historial                           pedidos_historial[]
 }
 
 model carrito {
@@ -237,6 +256,20 @@ model galeria {
   url_foto       String
   descripcion    String?
   fecha_creacion DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model pedidos_historial {
+  id              BigInt    @id @default(autoincrement())
+  pedido_id       BigInt
+  usuario_id      BigInt
+  estado_anterior String?   @db.VarChar
+  estado_nuevo    String    @db.VarChar
+  observacion     String?
+  fecha           DateTime? @default(now()) @db.Timestamp(6)
+  pedidos         pedidos   @relation(fields: [pedido_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_historial_pedido")
+  usuarios        usuarios  @relation(fields: [usuario_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_historial_usuario")
+
+  @@index([pedido_id], map: "idx_historial_pedido_id")
 }
 
 enum tipo_ramo {

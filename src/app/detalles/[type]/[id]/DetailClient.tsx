@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, TouchEvent } from "react";
 import Image from "next/image";
 import AddToCartButton from "@/components/AddToCartButton";
-import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Tag } from "lucide-react";
+import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DetailClient({ data, type, id, opciones }: any) {
   const [isFloresModalOpen, setIsFloresModalOpen] = useState(false);
@@ -18,6 +18,36 @@ export default function DetailClient({ data, type, id, opciones }: any) {
   const [envolturasSeleccionadas, setEnvolturasSeleccionadas] = useState<string[]>(
     opciones?.idsOriginales || []
   );
+
+  // --- ESTADOS Y LÓGICA DE GALERÍA ---
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const allImages = [
+    data.foto_principal,
+    ...(data.ramo_imagenes?.map((img: any) => img.url_foto) || [])
+  ].filter(Boolean) as string[];
+
+  // Lógica de Swipe para móviles
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+
+  const handleTouchStart = (e: TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 50;
+    const isRightSwipe = distance < -50;
+
+    if (isLeftSwipe) setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1));
+    if (isRightSwipe) setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1));
+  };
 
   // Estado para flores extra y dedicatoria
   const [floresExtra, setFloresExtra] = useState<{[key: string]: number}>({});
@@ -95,16 +125,72 @@ export default function DetailClient({ data, type, id, opciones }: any) {
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-10 pt-24 md:pt-32 flex flex-col md:flex-row gap-10 md:gap-16 items-start">
       
-      {/* IMAGEN DEL PRODUCTO */}
-      <div className="w-full md:w-80 aspect-square relative rounded-3xl overflow-hidden shadow-2xl border border-zinc-100 flex-shrink-0 mx-auto md:mx-0">
-        {foto ? (
-          <Image src={foto} alt={data.nombre} fill className="object-cover" priority />
-        ) : (
-          <div className="bg-zinc-100 w-full h-full flex items-center justify-center text-zinc-400">Sin foto</div>
-        )}
-        {esOferta && (
-          <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse">
-            OFERTA
+      {/* COLUMNA DE IMAGEN (CON GALERÍA) */}
+      <div className="w-full md:w-1/3 lg:w-2/5 flex-shrink-0 mx-auto md:mx-0 md:sticky md:top-32">
+        <div 
+          className="relative w-full aspect-[4/5] md:aspect-square rounded-3xl overflow-hidden bg-gray-100 shadow-2xl border border-zinc-100 group"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          {allImages.length > 0 ? (
+            <Image 
+              src={allImages[currentImageIndex]} 
+              alt={data.nombre} 
+              fill 
+              className="object-cover transition-transform duration-700" 
+              priority
+            />
+          ) : (
+            <div className="bg-zinc-100 w-full h-full flex items-center justify-center text-zinc-400">Sin foto</div>
+          )}
+          
+          {esOferta && (
+            <div className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg animate-pulse z-10">
+              OFERTA
+            </div>
+          )}
+
+          {/* Contador Flotante */}
+          {allImages.length > 1 && (
+            <div className="absolute bottom-4 right-4 bg-black/60 text-white text-[10px] px-3 py-1 rounded-full font-bold backdrop-blur-md tracking-widest border border-white/10 z-10">
+              {currentImageIndex + 1} / {allImages.length}
+            </div>
+          )}
+
+          {/* Flechas de Navegación */}
+          {allImages.length > 1 && (
+            <>
+              <button 
+                onClick={() => setCurrentImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
+                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-zinc-800 p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 shadow-lg z-10"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              <button 
+                onClick={() => setCurrentImageIndex((prev) => (prev === allImages.length - 1 ? 0 : prev + 1))}
+                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-zinc-800 p-2 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100 shadow-lg z-10"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Miniaturas */}
+        {allImages.length > 1 && (
+          <div className="flex gap-2 mt-4 overflow-x-auto pb-2 scrollbar-hide">
+            {allImages.map((img, idx) => (
+              <button
+                key={idx}
+                onClick={() => setCurrentImageIndex(idx)}
+                className={`relative w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                  currentImageIndex === idx ? 'border-[#C5A059] opacity-100' : 'border-transparent opacity-60 hover:opacity-100'
+                }`}
+              >
+                <Image src={img} alt={`Miniatura ${idx + 1}`} fill className="object-cover" />
+              </button>
+            ))}
           </div>
         )}
       </div>
