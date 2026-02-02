@@ -435,6 +435,17 @@ export default function EnvolturasAdminPage() {
                         <div className="absolute top-3 left-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full text-[8px] font-bold uppercase shadow-sm">
                           Stock: {env.cantidad}
                         </div>
+                        <div className="absolute bottom-3 right-3 z-10">
+                          {env.disponible ? (
+                            <span className="bg-[#25D366]/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-widest shadow-sm border border-white/20">
+                              Disponible
+                            </span>
+                          ) : (
+                            <span className="bg-red-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[8px] font-bold uppercase tracking-widest shadow-sm border border-white/20">
+                              No Disponible
+                            </span>
+                          )}
+                        </div>
                     </div>
                     <div className="p-4 text-center">
                         <h3 className="font-serif font-bold text-gray-800 truncate text-sm">{env.nombre}</h3>
