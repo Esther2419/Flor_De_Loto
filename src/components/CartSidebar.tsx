@@ -161,7 +161,6 @@ export default function CartSidebar() {
               <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
             </button>
             <p className="text-[10px] text-center text-gray-400 italic">
-              * El costo de envío se calculará en el siguiente paso.
             </p>
           </div>
         )}
