@@ -6,6 +6,26 @@ import AddToCartButton from "@/components/AddToCartButton";
 import { Plus, Minus, MessageSquare, Palette, Flower2, Check, X, AlertCircle, Tag, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DetailClient({ data, type, id, opciones }: any) {
+  if (!data) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center p-10 text-center animate-in fade-in zoom-in duration-500 pt-32">
+        <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mb-6 border border-gray-100 shadow-sm">
+          <AlertCircle className="text-gray-300" size={40} />
+        </div>
+        <h2 className="text-3xl font-serif italic text-zinc-900 mb-3">Producto no encontrado</h2>
+        <p className="text-zinc-500 text-sm max-w-md mx-auto mb-8 leading-relaxed">
+          Es posible que el enlace sea incorrecto o que el producto haya sido retirado de nuestro catálogo.
+        </p>
+        <a 
+          href="/" 
+          className="bg-[#0A0A0A] text-[#C5A059] py-4 px-8 rounded-2xl font-bold text-xs uppercase tracking-[0.2em] hover:bg-[#C5A059] hover:text-white transition-all shadow-xl"
+        >
+          Volver al Inicio
+        </a>
+      </div>
+    );
+  }
+
   const [isFloresModalOpen, setIsFloresModalOpen] = useState(false);
   const [isEnvolturasModalOpen, setIsEnvolturasModalOpen] = useState(false);
   
@@ -19,7 +39,6 @@ export default function DetailClient({ data, type, id, opciones }: any) {
     opciones?.idsOriginales || []
   );
 
-  // --- ESTADOS Y LÓGICA DE GALERÍA ---
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const allImages = [
     data.foto_principal,
@@ -267,7 +286,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                   ))}
                   
                   {Object.keys(floresExtra).map(fId => {
-                    const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
+                    const flor = opciones?.flores?.find((f: any) => f.id.toString() === fId);
                     if (!flor || floresExtra[fId] === 0) return null;
                     return (
                       <div key={fId} className="flex items-center justify-between bg-amber-50/40 p-2 rounded-2xl border border-amber-100 animate-in fade-in zoom-in duration-200">
@@ -311,7 +330,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
 
               <div className="space-y-3">
                 {envolturasSeleccionadas.map(envId => {
-                  const env = opciones?.envolturas.find((e: any) => e.id.toString() === envId);
+                  const env = opciones?.envolturas?.find((e: any) => e.id.toString() === envId);
                   if (!env) return null;
                   return (
                     <div key={envId} className="flex items-center justify-between bg-zinc-50 p-2 rounded-2xl border border-zinc-100">
@@ -339,7 +358,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                     </h3>
                     <div className="space-y-2 mb-3">
                        {Object.keys(floresExtra).map(fId => {
-                         const flor = opciones?.flores.find((f: any) => f.id.toString() === fId);
+                         const flor = opciones?.flores?.find((f: any) => f.id.toString() === fId);
                          if (!flor || floresExtra[fId] === 0) return null;
                          return (
                            <div key={fId} className="flex items-center justify-between bg-amber-50/40 p-2 rounded-xl border border-amber-100">
@@ -417,7 +436,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               <button onClick={() => setIsEnvolturasModalOpen(false)}><X size={24} className="text-zinc-400 hover:text-zinc-900" /></button>
             </div>
             <div className="space-y-3 max-h-[45vh] overflow-y-auto pr-1 scrollbar-hide">
-              {opciones?.envolturas.map((env: any) => {
+              {opciones?.envolturas?.map((env: any) => {
                 const idEnv = env.id.toString();
                 const isSelected = envolturasSeleccionadas.includes(idEnv);
                 return (
@@ -454,7 +473,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
               <button onClick={() => setIsFloresModalOpen(false)} className="text-zinc-400 hover:text-zinc-900 transition-colors"><X size={24}/></button>
             </div>
             <div className="space-y-4 max-h-[45vh] overflow-y-auto pr-1 scrollbar-hide">
-              {opciones?.flores.map((flor: any) => {
+              {opciones?.flores?.map((flor: any) => {
                 const idF = flor.id.toString();
                 if (type === 'flor' && idF === id) return null;
 
