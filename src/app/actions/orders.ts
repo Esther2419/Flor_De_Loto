@@ -225,3 +225,53 @@ export async function createOrderAction(data: OrderData) {
     return { success: false, message: error.message || "Error al procesar el pedido" };
   }
 }
+
+// --- NUEVA FUNCIÓN: Cancelar Pedido ---
+export async function cancelOrderAction(orderId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, message: "No autenticado" };
+
+  try {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!usuario) return { success: false, message: "Usuario no encontrado" };
+
+    // Convertir ID de manera segura
+    const id = getValidId(orderId);
+
+    const pedido = await prisma.pedidos.findUnique({
+      where: { id },
+    });
+
+    if (!pedido) return { success: false, message: "Pedido no encontrado" };
+
+    // 1. Verificar propiedad
+    if (pedido.usuario_id !== usuario.id) {
+      return { success: false, message: "No tienes permiso para cancelar este pedido" };
+    }
+
+    // 2. Verificar estado (Solo se puede cancelar si es 'pendiente')
+    if (pedido.estado !== 'pendiente') {
+      return { success: false, message: "El pedido ya ha sido procesado y no se puede cancelar." };
+    }
+
+    // 3. Proceder a cancelar
+    await prisma.pedidos.update({
+      where: { id },
+      data: { 
+        estado: 'rechazado',
+        fecha_rechazado: new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })),
+        motivo_rechazo: "Cancelado por el cliente"
+      },
+    });
+
+    revalidatePath("/mis-pedidos");
+    return { success: true, message: "Pedido cancelado correctamente" };
+
+  } catch (error: any) {
+    console.error("Error al cancelar pedido:", error);
+    return { success: false, message: error.message || "Error al procesar la cancelación" };
+  }
+}
