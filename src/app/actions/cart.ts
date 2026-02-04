@@ -96,14 +96,19 @@ export async function syncCartAction(localItems: any[]) {
   }
 
   for (const item of localItems) {
-    await addToCartAction(item);
+    try {
+      await addToCartAction(item);
+    } catch (error) {
+      // Si un item falla (ej: sin stock), lo ignoramos y seguimos con el resto
+      console.warn(`Item ${item.nombre} no se pudo sincronizar:`, error);
+    }
   }
 
   return getCartAction();
 }
 
 // ----------------------------------------------------------------------
-// 3. Agregar item (CORREGIDO: Sin el campo 'precio' que da error)
+// 3. Agregar item 
 // ----------------------------------------------------------------------
 export async function addToCartAction(item: any) {
   const session = await getServerSession(authOptions);
@@ -119,6 +124,24 @@ export async function addToCartAction(item: any) {
 
   const idProducto = getValidId(item.productoId || item.id);
   const esFlor = item.tipo === 'flor';
+
+  // --- VALIDACIÓN DE STOCK Y DISPONIBILIDAD ---
+  let productoDB: any = null;
+  
+  if (esFlor) {
+    productoDB = await prisma.flores.findUnique({ where: { id: idProducto } });
+    if (!productoDB) throw new Error("La flor seleccionada no existe.");
+    if (!productoDB.disponible) throw new Error(`La flor "${productoDB.nombre}" ya no está disponible.`);
+  } else {
+    productoDB = await prisma.ramos.findUnique({ where: { id: idProducto } });
+    if (!productoDB) throw new Error("El ramo seleccionado no existe.");
+    if (!productoDB.activo) throw new Error(`El ramo "${productoDB.nombre}" ya no está activo.`);
+  }
+
+  // Si existe columna de stock, validamos (asumiendo que null = infinito)
+  if (productoDB.stock !== null && productoDB.stock !== undefined) {
+    // La validación final de cantidad total se hace más abajo, sumando lo que ya hay en el carrito
+  }
 
   // GUARDADO: Metemos el precio de oferta y el flag dentro del JSON de personalización
   const personalizacionJson = {
@@ -147,9 +170,18 @@ export async function addToCartAction(item: any) {
   }
 
   if (itemEncontrado) {
+    const nuevaCantidad = itemEncontrado.cantidad + (item.cantidad || 1);
+    
+    // Validar stock acumulado
+    if (productoDB.stock !== null && productoDB.stock !== undefined) {
+      if (nuevaCantidad > productoDB.stock) {
+        throw new Error(`Stock insuficiente. Máximo disponible: ${productoDB.stock}`);
+      }
+    }
+
     await prisma.carrito_detalle.update({
       where: { id: itemEncontrado.id },
-      data: { cantidad: itemEncontrado.cantidad + (item.cantidad || 1) }
+      data: { cantidad: nuevaCantidad }
     });
   } else {
     await prisma.carrito_detalle.create({
@@ -187,12 +219,25 @@ export async function removeFromCartAction(itemId: string) {
 export async function updateQuantityAction(itemId: string, delta: number) {
   try {
     const detalle = await prisma.carrito_detalle.findUnique({
-      where: { id: BigInt(itemId) }
+      where: { id: BigInt(itemId) },
+      include: { flores: true, ramos: true } // Incluimos relación para ver stock
     });
 
     if (detalle) {
       const nuevaCantidad = detalle.cantidad + delta;
       if (nuevaCantidad > 0) {
+        
+        // VALIDACIÓN DE STOCK AL ACTUALIZAR
+        const producto = detalle.flores || detalle.ramos;
+        if (producto) {
+          const stock = (producto as any).stock;
+          if (stock !== null && stock !== undefined) {
+            if (nuevaCantidad > stock) {
+              throw new Error(`No puedes agregar más. Stock máximo: ${stock}`);
+            }
+          }
+        }
+
         await prisma.carrito_detalle.update({
           where: { id: detalle.id },
           data: { cantidad: nuevaCantidad }
@@ -202,5 +247,6 @@ export async function updateQuantityAction(itemId: string, delta: number) {
     revalidatePath("/");
   } catch (error) {
     console.error("Error actualizando cantidad:", error);
+    throw error; // Re-lanzamos el error para que el cliente (CartContext) lo capture y haga rollback
   }
 }
