@@ -17,67 +17,77 @@ function getValidId(id: string | number): bigint {
 // 1. Obtener el carrito del usuario
 // ----------------------------------------------------------------------
 export async function getCartAction() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) return [];
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.email) return [];
 
-  const usuario = await prisma.usuarios.findUnique({
-    where: { email: session.user.email },
-  });
+    const usuario = await prisma.usuarios.findUnique({
+      where: { email: session.user.email },
+    });
 
-  if (!usuario) return [];
+    if (!usuario) return [];
 
-  const carrito = await prisma.carrito.findFirst({
-    where: { usuario_id: usuario.id },
-    include: {
-      carrito_detalle: {
-        include: {
-          ramos: { include: { ramo_imagenes: true } },
-          flores: true,
-          envolturas: true
+    const carrito = await prisma.carrito.findFirst({
+      where: { usuario_id: usuario.id },
+      include: {
+        carrito_detalle: {
+          include: {
+            ramos: { include: { ramo_imagenes: true } },
+            flores: true,
+            envolturas: true
+          }
         }
       }
+    });
+
+    if (!carrito) return [];
+
+    return carrito.carrito_detalle.map((detalle) => {
+      const esFlor = !!detalle.flores;
+      
+      let nombre = "Producto desconocido";
+      let foto = null;
+      let productoId = "";
+      let precioBaseDB = 0;
+
+      if (esFlor && detalle.flores) {
+        nombre = detalle.flores.nombre;
+        precioBaseDB = Number(detalle.flores.precio_unitario);
+        foto = detalle.flores.foto;
+        productoId = detalle.flores.id.toString();
+      } else if (detalle.ramos) {
+        nombre = detalle.ramos.nombre;
+        precioBaseDB = Number(detalle.ramos.precio_base);
+        foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
+        productoId = detalle.ramos.id.toString();
+      }
+
+      // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
+      const pers = detalle.personalizacion as any;
+      
+      return {
+        id: detalle.id.toString(),
+        productoId: productoId, 
+        nombre: nombre,
+        // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
+        precio: pers?.precioComprado || precioBaseDB, 
+        precioOriginal: pers?.precioOriginal || precioBaseDB,
+        esOferta: pers?.esOferta || false,
+        foto: foto,
+        cantidad: detalle.cantidad,
+        tipo: esFlor ? 'flor' : 'ramo',
+        personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined
+      };
+    });
+  } catch (error: any) {
+    // Filtramos el error de conexión (P1001) para mostrar una advertencia más clara
+    if (error.code === 'P1001') {
+      console.warn("⚠️ AVISO: No se pudo conectar a Supabase. Verifica que el proyecto no esté pausado en el dashboard.");
+    } else {
+      console.error("Error al obtener el carrito:", error);
     }
-  });
-
-  if (!carrito) return [];
-
-  return carrito.carrito_detalle.map((detalle) => {
-    const esFlor = !!detalle.flores;
-    
-    let nombre = "Producto desconocido";
-    let foto = null;
-    let productoId = "";
-    let precioBaseDB = 0;
-
-    if (esFlor && detalle.flores) {
-      nombre = detalle.flores.nombre;
-      precioBaseDB = Number(detalle.flores.precio_unitario);
-      foto = detalle.flores.foto;
-      productoId = detalle.flores.id.toString();
-    } else if (detalle.ramos) {
-      nombre = detalle.ramos.nombre;
-      precioBaseDB = Number(detalle.ramos.precio_base);
-      foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
-      productoId = detalle.ramos.id.toString();
-    }
-
-    // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
-    const pers = detalle.personalizacion as any;
-    
-    return {
-      id: detalle.id.toString(),
-      productoId: productoId, 
-      nombre: nombre,
-      // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
-      precio: pers?.precioComprado || precioBaseDB, 
-      precioOriginal: pers?.precioOriginal || precioBaseDB,
-      esOferta: pers?.esOferta || false,
-      foto: foto,
-      cantidad: detalle.cantidad,
-      tipo: esFlor ? 'flor' : 'ramo',
-      personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined
-    };
-  });
+    return [];
+  }
 }
 
 // ----------------------------------------------------------------------

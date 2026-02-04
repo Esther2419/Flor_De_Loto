@@ -1,15 +1,16 @@
 "use client";
 
 import { useCart } from "@/context/CartContext";
-import { useEffect, useState, useRef, useMemo } from "react";
+import { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { 
   Send, User, Phone, Clock, Loader2, Trash2, 
-  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet
+  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet, CalendarOff
 } from "lucide-react";
-import { createOrderAction } from "@/app/actions/orders";
+import { createOrderAction, checkAvailabilityAction } from "@/app/actions/orders";
+import { getBloqueosAction } from "@/app/actions/admin";
 import { useToast } from "@/context/ToastContext";
 import { format } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +58,12 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  const [blockedReasons, setBlockedReasons] = useState<Record<string, string>>({});
+  const [currentBlockedReason, setCurrentBlockedReason] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
   // --- LÓGICA DE CALENDARIO ---
   const fechaHoyBolivia = useMemo(() => {
@@ -105,6 +112,25 @@ export default function ReservaClient({ userData }: { userData: any }) {
     return () => clearInterval(inv);
   }, [horario, minutosPrep, formData.fechaEntrega, fechaHoyBolivia]);
 
+  // Función para cargar bloqueos (reutilizable para Realtime)
+  const fetchBloqueos = useCallback(async () => {
+    try {
+      const data = await getBloqueosAction();
+      // Solo bloqueamos visualmente los días completos (sin horario específico)
+      const fullDayBlocks = data.filter((b: any) => !b.hora_inicio && !b.hora_fin);
+      
+      const dates = fullDayBlocks.map((b: any) => b.fecha);
+      const reasons = fullDayBlocks.reduce((acc: any, b: any) => {
+        acc[b.fecha] = b.motivo;
+        return acc;
+      }, {});
+      setBlockedDates(dates);
+      setBlockedReasons(reasons);
+    } catch (error) {
+      console.error("Error actualizando bloqueos:", error);
+    }
+  }, []);
+
   useEffect(() => {
     const fetchConfig = async () => {
       const { data } = await supabase.from('configuracion').select('*').eq('id', 1).single();
@@ -116,15 +142,62 @@ export default function ReservaClient({ userData }: { userData: any }) {
       }
     };
     fetchConfig();
-  }, []);
+    fetchBloqueos();
+  }, [fetchBloqueos]);
+
+  // --- REALTIME: Escuchar cambios en bloqueos y pedidos ---
+  useEffect(() => {
+    const channel = supabase.channel('reservas-realtime-client')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bloqueos_horario' }, () => {
+        console.log("🔒 Cambio en bloqueos detectado por Realtime");
+        fetchBloqueos(); // Recargar lista de bloqueos visuales
+        setRefreshTrigger(prev => prev + 1); // Revalidar disponibilidad (por si es bloqueo parcial de hora)
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
+        setRefreshTrigger(prev => prev + 1); // Revalidar cupos si entra un pedido nuevo
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchBloqueos]);
+
+  // --- REALTIME: Si la fecha seleccionada se bloquea de repente (Día completo) ---
+  useEffect(() => {
+    if (formData.fechaEntrega && blockedDates.includes(formData.fechaEntrega)) {
+      setCurrentBlockedReason(blockedReasons[formData.fechaEntrega] || "");
+      setShowBlockedModal(true);
+      setFormData(prev => ({ ...prev, fechaEntrega: "" }));
+    }
+  }, [blockedDates, formData.fechaEntrega, blockedReasons]);
 
   const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!estaRealmenteAbierto || items.length === 0) return;
+    if (availabilityError) {
+      toast(availabilityError, "error");
+      return;
+    }
     setShowConfirmModal(true);
   };
+
+  // Validar disponibilidad en tiempo real cuando cambia fecha u hora
+  useEffect(() => {
+    const validateSlot = async () => {
+      setAvailabilityError(null);
+      if (formData.fechaEntrega && formData.horaRecojo) {
+        const check = await checkAvailabilityAction(formData.fechaEntrega, formData.horaRecojo);
+        if (!check.available) {
+          setAvailabilityError(check.message || "Horario no disponible");
+        }
+      }
+    };
+    const timer = setTimeout(validateSlot, 500); // Debounce
+    return () => clearTimeout(timer);
+  }, [formData.fechaEntrega, formData.horaRecojo, refreshTrigger]);
 
   const executeSubmit = async () => {
     if (isSubmitting) return;
@@ -280,7 +353,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     type="date" required 
                     min={fechaHoyBolivia} // BLOQUEA FECHAS ANTERIORES
                     value={formData.fechaEntrega}
-                    onChange={(e) => setFormData({...formData, fechaEntrega: e.target.value})} 
+                    onChange={(e) => {
+                      const selected = e.target.value;
+                      if (blockedDates.includes(selected)) {
+                        setCurrentBlockedReason(blockedReasons[selected] || "");
+                        setShowBlockedModal(true);
+                        setFormData({...formData, fechaEntrega: ""});
+                      } else {
+                        setFormData({...formData, fechaEntrega: selected});
+                      }
+                    }} 
                     className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
                   />
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Calendar size={18} /></div>
@@ -296,7 +378,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     type="time" required 
                     min={minTimeValid} max={horario.max} 
                     value={formData.horaRecojo}
-                    onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})} 
+                    onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})}
                     className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
                   />
                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Clock size={18} /></div>
@@ -314,10 +396,13 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   ? `* Recojo disponible para el ${formData.fechaEntrega === fechaHoyBolivia ? 'día de hoy' : formData.fechaEntrega}: de ${formatTimeStr(minTimeValid)} a ${formatTimeStr(horario.max)}.`
                   : "LA TIENDA SE ENCUENTRA CERRADA."}
               </p>
+              {availabilityError && (
+                <p className="text-xs text-red-500 font-bold ml-5 flex items-center gap-1"><AlertCircle size={12}/> {availabilityError}</p>
+              )}
             </div>
 
             <button 
-                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0} 
+                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError} 
                 className="w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-[#C5A059] text-white hover:bg-[#b38f4d] disabled:opacity-50 transition-all shadow-lg shadow-[#C5A059]/20"
             >
               {isSubmitting ? (
@@ -420,6 +505,39 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   </button>
                 </div>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* MODAL DE FECHA BLOQUEADA */}
+      <AnimatePresence>
+        {showBlockedModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowBlockedModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <CalendarOff size={32} />
+              </div>
+              <h3 className="font-serif italic text-xl text-gray-800 mb-2">Fecha No Disponible</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {currentBlockedReason 
+                  ? `Lo sentimos, esta fecha no está disponible: ${currentBlockedReason}.` 
+                  : "Lo sentimos, la fecha seleccionada está bloqueada por feriado o cierre administrativo. Por favor elige otra fecha."}
+              </p>
+              <button 
+                onClick={() => setShowBlockedModal(false)}
+                className="w-full py-3 bg-red-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-600 transition-colors shadow-lg shadow-red-200"
+              >
+                Entendido
+              </button>
             </motion.div>
           </motion.div>
         )}

@@ -31,6 +31,67 @@ function getMinutesTotal(input: any): number {
   return Number(parts[0]) * 60 + Number(parts[1]);
 }
 
+// Helper para extraer HH:mm de un Date (DB) de forma segura
+function getTimeFromDate(date: any): string | null {
+  if (!date) return null;
+  if (typeof date === 'string') return date.substring(0, 5);
+  if (date instanceof Date) {
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' });
+  }
+  return null;
+}
+
+// --- NUEVA FUNCIÓN: Verificar disponibilidad (Cliente) ---
+export async function checkAvailabilityAction(fecha: string, hora: string) {
+  try {
+    const fechaString = `${fecha}T${hora}:00-04:00`;
+    const fechaDate = new Date(fechaString);
+    
+    if (isNaN(fechaDate.getTime())) return { available: false, message: "Fecha inválida" };
+
+    // 1. Verificar Bloqueo de Día
+    const startDay = new Date(fechaDate); startDay.setHours(0,0,0,0);
+    const endDay = new Date(fechaDate); endDay.setHours(23,59,59,999);
+    
+    const bloqueos = await prisma.bloqueos_horario.findMany({
+      where: { fecha: { gte: startDay, lte: endDay } }
+    } as any);
+    
+    for (const bloqueo of bloqueos) {
+      const bInicio = getTimeFromDate(bloqueo.hora_inicio);
+      const bFin = getTimeFromDate(bloqueo.hora_fin);
+
+      // Si no tiene horas definidas, es bloqueo de día completo
+      if (!bInicio || !bFin) {
+        return { available: false, message: `Fecha bloqueada: ${bloqueo.motivo || "Cierre administrativo"}` };
+      }
+      // Si tiene horas, verificar colisión (hora es string "HH:mm")
+      if (hora >= bInicio && hora < bFin) {
+        return { available: false, message: `Horario no disponible (${bInicio} - ${bFin}): ${bloqueo.motivo}` };
+      }
+    }
+
+    // 2. Verificar Cupo por Hora
+    const startHour = new Date(fechaDate); startHour.setMinutes(0,0,0);
+    const endHour = new Date(fechaDate); endHour.setMinutes(59,59,999);
+
+    const [count, config] = await Promise.all([
+      prisma.pedidos.count({
+        where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
+      }),
+      prisma.configuracion.findUnique({ where: { id: 1 } })
+    ]);
+
+    const limit = (config as any)?.pedidos_por_hora || 5;
+    
+    if (count >= limit) return { available: false, message: "Cupos llenos para este horario." };
+
+    return { available: true };
+  } catch (error) {
+    return { available: false, message: "Error al verificar disponibilidad." };
+  }
+}
+
 export async function createOrderAction(data: OrderData) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return { success: false, message: "No autenticado" };
@@ -84,6 +145,41 @@ export async function createOrderAction(data: OrderData) {
       if (minutosPedido < minApertura || minutosPedido >= minCierre) {
         throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
       }
+
+      // --- VALIDACIÓN DE ÚLTIMO MINUTO (Backend Robustness) ---
+      // 1. Verificar si el día está bloqueado en la tabla de excepciones
+      const startDay = new Date(fechaEntregaExacta); startDay.setHours(0,0,0,0);
+      const endDay = new Date(fechaEntregaExacta); endDay.setHours(23,59,59,999);
+      
+      const bloqueosDia = await (tx as any).bloqueos_horario.findMany({
+        where: { fecha: { gte: startDay, lte: endDay } }
+      });
+
+      for (const bloqueo of bloqueosDia) {
+        const bInicio = getTimeFromDate(bloqueo.hora_inicio);
+        const bFin = getTimeFromDate(bloqueo.hora_fin);
+
+        if (!bInicio || !bFin) {
+           throw new Error(`Lo sentimos, esta fecha acaba de ser bloqueada: ${bloqueo.motivo}`);
+        }
+        if (horaLimpia >= bInicio && horaLimpia < bFin) {
+           throw new Error(`Lo sentimos, el horario ${horaLimpia} acaba de ser bloqueado: ${bloqueo.motivo}`);
+        }
+      }
+
+      // 2. Verificar cupo de pedidos por hora (Concurrency Check)
+      const startHour = new Date(fechaEntregaExacta); startHour.setMinutes(0,0,0);
+      const endHour = new Date(fechaEntregaExacta); endHour.setMinutes(59,59,999);
+
+      const pedidosEnEsaHora = await tx.pedidos.count({
+        where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
+      });
+
+      const limitePorHora = (config as any).pedidos_por_hora || 5;
+      if (pedidosEnEsaHora >= limitePorHora) {
+        throw new Error(`Lo sentimos, el horario de las ${horaLimpia} se acaba de llenar. Por favor elige otra hora.`);
+      }
+      // -------------------------------------------------------
 
       const nuevoPedido = await tx.pedidos.create({
         data: {
