@@ -39,9 +39,29 @@ const PRIMARY_PRESETS = [
 
 const COLOR_DETECTION_REF = [
   ...PRIMARY_PRESETS,
+  // --- TONOS GRISES (Para que no salte a Negro) ---
+  { name: 'Gris Claro', hex: '#D1D5DB' },
+  { name: 'Gris Plata', hex: '#9CA3AF' },
+  { name: 'Gris Oscuro', hex: '#4B5563' },
+  { name: 'Plomo', hex: '#374151' },
+  
+  // --- TONOS TIERRA Y CAFÉS ---
+  { name: 'Café', hex: '#78350F' },
+  { name: 'Terracota', hex: '#A16207' },
+  { name: 'Canela', hex: '#B45309' },
+  { name: 'Arena', hex: '#F3F4F6' },
+  { name: 'Ocre', hex: '#B45309' },
+
+  // --- TONOS FLORALES EXTRAS ---
   { name: 'Vino', hex: '#722F37' },
+  { name: 'Borgonia', hex: '#800020' },
   { name: 'Crema', hex: '#F9F6EE' },
   { name: 'Lila', hex: '#C4B5FD' },
+  { name: 'Fucsia', hex: '#FF00FF' },
+  { name: 'Coral', hex: '#FB7185' },
+  { name: 'Salmón', hex: '#FFA07A' },
+  { name: 'Turquesa', hex: '#2DD4BF' },
+  { name: 'Champagne', hex: '#FDE68A' },
 ];
 
 // --- UTILIDADES ---
@@ -65,14 +85,35 @@ const getCroppedImg = async (imageSrc: string, pixelCrop: any): Promise<File> =>
 
 const getNameFromHex = (hex: string) => {
   if (!hex || !hex.startsWith('#')) return hex || "Sin color";
-  const r1 = parseInt(hex.slice(1, 3), 16), g1 = parseInt(hex.slice(3, 5), 16), b1 = parseInt(hex.slice(5, 7), 16);
-  let nearest = COLOR_DETECTION_REF[0], minDistance = Infinity;
+  
+  const r1 = parseInt(hex.slice(1, 3), 16);
+  const g1 = parseInt(hex.slice(3, 5), 16);
+  const b1 = parseInt(hex.slice(5, 7), 16);
+
+  let nearest = COLOR_DETECTION_REF[0];
+  let minDistance = Infinity;
+
   COLOR_DETECTION_REF.forEach(color => {
-    const r2 = parseInt(color.hex.slice(1, 3), 16), g2 = parseInt(color.hex.slice(3, 5), 16), b2 = parseInt(color.hex.slice(5, 7), 16);
-    const dist = Math.sqrt(Math.pow(r1 - r2, 2) + Math.pow(g1 - g2, 2) + Math.pow(b1 - b2, 2));
-    if (dist < minDistance) { minDistance = dist; nearest = color; }
+    const r2 = parseInt(color.hex.slice(1, 3), 16);
+    const g2 = parseInt(color.hex.slice(3, 5), 16);
+    const b2 = parseInt(color.hex.slice(5, 7), 16);
+
+    // Fórmula de distancia entre colores
+    const dist = Math.sqrt(
+      Math.pow(r1 - r2, 2) + 
+      Math.pow(g1 - g2, 2) + 
+      Math.pow(b1 - b2, 2)
+    );
+
+    if (dist < minDistance) {
+      minDistance = dist;
+      nearest = color;
+    }
   });
-  return nearest.name;
+
+  // Si el color es muy "raro" y está lejos de todos, devolvemos el HEX, 
+  // pero con esta nueva lista, casi siempre encontrará un nombre.
+  return minDistance < 80 ? nearest.name : hex.toUpperCase();
 };
 
 const getColorStyle = (nombreColor: string | null) => {
@@ -315,63 +356,59 @@ export default function FloresAdminPage() {
                     <input required type="text" value={formData.nombre} onChange={e => setFormData({...formData, nombre: e.target.value})} className="w-full bg-gray-50 border-none rounded-2xl p-4 outline-none focus:ring-1 focus:ring-[#C5A059]" />
                   </div>
 
-                  {/* --- SECCIÓN DE COLOR (VIBRANTE Y RESALTADA) --- */}
+                  {/* --- SECCIÓN DE COLOR CON TRADUCCIÓN Y PALETA ARTÍSTICA --- */}
                   <div className="col-span-full space-y-4">
                     <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1">
-                      Color de la Variedad: <span className="text-[#C5A059]">{formData.color || "Sin seleccionar"}</span>
+                      Color Seleccionado: <span className="text-[#C5A059] font-black">{formData.color || "Personalizado"}</span>
                     </label>
                     
-                    <div className="flex flex-wrap gap-4 p-6 bg-white rounded-[2rem] border border-gray-200 shadow-inner">
-                      {/* Botones Predefinidos sin opacidad activa */}
-                      {COLOR_DETECTION_REF.map((c) => (
+                    <div className="flex flex-wrap gap-4 p-8 bg-white rounded-[3rem] items-center border border-gray-100 shadow-[inner_0_2px_4px_rgba(0,0,0,0.05)]">
+                      {/* Botones de Presets (Vibrantes) */}
+                      {PRIMARY_PRESETS.map((c) => (
                         <button
                           key={c.hex}
                           type="button"
                           onClick={() => setFormData({ ...formData, color: c.name })}
-                          className={`w-11 h-11 rounded-full border-[3px] transition-all duration-300 shadow-sm ${
+                          className={`w-10 h-10 rounded-full border-4 transition-all duration-300 ${
                             formData.color === c.name 
-                              ? 'border-[#0A0A0A] scale-110 shadow-md ring-2 ring-gray-100' 
-                              : 'border-gray-100 hover:scale-110 hover:shadow-md'
+                              ? 'border-[#0A0A0A] scale-110 shadow-md ring-2 ring-gray-50' 
+                              : 'border-white hover:scale-110'
                           }`}
-                          style={{ 
-                            backgroundColor: c.hex,
-                            opacity: 1 // Forzamos opacidad total
-                          }}
-                          title={c.name}
+                          style={{ backgroundColor: c.hex }}
                         />
                       ))}
 
-                      {/* SEPARADOR VISUAL */}
-                      <div className="w-px h-10 bg-gray-100 mx-1" />
+                      <div className="w-px h-8 bg-gray-100 mx-1" />
 
-                      {/* BOTÓN SELECTOR DE COLOR AVANZADO */}
+                      {/* BOTÓN SELECTOR "PALETA DE PINTOR" */}
                       <div className="relative group">
-                        <div 
-                          className={`w-11 h-11 rounded-full border-[3px] shadow-sm flex items-center justify-center bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 cursor-pointer transition-all ${
-                            formData.color?.startsWith('#') ? 'border-[#0A0A0A] scale-110' : 'border-gray-100'
-                          }`}
-                        >
+                        {/* El icono de paleta 🎨 con el input invisible encima */}
+                        <div className="w-12 h-12 rounded-full border-4 border-white shadow-md bg-gray-50 flex items-center justify-center overflow-hidden">
+                          <span className="text-xl">🎨</span>
                           <input
                             type="color"
                             value={formData.color?.startsWith('#') ? formData.color : '#C5A059'}
-                            onChange={(e) => setFormData({ ...formData, color: e.target.value.toUpperCase() })}
+                            onChange={(e) => {
+                              const hexSelected = e.target.value.toUpperCase();
+                              const nombreTraducido = getNameFromHex(hexSelected);
+                              setFormData({ ...formData, color: nombreTraducido });
+                            }}
                             className="absolute inset-0 w-full h-full cursor-pointer opacity-0"
                           />
-                          <span className="text-lg">🎨</span>
                         </div>
-                        <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 font-bold uppercase">
-                          Personalizar
+                        <span className="absolute -top-8 left-1/2 -translate-x-1/2 bg-black text-white text-[8px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity font-bold uppercase tracking-widest whitespace-nowrap z-30">
+                          Color Especial
                         </span>
                       </div>
                     </div>
                     
-                    {/* Input de texto para confirmación manual */}
+                    {/* Input de texto que se actualiza automáticamente */}
                     <input 
                       type="text" 
+                      placeholder="Nombre o código del color..." 
                       value={formData.color} 
                       onChange={e => setFormData({...formData, color: e.target.value})}
-                      placeholder="Nombre o código del color..."
-                      className="w-full bg-gray-50 border-none rounded-xl p-3 text-[10px] font-bold uppercase tracking-widest text-gray-500 outline-none focus:ring-1 focus:ring-[#C5A059]/30"
+                      className="w-full bg-gray-50 border-none rounded-2xl p-4 text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 outline-none focus:ring-1 focus:ring-[#C5A059]/20"
                     />
                   </div>
                   
