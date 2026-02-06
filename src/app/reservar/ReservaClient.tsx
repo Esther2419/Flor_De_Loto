@@ -7,9 +7,10 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { 
   Send, User, Phone, Clock, Loader2, Trash2, 
-  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet, CalendarOff
+  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet, CalendarOff,
+  QrCode, Download, Upload, CheckCircle2, X
 } from "lucide-react";
-import { createOrderAction, checkAvailabilityAction } from "@/app/actions/orders";
+import { createOrderAction, checkAvailabilityAction, uploadComprobante, deleteComprobante } from "@/app/actions/orders";
 import { getBloqueosAction } from "@/app/actions/admin";
 import { useToast } from "@/context/ToastContext";
 import { format } from "date-fns";
@@ -64,6 +65,45 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [currentBlockedReason, setCurrentBlockedReason] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+
+  const [qrPagoUrl, setQrPagoUrl] = useState<string | null>(null);
+  const [comprobanteUrl, setComprobanteUrl] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  
+  const isOrderCompleted = useRef(false);
+  const comprobanteUrlRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    comprobanteUrlRef.current = comprobanteUrl;
+  }, [comprobanteUrl]);
+
+  // Alerta de navegador al intentar recargar o cerrar si hay imagen subida
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (comprobanteUrl && !isOrderCompleted.current) {
+        e.preventDefault();
+        e.returnValue = ''; // Necesario para que navegadores modernos muestren la alerta estándar
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [comprobanteUrl]);
+
+  // Limpieza automática: Si el usuario se va sin confirmar, borramos la imagen
+  useEffect(() => {
+    return () => {
+      if (!isOrderCompleted.current && comprobanteUrlRef.current) {
+        // Usamos fetch con keepalive para asegurar que se envíe aunque se cierre la pestaña
+        fetch('/api/cleanup-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: comprobanteUrlRef.current }),
+          keepalive: true
+        }).catch(err => console.error("Error cleaning up image:", err));
+      }
+    };
+  }, []);
 
   // --- LÓGICA DE CALENDARIO ---
   const fechaHoyBolivia = useMemo(() => {
@@ -145,6 +185,15 @@ export default function ReservaClient({ userData }: { userData: any }) {
     fetchBloqueos();
   }, [fetchBloqueos]);
 
+  // Cargar el QR de la tabla configuración
+  useEffect(() => {
+    async function fetchConfig() {
+      const { data } = await supabase.from('configuracion').select('qr_pago').single();
+      if (data?.qr_pago) setQrPagoUrl(data.qr_pago);
+    }
+    fetchConfig();
+  }, []);
+
   // --- REALTIME: Escuchar cambios en bloqueos y pedidos ---
   useEffect(() => {
     const channel = supabase.channel('reservas-realtime-client')
@@ -210,10 +259,12 @@ export default function ReservaClient({ userData }: { userData: any }) {
         quien_recoge: formData.quienRecoge,
         hora_recojo: formData.horaRecojo,
         total: total,
-        items: items
+        items: items,
+        comprobante_url: comprobanteUrl
       });
 
       if (result.success) {
+        isOrderCompleted.current = true; // Marcamos como completado para evitar borrado
         toast("¡Pedido guardado!", "success");
         clearCart();
         window.location.href = "/mis-pedidos";
@@ -240,6 +291,129 @@ export default function ReservaClient({ userData }: { userData: any }) {
       const d = new Date(); d.setHours(parseInt(h), parseInt(m));
       return format(d, "hh:mm aa");
     } catch { return timeStr; }
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // --- VALIDACIONES ---
+    if (!file.type.startsWith("image/")) {
+      toast("El archivo debe ser una imagen válida.", "error");
+      return;
+    }
+
+    setIsUploading(true);
+    let fileToUpload = file;
+
+    // --- COMPRESIÓN AUTOMÁTICA ---
+    // Si la imagen pesa más de 1MB, la comprimimos en el navegador antes de subir
+    if (file.size > 1 * 1024 * 1024) {
+      try {
+        fileToUpload = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = document.createElement("img");
+            img.src = event.target?.result as string;
+            img.onload = () => {
+              const canvas = document.createElement("canvas");
+              const ctx = canvas.getContext("2d");
+              
+              // Redimensionar a máximo 1200px (HD)
+              const MAX_WIDTH = 1200;
+              const MAX_HEIGHT = 1200;
+              let width = img.width;
+              let height = img.height;
+
+              if (width > height) {
+                if (width > MAX_WIDTH) {
+                  height *= MAX_WIDTH / width;
+                  width = MAX_WIDTH;
+                }
+              } else {
+                if (height > MAX_HEIGHT) {
+                  width *= MAX_HEIGHT / height;
+                  height = MAX_HEIGHT;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              ctx?.drawImage(img, 0, 0, width, height);
+
+              // Convertir a WebP con calidad 0.7
+              canvas.toBlob((blob) => {
+                if (blob) {
+                  resolve(new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".webp", {
+                    type: "image/webp",
+                    lastModified: Date.now(),
+                  }));
+                } else reject(new Error("Error al comprimir"));
+              }, "image/webp", 0.7);
+            };
+            img.onerror = (err) => reject(err);
+          };
+          reader.onerror = (err) => reject(err);
+        });
+      } catch (error) {
+        console.error("Error comprimiendo imagen, se intentará subir original:", error);
+      }
+    }
+
+    const formData = new FormData();
+    formData.append("file", fileToUpload);
+
+    const res = await uploadComprobante(formData);
+    if (res.success && res.url) {
+      // Si ya existe una imagen previa, la eliminamos del bucket antes de poner la nueva
+      if (comprobanteUrl) {
+        await deleteComprobante(comprobanteUrl);
+      }
+
+      setComprobanteUrl(res.url);
+      toast("Comprobante cargado", "success");
+    } else {
+      toast(res.error || "Error al subir", "error");
+    }
+    setIsUploading(false);
+  };
+
+  const handleDownloadQr = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!qrPagoUrl) return;
+
+    try {
+      const response = await fetch(qrPagoUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = "qr-pago-flordeloto.png";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      window.open(qrPagoUrl, '_blank');
+    }
+  };
+
+  const handleRemoveImage = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Evita que se abra el selector de archivos al hacer click en la X
+    if (!comprobanteUrl) return;
+
+    setIsDeleting(true);
+    const res = await deleteComprobante(comprobanteUrl);
+    
+    if (res.success) {
+      setComprobanteUrl(null);
+      toast("Imagen eliminada", "success");
+    } else {
+      toast("Error al eliminar imagen", "error");
+    }
+    setIsDeleting(false);
   };
 
   return (
@@ -401,8 +575,75 @@ export default function ReservaClient({ userData }: { userData: any }) {
               )}
             </div>
 
+            {/* SECCIÓN DE PAGO QR */}
+            <div className="mt-8 p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-[#C5A059]/10 rounded-xl text-[#C5A059]">
+                  <QrCode size={24} />
+                </div>
+                <h2 className="text-xl font-bold text-gray-700">PAGO MEDIANTE QR</h2>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Visualización del QR subido por Admin */}
+                <div className="text-center space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">1. Escanea y paga</p>
+                  <div className="relative w-56 h-56 mx-auto bg-white border-4 border-[#C5A059]/10 rounded-3xl overflow-hidden p-2">
+                    {qrPagoUrl ? (
+                      <Image src={qrPagoUrl} alt="QR de Pago" fill className="object-contain" />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-gray-300 italic text-xs">QR no disponible</div>
+                    )}
+                  </div>
+                  {qrPagoUrl && (
+                    <a href={qrPagoUrl} onClick={handleDownloadQr} className="inline-flex items-center gap-2 text-[#C5A059] font-bold text-[10px] uppercase hover:underline cursor-pointer">
+                      <Download size={14} /> Descargar código QR
+                    </a>
+                  )}
+                </div>
+
+                {/* Subida de Comprobante por el Cliente */}
+                <div className="space-y-4">
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">2. Sube tu comprobante</p>
+                  <label className={`relative flex flex-col items-center justify-center h-56 border-2 border-dashed rounded-3xl cursor-pointer transition-all overflow-hidden ${comprobanteUrl ? 'border-green-500 bg-green-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+                    {isUploading ? (
+                      <Loader2 className="animate-spin text-[#C5A059]" />
+                    ) : comprobanteUrl ? (
+                      <div className="relative w-full h-full group">
+                        <Image 
+                          src={comprobanteUrl} 
+                          alt="Comprobante" 
+                          fill 
+                          className="object-contain p-2" 
+                        />
+                        <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                           <Upload className="text-white mb-2" />
+                           <span className="text-[10px] font-bold text-white uppercase">Cambiar Imagen</span>
+                        </div>
+                        <button 
+                          onClick={handleRemoveImage}
+                          disabled={isDeleting}
+                          className="absolute top-2 right-2 bg-white text-red-500 p-1.5 rounded-full shadow-md z-20 hover:bg-red-50 transition-colors border border-red-100"
+                        >
+                          {isDeleting ? <Loader2 size={14} className="animate-spin" /> : <X size={14} />}
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="text-gray-300 mb-2" />
+                        <span className="text-[10px] font-bold text-gray-400 uppercase">Seleccionar Captura</span>
+                        <span className="text-[9px] text-gray-300 mt-1 font-medium">Máx. 5MB</span>
+                      </>
+                    )}
+                    <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
+                  </label>
+                </div>
+              </div>
+            </div>
+
             <button 
-                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError} 
+                onClick={executeSubmit}
+                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl} 
                 className="w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-[#C5A059] text-white hover:bg-[#b38f4d] disabled:opacity-50 transition-all shadow-lg shadow-[#C5A059]/20"
             >
               {isSubmitting ? (

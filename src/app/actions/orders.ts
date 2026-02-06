@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -13,6 +14,7 @@ interface OrderData {
   hora_recojo: string;
   total: number;
   items: any[];
+  comprobante_url?: string | null;
 }
 
 function getValidId(id: string | number): bigint {
@@ -190,7 +192,8 @@ export async function createOrderAction(data: OrderData) {
           fecha_entrega: fechaEntregaExacta,
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
-          estado: "pendiente"
+          estado: "pendiente",
+          comprobante_pago: data.comprobante_url || null
         }
       });
 
@@ -273,5 +276,45 @@ export async function cancelOrderAction(orderId: string) {
   } catch (error: any) {
     console.error("Error al cancelar pedido:", error);
     return { success: false, message: error.message || "Error al procesar la cancelación" };
+  }
+}
+
+// --- NUEVA FUNCIÓN: Subir Comprobante (Cliente) ---
+export async function uploadComprobante(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) return { success: false, error: "No hay archivo" };
+
+  // Validar tamaño en servidor (5MB)
+  if (file.size > 5 * 1024 * 1024) return { success: false, error: "El archivo excede el límite de 5MB" };
+
+  try {
+    const fileName = `pago_${Date.now()}.webp`;
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage.from("comprobantes").getPublicUrl(fileName);
+    return { success: true, url: publicUrl };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// --- NUEVA FUNCIÓN: Eliminar Comprobante ---
+export async function deleteComprobante(url: string) {
+  try {
+    const fileName = url.split('/').pop();
+    if (!fileName) return { success: false, error: "URL inválida" };
+
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .remove([fileName]);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }
