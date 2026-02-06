@@ -17,77 +17,69 @@ function getValidId(id: string | number): bigint {
 // 1. Obtener el carrito del usuario
 // ----------------------------------------------------------------------
 export async function getCartAction() {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return [];
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return [];
 
-    const usuario = await prisma.usuarios.findUnique({
-      where: { email: session.user.email },
-    });
+  const usuario = await prisma.usuarios.findUnique({
+    where: { email: session.user.email },
+  });
 
-    if (!usuario) return [];
+  if (!usuario) return [];
 
-    const carrito = await prisma.carrito.findFirst({
-      where: { usuario_id: usuario.id },
-      include: {
-        carrito_detalle: {
-          include: {
-            ramos: { include: { ramo_imagenes: true } },
-            flores: true,
-            envolturas: true
-          }
+  const carrito = await prisma.carrito.findFirst({
+    where: { usuario_id: usuario.id },
+    include: {
+      carrito_detalle: {
+        include: {
+          ramos: { include: { ramo_imagenes: true } },
+          flores: true,
+          envolturas: true
         }
       }
-    });
-
-    if (!carrito) return [];
-
-    return carrito.carrito_detalle.map((detalle) => {
-      const esFlor = !!detalle.flores;
-      
-      let nombre = "Producto desconocido";
-      let foto = null;
-      let productoId = "";
-      let precioBaseDB = 0;
-
-      if (esFlor && detalle.flores) {
-        nombre = detalle.flores.nombre;
-        precioBaseDB = Number(detalle.flores.precio_unitario);
-        foto = detalle.flores.foto;
-        productoId = detalle.flores.id.toString();
-      } else if (detalle.ramos) {
-        nombre = detalle.ramos.nombre;
-        precioBaseDB = Number(detalle.ramos.precio_base);
-        foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
-        productoId = detalle.ramos.id.toString();
-      }
-
-      // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
-      const pers = detalle.personalizacion as any;
-      
-      return {
-        id: detalle.id.toString(),
-        productoId: productoId, 
-        nombre: nombre,
-        // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
-        precio: pers?.precioComprado || precioBaseDB, 
-        precioOriginal: pers?.precioOriginal || precioBaseDB,
-        esOferta: pers?.esOferta || false,
-        foto: foto,
-        cantidad: detalle.cantidad,
-        tipo: esFlor ? 'flor' : 'ramo',
-        personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined
-      };
-    });
-  } catch (error: any) {
-    // Filtramos el error de conexión (P1001) para mostrar una advertencia más clara
-    if (error.code === 'P1001') {
-      console.warn("⚠️ AVISO: No se pudo conectar a Supabase. Verifica que el proyecto no esté pausado en el dashboard.");
-    } else {
-      console.error("Error al obtener el carrito:", error);
     }
-    return [];
-  }
+  });
+
+  if (!carrito) return [];
+
+  return carrito.carrito_detalle.map((detalle) => {
+    const esFlor = !!detalle.flores;
+    
+    let nombre = "Producto desconocido";
+    let foto = null;
+    let productoId = "";
+    let precioBaseDB = 0;
+
+    if (esFlor && detalle.flores) {
+      nombre = detalle.flores.nombre;
+      precioBaseDB = Number(detalle.flores.precio_unitario);
+      foto = detalle.flores.foto;
+      productoId = detalle.flores.id.toString();
+    } else if (detalle.ramos) {
+      nombre = detalle.ramos.nombre;
+      precioBaseDB = Number(detalle.ramos.precio_base);
+      foto = detalle.ramos.foto_principal || detalle.ramos.ramo_imagenes[0]?.url_foto;
+      productoId = detalle.ramos.id.toString();
+    }
+
+    // RECUPERACIÓN: Leemos el precio y el estado de oferta desde el JSON de personalización
+    const pers = detalle.personalizacion as any;
+    
+    return {
+      id: detalle.id.toString(),
+      productoId: productoId, 
+      nombre: nombre,
+      // Si guardamos el precio en la personalización lo usamos, si no, el de la DB
+      precio: pers?.precioComprado || precioBaseDB, 
+      precioOriginal: pers?.precioOriginal || precioBaseDB,
+      esOferta: pers?.esOferta || false,
+      foto: foto || "/LogoSinLetra.png",
+      imagen: foto || "/LogoSinLetra.png",
+      foto_principal: foto || "/LogoSinLetra.png",
+      cantidad: detalle.cantidad,
+      tipo: esFlor ? 'flor' : 'ramo',
+      personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined
+    };
+  });
 }
 
 // ----------------------------------------------------------------------
@@ -106,19 +98,14 @@ export async function syncCartAction(localItems: any[]) {
   }
 
   for (const item of localItems) {
-    try {
-      await addToCartAction(item);
-    } catch (error) {
-      // Si un item falla (ej: sin stock), lo ignoramos y seguimos con el resto
-      console.warn(`Item ${item.nombre} no se pudo sincronizar:`, error);
-    }
+    await addToCartAction(item);
   }
 
   return getCartAction();
 }
 
 // ----------------------------------------------------------------------
-// 3. Agregar item 
+// 3. Agregar item (CORREGIDO: Sin el campo 'precio' que da error)
 // ----------------------------------------------------------------------
 export async function addToCartAction(item: any) {
   const session = await getServerSession(authOptions);
@@ -134,24 +121,6 @@ export async function addToCartAction(item: any) {
 
   const idProducto = getValidId(item.productoId || item.id);
   const esFlor = item.tipo === 'flor';
-
-  // --- VALIDACIÓN DE STOCK Y DISPONIBILIDAD ---
-  let productoDB: any = null;
-  
-  if (esFlor) {
-    productoDB = await prisma.flores.findUnique({ where: { id: idProducto } });
-    if (!productoDB) throw new Error("La flor seleccionada no existe.");
-    if (!productoDB.disponible) throw new Error(`La flor "${productoDB.nombre}" ya no está disponible.`);
-  } else {
-    productoDB = await prisma.ramos.findUnique({ where: { id: idProducto } });
-    if (!productoDB) throw new Error("El ramo seleccionado no existe.");
-    if (!productoDB.activo) throw new Error(`El ramo "${productoDB.nombre}" ya no está activo.`);
-  }
-
-  // Si existe columna de stock, validamos (asumiendo que null = infinito)
-  if (productoDB.stock !== null && productoDB.stock !== undefined) {
-    // La validación final de cantidad total se hace más abajo, sumando lo que ya hay en el carrito
-  }
 
   // GUARDADO: Metemos el precio de oferta y el flag dentro del JSON de personalización
   const personalizacionJson = {
@@ -180,18 +149,9 @@ export async function addToCartAction(item: any) {
   }
 
   if (itemEncontrado) {
-    const nuevaCantidad = itemEncontrado.cantidad + (item.cantidad || 1);
-    
-    // Validar stock acumulado
-    if (productoDB.stock !== null && productoDB.stock !== undefined) {
-      if (nuevaCantidad > productoDB.stock) {
-        throw new Error(`Stock insuficiente. Máximo disponible: ${productoDB.stock}`);
-      }
-    }
-
     await prisma.carrito_detalle.update({
       where: { id: itemEncontrado.id },
-      data: { cantidad: nuevaCantidad }
+      data: { cantidad: itemEncontrado.cantidad + (item.cantidad || 1) }
     });
   } else {
     await prisma.carrito_detalle.create({
@@ -229,25 +189,12 @@ export async function removeFromCartAction(itemId: string) {
 export async function updateQuantityAction(itemId: string, delta: number) {
   try {
     const detalle = await prisma.carrito_detalle.findUnique({
-      where: { id: BigInt(itemId) },
-      include: { flores: true, ramos: true } // Incluimos relación para ver stock
+      where: { id: BigInt(itemId) }
     });
 
     if (detalle) {
       const nuevaCantidad = detalle.cantidad + delta;
       if (nuevaCantidad > 0) {
-        
-        // VALIDACIÓN DE STOCK AL ACTUALIZAR
-        const producto = detalle.flores || detalle.ramos;
-        if (producto) {
-          const stock = (producto as any).stock;
-          if (stock !== null && stock !== undefined) {
-            if (nuevaCantidad > stock) {
-              throw new Error(`No puedes agregar más. Stock máximo: ${stock}`);
-            }
-          }
-        }
-
         await prisma.carrito_detalle.update({
           where: { id: detalle.id },
           data: { cantidad: nuevaCantidad }
@@ -257,6 +204,5 @@ export async function updateQuantityAction(itemId: string, delta: number) {
     revalidatePath("/");
   } catch (error) {
     console.error("Error actualizando cantidad:", error);
-    throw error; // Re-lanzamos el error para que el cliente (CartContext) lo capture y haga rollback
   }
 }

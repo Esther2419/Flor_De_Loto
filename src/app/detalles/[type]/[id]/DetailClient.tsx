@@ -41,7 +41,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const allImages = [
-    data.foto_principal,
+    data.foto_principal || data.foto,
     ...(data.ramo_imagenes?.map((img: any) => img.url_foto) || [])
   ].filter(Boolean) as string[];
 
