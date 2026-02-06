@@ -131,7 +131,7 @@ export default function GaleriaAdminPage() {
       loadData();
       setShowConfirmModal(false);
     } else {
-      showNotice(res.error, "error");
+      showNotice(res.error || "Ocurrió un error inesperado", "error");
     }
     setLoading(false);
   };
