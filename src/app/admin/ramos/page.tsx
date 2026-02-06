@@ -456,9 +456,6 @@ export default function RamosAdminPage() {
               <div key={ramo.id} className={`bg-white rounded-2xl shadow-sm overflow-hidden border transition-all hover:shadow-md hover:translate-y-[-2px] ${!ramo.activo ? 'opacity-60 grayscale' : 'border-gray-100'}`}>
                 <div className="relative h-64 bg-gray-50 group cursor-pointer" onClick={() => handleEditClick(ramo)}>
                   {ramo.foto_principal ? <Image src={ramo.foto_principal} alt={ramo.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-4xl opacity-20">💐</div>}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="bg-white/90 text-black text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-xl">Editar</span>
-                  </div>
                 </div>
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-2">

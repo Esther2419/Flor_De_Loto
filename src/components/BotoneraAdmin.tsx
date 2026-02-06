@@ -2,13 +2,46 @@
 
 import { useState } from "react";
 import { gestionarEstadoPedido } from "@/app/admin/pedidos/actions";
-import { Loader2, AlertCircle, CheckCircle2, PackageCheck, X, AlertTriangle, MessageCircle } from "lucide-react";
+import { Loader2, AlertCircle, CheckCircle2, PackageCheck, X, AlertTriangle, MessageCircle, Phone, Flower2 } from "lucide-react";
 import { MessageSquare } from "lucide-react";
+
+function ModalElegante({ 
+  mensaje, 
+  onAceptar, 
+  onCancelar 
+}: { 
+  mensaje: string; 
+  onAceptar: () => void; 
+  onCancelar: () => void; 
+}) {
+  const esWhatsApp = mensaje.includes("WhatsApp");
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-md animate-in fade-in duration-300" />
+      
+      <div className="relative bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center border border-gray-100 animate-in zoom-in-95 duration-300">
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 ${esWhatsApp ? 'bg-emerald-50' : 'bg-amber-50'}`}>
+          {esWhatsApp ? <Phone className="text-emerald-600" size={30} /> : <Flower2 className="text-amber-600" size={30} />}
+        </div>
+        
+        <h3 className="text-xl font-serif italic text-gray-800 mb-2">Confirmación</h3>
+        <p className="text-sm text-gray-500 mb-8 leading-relaxed">{mensaje}</p>
+
+        <div className="flex flex-col gap-3">
+          <button onClick={onAceptar} className={`py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg active:scale-95 ${esWhatsApp ? 'bg-[#C5A059] text-white' : 'bg-gray-900 text-white'}`}>Aceptar</button>
+          <button onClick={onCancelar} className="py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-700 transition-colors">Cancelar</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any, pedidoId: string, estadoActual: string }) {
   const [loading, setLoading] = useState(false);
   const [showRejectionModal, setShowRejectionModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState("");
+  const [confirmacion, setConfirmacion] = useState<{msg: string, action: () => void} | null>(null);
 
   // FUNCIÓN PARA GENERAR Y ENVIAR EL MENSAJE DE WHATSAPP
   const generarMensajeWhatsApp = (evento: string, motivoRechazo?: string) => {
@@ -42,9 +75,18 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
     if (loading) return;
     
     if (nuevoEstado === 'aceptado' && estadoActual === 'aceptado') {
-      if (!confirm("Este pedido ya está siendo atendido. ¿Deseas tomar la responsabilidad por emergencia?")) return;
+      setConfirmacion({
+        msg: "¿Confirmas que deseas tomar la responsabilidad de este pedido por emergencia?",
+        action: () => executeAction(nuevoEstado, obs)
+      });
+      return;
     }
     
+    await executeAction(nuevoEstado, obs);
+  };
+
+  const executeAction = async (nuevoEstado: string, obs: string) => {
+    setConfirmacion(null);
     setLoading(true);
     const res = await gestionarEstadoPedido(pedidoId, nuevoEstado, obs);
     setLoading(false);
@@ -53,9 +95,13 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
     if (res.success) {
       // Preguntar si desea enviar la notificación automática
       if (nuevoEstado !== 'entregado') { // Entregado no requiere mensaje según tu lista
-        if (confirm(`Estado actualizado a ${nuevoEstado}. ¿Deseas enviar la notificación por WhatsApp al cliente?`)) {
-          generarMensajeWhatsApp(nuevoEstado, obs);
-        }
+        setConfirmacion({
+          msg: `Estado actualizado a ${nuevoEstado}. ¿Deseas enviar la notificación por WhatsApp al cliente?`,
+          action: () => {
+            generarMensajeWhatsApp(nuevoEstado, obs);
+            setConfirmacion(null);
+          }
+        });
       }
     }
   };
@@ -148,6 +194,15 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Confirmación Elegante */}
+      {confirmacion && (
+        <ModalElegante 
+            mensaje={confirmacion.msg} 
+            onAceptar={confirmacion.action} 
+            onCancelar={() => setConfirmacion(null)} 
+        />
       )}
     </>
   );
