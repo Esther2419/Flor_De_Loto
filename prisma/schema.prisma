@@ -183,6 +183,7 @@ model configuracion {
   minutos_preparacion Int?      @default(30)
   cierre_temporal     Boolean?  @default(false)
   pedidos_por_hora    Int?      @default(5)
+  qr_pago             String?
 }
 
 model detalle_pedidos {
@@ -220,6 +221,7 @@ model pedidos {
   fecha_entregado                             DateTime?           @db.Timestamp(6)
   fecha_rechazado                             DateTime?           @db.Timestamp(6)
   motivo_rechazo                              String?
+  comprobante_pago                            String?
   detalle_pedidos                             detalle_pedidos[]
   usuarios_pedidos_aceptado_por_idTousuarios  usuarios?           @relation("pedidos_aceptado_por_idTousuarios", fields: [aceptado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_aceptado")
   usuarios_pedidos_entregado_por_idTousuarios usuarios?           @relation("pedidos_entregado_por_idTousuarios", fields: [entregado_por_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "fk_admin_entregado")
