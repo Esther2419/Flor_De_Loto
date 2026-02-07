@@ -15,6 +15,9 @@ interface OrderData {
   total: number;
   items: any[];
   comprobante_url?: string | null;
+  monto_pagado?: number;
+  titular_cuenta?: string;
+  mensaje_pago?: string;
 }
 
 function getValidId(id: string | number): bigint {
@@ -125,6 +128,10 @@ export async function createOrderAction(data: OrderData) {
       const soloFecha = data.fecha_entrega.split('T')[0].trim();
       const horaLimpia = data.hora_recojo.trim();
       
+      if (!horaLimpia) {
+        throw new Error("La hora de recojo es obligatoria.");
+      }
+
       // Armamos el string ISO correcto para Bolivia
       const fechaString = `${soloFecha}T${horaLimpia}:00-04:00`;
       const fechaEntregaExacta = new Date(fechaString);
@@ -185,7 +192,7 @@ export async function createOrderAction(data: OrderData) {
 
       const nuevoPedido = await tx.pedidos.create({
         data: {
-          usuario_id: usuario.id,
+          usuarios: { connect: { id: usuario.id } },
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
           fecha_pedido: ahoraBolivia, 
@@ -193,7 +200,10 @@ export async function createOrderAction(data: OrderData) {
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
           estado: "pendiente",
-          comprobante_pago: data.comprobante_url || null
+          comprobante_pago: data.comprobante_url || null,
+          titular_cuenta: data.titular_cuenta || null,
+          monto_transferencia: data.monto_pagado || data.total,
+          observacion_pago: data.mensaje_pago || null
         }
       });
 
@@ -221,6 +231,7 @@ export async function createOrderAction(data: OrderData) {
     });
 
     revalidatePath("/mis-pedidos");
+    revalidatePath("/admin/pagos");
     return { success: true, orderId: pedido.id.toString() };
 
   } catch (error: any) {

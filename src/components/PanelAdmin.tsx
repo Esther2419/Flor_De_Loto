@@ -22,7 +22,8 @@ import {
   X,
   Users,           // Icono para gestión de personal
   Image as ImageIcon, // Icono para la galería
-  CalendarOff      // Icono para Feriados
+  CalendarOff,      // Icono para Feriados
+  ReceiptText      // Icono para Comprobantes
 } from "lucide-react";
 import { getConfigAction, updatePedidosPorHora, getBloqueosAction, toggleBloqueoFecha } from "@/app/actions/admin";
 
@@ -289,6 +290,20 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
               </Link>
             </div>
           )}
+
+          {/* NUEVO APARTADO: Gestión de Comprobantes */}
+          <div className="pt-4 mt-4 border-t border-white/5">
+            <p className="px-4 mb-2 text-[9px] font-black text-gray-500 uppercase tracking-widest">Finanzas</p>
+            <Link
+              href="/admin/pagos"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group
+                ${pathname === "/admin/pagos" ? "bg-white text-black" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
+            >
+              <ReceiptText size={18} />
+              Gestionar Comprobantes
+            </Link>
+          </div>
         </nav>
 
         <div className="p-4 border-t border-white/10 bg-black/20 mt-auto">
@@ -414,6 +429,34 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
                         ) : (
                             <p className="text-xs text-gray-300 italic text-center">No hay fechas bloqueadas manualmente.</p>
                         )}
+                    </div>
+                 </div>
+
+                 {/* ACCESOS RÁPIDOS */}
+                 <div>
+                    <h3 className="text-lg font-serif italic text-gray-800 mb-4">Accesos Rápidos</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {isSuperAdmin && (
+                            <Link
+                                href="/admin/usuarios"
+                                className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group"
+                            >
+                                <div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-600 group-hover:text-white transition-colors mb-3">
+                                    <Users size={24} />
+                                </div>
+                                <span className="font-medium text-gray-700">Personal</span>
+                            </Link>
+                        )}
+
+                        <Link
+                            href="/admin/pagos"
+                            className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group"
+                        >
+                            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors mb-3">
+                                <ReceiptText size={24} />
+                            </div>
+                            <span className="font-medium text-gray-700">Comprobantes</span>
+                        </Link>
                     </div>
                  </div>
                </div>

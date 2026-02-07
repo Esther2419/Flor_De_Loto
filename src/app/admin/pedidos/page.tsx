@@ -90,7 +90,7 @@ export default async function AdminPedidosPage({
     orderByClause = { fecha_pedido: 'desc' };
   }
 
-  const pedidos = await prisma.pedidos.findMany({
+  const rawPedidos = await prisma.pedidos.findMany({
     where: whereClause,
     orderBy: orderByClause,
     include: {
@@ -98,13 +98,18 @@ export default async function AdminPedidosPage({
         include: {
           ramos: true,
           flores: true
-        }
+        },
       }
     }
   });
 
+  // Serializamos para evitar errores con BigInt al pasar datos a componentes cliente
+  const pedidos = JSON.parse(JSON.stringify(rawPedidos, (key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  ));
+
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+    <div className="space-y-8 animate-in fade-in duration-500 pb-10 px-4 md:px-0">
       <AdminPedidosRealtime />
 
       {/* RENDERIZADO DEL NUEVO MODAL ESTILO FLORERÍA */}
@@ -155,58 +160,67 @@ export default async function AdminPedidosPage({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {pedidos.map((pedido) => {
+        {pedidos.map((pedido:any) => {
           const country = COUNTRIES.find(c => pedido.telefono_contacto?.startsWith(c.prefix));
           const displayPhone = country ? `${country.prefix} ${pedido.telefono_contacto?.slice(country.prefix.length)}` : pedido.telefono_contacto;
 
           return (
-          <div key={pedido.id.toString()} className="relative bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-4 font-sans hover:shadow-md transition-all group">
-            {/* Enlace que cubre toda la tarjeta (z-10) */}
-            <Link href={`/admin/pedidos/${pedido.id}`} className="absolute inset-0 z-10 rounded-3xl" />
+            <div key={pedido.id.toString()} className="group relative bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col hover:shadow-md transition-all">
+              
+              {/* Enlace que cubre toda la tarjeta */}
+              <Link href={`/admin/pedidos/${pedido.id}`} className="absolute inset-0 z-10 rounded-3xl" />
 
-            <div className="flex justify-between items-start relative z-20 pointer-events-none">
+              {/* Header de la tarjeta */}
+              <div className="flex justify-between items-start mb-4">
+                <div className="hover:opacity-70 transition-opacity">
+                  <h2 className="text-xl font-serif italic text-gray-800">Pedido #{pedido.id}</h2>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver detalles →</p>
+                </div>
+              </div>
+
+              {/* Botonera de Estado (Separada para evitar conflictos de click) */}
+              <div className="mb-4 relative z-20">
+                <BotoneraAdmin pedido={pedido} pedidoId={pedido.id.toString()} estadoActual={pedido.estado || ""} />
+              </div>
+
+              {/* Información del Cliente y Fecha */}
+              <div className="space-y-3 flex-grow">
                 <div>
-                    <h2 className="text-xl font-serif italic text-gray-800">Pedido #{pedido.id.toString()}</h2>
-                    {/* Botonera interactiva (z-20 y pointer-events-auto para que funcione el clic) */}
-                    <div className="pointer-events-auto mt-2">
-                        <BotoneraAdmin pedido={pedido} pedidoId={pedido.id.toString()} estadoActual={pedido.estado || ""} />
-                    </div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Solicitado:</p>
+                  <p className="text-xs text-gray-700 font-medium">
+                    {format(new Date(pedido.fecha_pedido), "dd/MM/yy - hh:mm aa", { locale: es })}
+                  </p>
                 </div>
-            </div>
 
-            <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Solicitado el:</p>
-                <p className="text-xs text-gray-700 font-medium">
-                {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
-                </p>
-            </div>
-
-            <div className="space-y-0.5">
-                <p className="text-base font-bold text-gray-800">{pedido.nombre_contacto}</p>
-                <div className="flex items-center gap-2">
-                  {country && (
-                    <div className="w-4 h-3 relative shadow-sm shrink-0">
-                        <img src={country.flag} alt={country.name} className="w-full h-full object-cover rounded-[2px]" />
-                    </div>
-                  )}
-                  <p className="text-xs text-gray-500 font-mono">{displayPhone}</p>
+                <div className="py-2 border-y border-gray-50">
+                  <p className="text-base font-bold text-gray-800">{pedido.nombre_contacto}</p>
+                  <div className="flex items-center gap-2">
+                    {country && <img src={country.flag} alt="" className="w-4 h-3 object-cover rounded-sm" />}
+                    <p className="text-xs text-gray-500 font-mono">{displayPhone}</p>
+                  </div>
                 </div>
-            </div>
 
-            <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Entrega:</p>
-                <p className="text-xs text-gray-700 font-medium">
-                  <span className="bg-amber-100 text-amber-900 px-2 py-0.5 rounded-md font-bold">{format(toBoliviaTime(new Date(pedido.fecha_entrega)), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
-                </p>
-            </div>
+                <div>
+                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entrega:</p>
+                  <div className="mt-1">
+                    <span className="bg-amber-100 text-amber-900 px-2 py-1 rounded-md font-bold text-xs">
+                      {format(toBoliviaTime(new Date(pedido.fecha_entrega)), "EEEE dd 'de' MMMM", { locale: es })}
+                    </span>
+                    <p className="text-[10px] text-amber-700 mt-1 ml-1">
+                       {format(toBoliviaTime(new Date(pedido.fecha_entrega)), "hh:mm aa", { locale: es })}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-            <div className="pt-2 border-t border-gray-50 flex justify-between items-center">
-                <span className="text-[#C5A059] font-bold text-xs uppercase tracking-wider group-hover:underline">
-                Ver Detalles
-                </span>
-                <span className="text-sm font-serif italic text-gray-400">Bs {Number(pedido.total_pagar).toFixed(2)}</span>
+              {/* Footer de la tarjeta con Total y Pago */}
+              <div className="mt-6 pt-4 border-t border-gray-100">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-serif italic text-gray-500">Monto Total</span>
+                  <span className="text-lg font-bold text-gray-900">Bs {Number(pedido.total_pagar).toFixed(2)}</span>
+                </div>
+              </div>
             </div>
-          </div>
         )})}
 
         {pedidos.length === 0 && (

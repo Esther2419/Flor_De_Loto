@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Package, Flower2, MessageSquare, Info, Gift, ArrowLeft, Eye, History } from "lucide-react";
 import { notFound } from "next/navigation";
 import { BotoneraAdmin } from "@/components/BotoneraAdmin";
+import PaymentRow from "../../pagos/PaymentRow";
 
 export const dynamic = 'force-dynamic';
 
@@ -43,7 +44,7 @@ const COUNTRIES = [
 export default async function PedidoDetallePage({ params }: { params: { id: string } }) {
   const { id } = params;
 
-  const pedido = await prisma.pedidos.findUnique({
+  const rawPedido = await prisma.pedidos.findUnique({
     where: { id: BigInt(id) },
     include: {
       usuarios: true,
@@ -65,9 +66,13 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
     }
   });
 
-  if (!pedido) {
+  if (!rawPedido) {
     notFound();
   }
+
+  const pedido = JSON.parse(JSON.stringify(rawPedido, (key, value) =>
+    typeof value === 'bigint' ? value.toString() : value
+  ));
 
   const [flores, envolturas] = await Promise.all([
     prisma.flores.findMany(),
@@ -136,7 +141,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               <Package size={14} /> Artículos del Pedido
             </h4>
             
-            {pedido.detalle_pedidos.map((detalle) => {
+            {pedido.detalle_pedidos.map((detalle:any) => {
               const producto = detalle.ramos || detalle.flores || detalle.envolturas;
               const nombreProducto = producto?.nombre || "Producto desconocido";
               const fotoProducto = detalle.ramos?.foto_principal || detalle.flores?.foto || detalle.envolturas?.foto;
@@ -289,6 +294,14 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
                </p>
             </div>
           </div>
+
+          {/* Sección de Comprobante de Pago */}
+          {pedido.comprobante_pago && (
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <h4 className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">Comprobante de Pago</h4>
+              <PaymentRow pedido={pedido} />
+            </div>
+          )}
         </div>
 
         <div className="bg-gray-900 px-8 py-5 flex justify-between items-center text-white">
@@ -306,7 +319,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               <History size={14} /> Bitácora de Actividad
             </h4>
             <div className="space-y-6 relative before:absolute before:left-[5.5rem] before:top-2 before:bottom-2 before:w-px before:bg-gray-200">
-              {pedido.pedidos_historial.map((h) => (
+              {pedido.pedidos_historial.map((h: any) => (
                 <div key={h.id.toString()} className="flex gap-6 text-xs relative">
                   <div className="w-20 text-right text-gray-400 font-mono shrink-0 py-1">
                     {h.fecha ? format(new Date(h.fecha), "HH:mm") : "--:--"}

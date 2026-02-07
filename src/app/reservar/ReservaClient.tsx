@@ -121,8 +121,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
     whatsapp: userData.celular?.replace(/\D/g, '') || "", 
     quienRecoge: "", 
     fechaEntrega: fechaHoyBolivia, // Inicializado hoy
-    horaRecojo: "" 
+    horaRecojo: "",
+    titularCuenta: "",
+    montoTransferencia: "",
+    mensajePago: ""
   });
+
+  // Sincronizar el monto de transferencia con el total del carrito automáticamente
+  useEffect(() => {
+    setFormData(prev => ({ ...prev, montoTransferencia: total.toString() }));
+  }, [total]);
 
   useEffect(() => {
     const checkStatus = () => {
@@ -260,7 +268,10 @@ export default function ReservaClient({ userData }: { userData: any }) {
         hora_recojo: formData.horaRecojo,
         total: total,
         items: items,
-        comprobante_url: comprobanteUrl
+        comprobante_url: comprobanteUrl,
+        monto_pagado: parseFloat(formData.montoTransferencia) || total,
+        titular_cuenta: formData.titularCuenta,
+        mensaje_pago: formData.mensajePago
       });
 
       if (result.success) {
@@ -637,12 +648,45 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     )}
                     <input type="file" className="hidden" onChange={handleFileChange} accept="image/*" />
                   </label>
+
+                  {/* CAMPOS DE DETALLE DE PAGO */}
+                  <div className="grid grid-cols-1 gap-3 pt-2">
+                     <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 ml-1">Titular de la cuenta (Opcional)</label>
+                        <input 
+                          type="text" 
+                          placeholder="Ej: Juan Perez"
+                          value={formData.titularCuenta}
+                          onChange={(e) => setFormData({...formData, titularCuenta: e.target.value})}
+                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 ml-1">Monto Transferido (Bs)</label>
+                        <input 
+                          type="number" 
+                          placeholder="Monto"
+                          value={formData.montoTransferencia}
+                          onChange={(e) => setFormData({...formData, montoTransferencia: e.target.value})}
+                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
+                        />
+                     </div>
+                     <div>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 ml-1">Mensaje / Observación (Opcional)</label>
+                        <textarea 
+                          placeholder="Ej: Pago el 50% de adelanto..."
+                          value={formData.mensajePago}
+                          onChange={(e) => setFormData({...formData, mensajePago: e.target.value})}
+                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors resize-none h-20"
+                        />
+                     </div>
+                  </div>
                 </div>
               </div>
             </div>
 
             <button 
-                onClick={executeSubmit}
+                type="submit"
                 disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl} 
                 className="w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-[#C5A059] text-white hover:bg-[#b38f4d] disabled:opacity-50 transition-all shadow-lg shadow-[#C5A059]/20"
             >

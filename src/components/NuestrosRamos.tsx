@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Loader2, ChevronDown, ChevronUp, ShoppingBag } from "lucide-react";
 import FilterBar, { ActiveFilters } from "./FilterBar";
@@ -77,36 +78,50 @@ export default function NuestrosRamos({ ramos, categorias }: { ramos: Ramo[], ca
             <div className="relative">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 md:gap-4">
                 {visibleRamos.map((ramo) => (
-                  <div key={ramo.id} onClick={(e) => handleAction(e, ramo.id)} className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block cursor-pointer ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}>
-                    <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
-                      {ramo.foto_principal ? (
-                        <Image src={ramo.foto_principal} alt={ramo.nombre} fill sizes="(max-width: 768px) 50vw, 16vw" className={`object-cover transition-transform duration-700 ${ramo.activo ? 'group-hover:scale-110' : 'grayscale'}`} />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-gray-300 text-xl">💐</div>
-                      )}
-                      {!ramo.activo && (
-                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
-                          <span className="bg-black/70 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/20">Agotado</span>
-                        </div>
-                      )}
-                      {ramo.activo && ramo.es_oferta && (
-                        <div className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider z-10">Oferta</div>
-                      )}
-                    </div>
+                  <div key={ramo.id} className={`group relative bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 hover:shadow-lg block ${!ramo.activo ? 'opacity-80' : 'hover:-translate-y-1'}`}>
+                    
+                    {/* Enlace Absoluto que cubre toda la tarjeta (z-10) */}
+                    {ramo.activo && (
+                      <Link href={`/detalles/ramo/${ramo.id}`} className="absolute inset-0 z-10" />
+                    )}
 
-                    <div className="p-2 flex flex-col gap-0.5">
-                      <h3 className="font-serif text-xs font-bold text-[#0A0A0A] line-clamp-2 min-h-[2.4em] leading-tight group-hover:text-[#C5A059] transition-colors">{ramo.nombre}</h3>
-                      <div className="flex items-baseline gap-1.5 mt-2">
-                        {ramo.es_oferta && ramo.precio_oferta ? (
-                          <>
-                            <span className="text-red-500 font-bold text-sm">Bs {ramo.precio_oferta}</span>
-                            <span className="text-gray-400 text-[9px] line-through">Bs {ramo.precio_base}</span>
-                          </>
+                    {/* Contenido Visual (z-0) */}
+                    <div className="relative">
+                      <div className="relative aspect-[4/5] bg-gray-100 overflow-hidden">
+                        {ramo.foto_principal ? (
+                          <Image src={ramo.foto_principal} alt={ramo.nombre} fill sizes="(max-width: 768px) 50vw, 16vw" className={`object-cover transition-transform duration-700 ${ramo.activo ? 'group-hover:scale-110' : 'grayscale'}`} />
                         ) : (
-                          <span className="text-[#C5A059] font-bold text-sm">Bs {ramo.precio_base}</span>
+                          <div className="flex items-center justify-center h-full text-gray-300 text-xl">💐</div>
+                        )}
+                        
+                        {!ramo.activo && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center z-10">
+                            <span className="bg-black/70 text-white text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider border border-white/20">Agotado</span>
+                          </div>
+                        )}
+                        
+                        {ramo.activo && ramo.es_oferta && (
+                          <div className="absolute top-1 right-1 bg-red-500 text-white text-[8px] font-bold px-1.5 py-0.5 rounded shadow-sm uppercase tracking-wider z-10">Oferta</div>
                         )}
                       </div>
-                      <button onClick={(e) => handleAction(e, ramo.id)} disabled={!ramo.activo || loadingId === ramo.id} className="mt-2 w-full py-2 bg-[#0A0A0A] text-white text-[9px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-2 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200">
+                      <div className="p-2 pb-0 flex flex-col gap-0.5">
+                        <h3 className={`font-serif text-xs font-bold text-[#0A0A0A] line-clamp-2 min-h-[2.4em] leading-tight ${ramo.activo ? 'group-hover:text-[#C5A059]' : ''} transition-colors`}>{ramo.nombre}</h3>
+                        <div className="flex items-baseline gap-1.5 mt-2">
+                          {ramo.es_oferta && ramo.precio_oferta ? (
+                            <>
+                              <span className="text-red-500 font-bold text-sm">Bs {ramo.precio_oferta}</span>
+                              <span className="text-gray-400 text-[9px] line-through">Bs {ramo.precio_base}</span>
+                            </>
+                          ) : (
+                            <span className="text-[#C5A059] font-bold text-sm">Bs {ramo.precio_base}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Botón (z-20 para estar encima del Link) */}
+                    <div className="p-2 pt-2 relative z-20">
+                      <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleAction(e, ramo.id); }} disabled={!ramo.activo || loadingId === ramo.id} className="w-full py-2 bg-[#0A0A0A] text-white text-[9px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-2 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200">
                         {loadingId === ramo.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <><ShoppingBag className="w-3 h-3" /> Comprar</>}
                       </button>
                     </div>
