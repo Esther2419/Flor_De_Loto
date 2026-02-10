@@ -5,7 +5,7 @@ import { es } from "date-fns/locale";
 import Link from "next/link";
 import { Flower2, Calendar, Clock, ArrowDownUp, ListFilter } from "lucide-react";
 import AdminPedidosRealtime from "@/components/AdminPedidosRealtime";
-import { BotoneraAdmin } from "@/components/BotoneraAdmin";
+import { PedidoCard } from "@/components/PedidoCard";
 
 export const dynamic = 'force-dynamic';
 
@@ -164,63 +164,21 @@ export default async function AdminPedidosPage({
           const country = COUNTRIES.find(c => pedido.telefono_contacto?.startsWith(c.prefix));
           const displayPhone = country ? `${country.prefix} ${pedido.telefono_contacto?.slice(country.prefix.length)}` : pedido.telefono_contacto;
 
+          const formattedDate = format(new Date(pedido.fecha_pedido), "dd/MM/yy - hh:mm aa", { locale: es });
+          const deliveryDateObj = toBoliviaTime(new Date(pedido.fecha_entrega));
+          const formattedDeliveryDate = format(deliveryDateObj, "EEEE dd 'de' MMMM", { locale: es });
+          const formattedDeliveryTime = format(deliveryDateObj, "hh:mm aa", { locale: es });
+
           return (
-            <div key={pedido.id.toString()} className="group relative bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col hover:shadow-md transition-all">
-              
-              {/* Enlace que cubre toda la tarjeta */}
-              <Link href={`/admin/pedidos/${pedido.id}`} className="absolute inset-0 z-10 rounded-3xl" />
-
-              {/* Header de la tarjeta */}
-              <div className="flex justify-between items-start mb-4">
-                <div className="hover:opacity-70 transition-opacity">
-                  <h2 className="text-xl font-serif italic text-gray-800">Pedido #{pedido.id}</h2>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver detalles →</p>
-                </div>
-              </div>
-
-              {/* Botonera de Estado (Separada para evitar conflictos de click) */}
-              <div className="mb-4 relative z-20">
-                <BotoneraAdmin pedido={pedido} pedidoId={pedido.id.toString()} estadoActual={pedido.estado || ""} />
-              </div>
-
-              {/* Información del Cliente y Fecha */}
-              <div className="space-y-3 flex-grow">
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Solicitado:</p>
-                  <p className="text-xs text-gray-700 font-medium">
-                    {format(new Date(pedido.fecha_pedido), "dd/MM/yy - hh:mm aa", { locale: es })}
-                  </p>
-                </div>
-
-                <div className="py-2 border-y border-gray-50">
-                  <p className="text-base font-bold text-gray-800">{pedido.nombre_contacto}</p>
-                  <div className="flex items-center gap-2">
-                    {country && <img src={country.flag} alt="" className="w-4 h-3 object-cover rounded-sm" />}
-                    <p className="text-xs text-gray-500 font-mono">{displayPhone}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Entrega:</p>
-                  <div className="mt-1">
-                    <span className="bg-amber-100 text-amber-900 px-2 py-1 rounded-md font-bold text-xs">
-                      {format(toBoliviaTime(new Date(pedido.fecha_entrega)), "EEEE dd 'de' MMMM", { locale: es })}
-                    </span>
-                    <p className="text-[10px] text-amber-700 mt-1 ml-1">
-                       {format(toBoliviaTime(new Date(pedido.fecha_entrega)), "hh:mm aa", { locale: es })}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Footer de la tarjeta con Total y Pago */}
-              <div className="mt-6 pt-4 border-t border-gray-100">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-serif italic text-gray-500">Monto Total</span>
-                  <span className="text-lg font-bold text-gray-900">Bs {Number(pedido.total_pagar).toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
+            <PedidoCard 
+              key={pedido.id.toString()}
+              pedido={pedido}
+              displayPhone={displayPhone}
+              countryFlag={country?.flag}
+              formattedDate={formattedDate}
+              formattedDeliveryDate={formattedDeliveryDate}
+              formattedDeliveryTime={formattedDeliveryTime}
+            />
         )})}
 
         {pedidos.length === 0 && (

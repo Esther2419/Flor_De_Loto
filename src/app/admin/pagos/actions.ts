@@ -124,3 +124,18 @@ export async function deleteBucketFile(fileName: string) {
     return { success: false, error: "Error al eliminar archivo físico" };
   }
 }
+
+// Acción para actualizar el estado de verificación del pago (Total/Parcial/Pendiente)
+export async function actualizarEstadoPago(pedidoId: string, estadoPago: string) {
+  try {
+    await prisma.pedidos.update({
+      where: { id: BigInt(pedidoId) },
+      data: { pago_confirmado: estadoPago }
+    });
+    revalidatePath("/admin/pedidos");
+    return { success: true };
+  } catch (error) {
+    console.error("Error actualizando estado de pago:", error);
+    return { success: false, error: "Error al actualizar el estado de pago" };
+  }
+}
