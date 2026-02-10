@@ -74,6 +74,14 @@ export default function RamosAdminPage() {
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
   const [isPrincipalCrop, setIsPrincipalCrop] = useState(true);
 
+  // --- ESTADO PARA ALERTAS ---
+  const [alertModal, setAlertModal] = useState<{
+    show: boolean;
+    message: string;
+    type: 'success' | 'error' | 'confirm';
+    onConfirm?: () => void;
+  }>({ show: false, message: "", type: 'success' });
+
   const filePrincipalRef = useRef<HTMLInputElement>(null);
   const cameraPrincipalRef = useRef<HTMLInputElement>(null);
   const fileExtraRef = useRef<HTMLInputElement>(null);
@@ -126,7 +134,7 @@ export default function RamosAdminPage() {
         }
       }
     } catch (error) {
-      alert("Error al procesar la imagen.");
+      setAlertModal({ show: true, message: "Error al procesar la imagen", type: 'error' });
     } finally {
       setter(false);
     }
@@ -169,7 +177,12 @@ export default function RamosAdminPage() {
       imagenes_extra: imagenesExtra
     };
     let res = (activeTab === "editar" && formData.id) ? await updateRamo(formData.id, payload) : await createRamo(payload);
-    if (res.success) { resetForm(); setActiveTab("ver"); loadData(); } else { alert(res.error); }
+    if (res.success) { 
+      resetForm(); setActiveTab("ver"); loadData(); 
+      setAlertModal({ show: true, message: "¡Ramo guardado correctamente!", type: 'success' });
+    } else { 
+      setAlertModal({ show: true, message: res.error || "Error al guardar", type: 'error' }); 
+    }
     setLoading(false);
   };
 
@@ -187,17 +200,23 @@ export default function RamosAdminPage() {
   };
 
   const handleDelete = async (id: string) => { 
-    if (confirm("¿Eliminar este ramo?")) { 
-      const ramo = ramos.find(r => r.id === id);
-      if (ramo) {
-        if (ramo.foto_principal) await deleteFromBucket(ramo.foto_principal, 'ramos');
-        if (ramo.ramo_imagenes?.length > 0) {
-          for (const img of ramo.ramo_imagenes) await deleteFromBucket(img.url_foto, 'ramos');
+    setAlertModal({
+      show: true,
+      message: "¿Estás seguro de eliminar este ramo? Esta acción no se puede deshacer.",
+      type: 'confirm',
+      onConfirm: async () => {
+        const ramo = ramos.find(r => r.id === id);
+        if (ramo) {
+          if (ramo.foto_principal) await deleteFromBucket(ramo.foto_principal, 'ramos');
+          if (ramo.ramo_imagenes?.length > 0) {
+            for (const img of ramo.ramo_imagenes) await deleteFromBucket(img.url_foto, 'ramos');
+          }
         }
+        await deleteRamo(id); 
+        loadData();
+        setAlertModal({ show: true, message: "Ramo eliminado", type: 'success' });
       }
-      await deleteRamo(id); 
-      loadData(); 
-    } 
+    });
   };
 
   return (
@@ -229,51 +248,83 @@ export default function RamosAdminPage() {
       {(activeTab === "crear" || activeTab === "editar") && (
         <div className="bg-white p-6 md:p-8 rounded-2xl border border-gray-100 shadow-sm animate-in slide-in-from-bottom-2 duration-300">
             <form onSubmit={handleSubmit} className="space-y-8">
-                <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-                  {/* FOTO PRINCIPAL */}
-                  <div className="md:col-span-4 flex flex-col items-center">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2">Foto Principal</span>
-                    <div className="relative w-full aspect-[3/4] rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 overflow-hidden">
-                        {uploadingPrincipal ? (
-                            <div className="absolute inset-0 flex items-center justify-center text-[#C5A059] animate-pulse font-bold text-xs">SUBIENDO...</div>
-                        ) : formData.foto_principal ? (
-                            <>
-                              <Image src={formData.foto_principal} alt="Main" fill className="object-cover" />
-                              <button type="button" onClick={() => setFormData({...formData, foto_principal: ""})} className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full"><Trash2 size={14}/></button>
-                            </>
-                        ) : (
-                            <div className="absolute inset-0 flex flex-col items-center justify-center p-4">
-                                <div className="flex flex-col gap-2 w-full">
-                                  <button type="button" onClick={() => cameraPrincipalRef.current?.click()} className="w-full bg-black py-2 rounded text-[10px] font-bold uppercase text-white">Cámara</button>
-                                  <button type="button" onClick={() => filePrincipalRef.current?.click()} className="w-full bg-white py-2 rounded border border-gray-200 text-[10px] font-bold uppercase text-gray-500 shadow-sm">Galería</button>
-                                </div>
-                            </div>
-                        )}
-                        <input type="file" ref={filePrincipalRef} hidden accept="image/*" onChange={(e) => onFileChange(e, true)} />
-                        <input type="file" ref={cameraPrincipalRef} hidden accept="image/*" capture="environment" onChange={(e) => onFileChange(e, true)} />
+                {/* --- SECCIÓN DE IMÁGENES ESTILO BOUTIQUE --- */}
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+                  
+                  {/* FOTO PRINCIPAL (3/4 Ratio) */}
+                  <div className="md:col-span-5 space-y-3">
+                    <div className="flex justify-between items-center px-1">
+                      <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400">Portada del Ramo</span>
+                      {formData.foto_principal && <span className="text-[9px] bg-green-50 text-green-500 px-2 py-0.5 rounded-full font-bold">LISTO</span>}
+                    </div>
+                    
+                    <div className="relative aspect-[3/4] rounded-[3rem] border-2 border-dashed border-gray-100 bg-[#FDFBF7] overflow-hidden group transition-all hover:border-[#C5A059]/30 shadow-sm">
+                      {uploadingPrincipal ? (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm z-20">
+                          <Loader2 className="animate-spin text-[#C5A059] mb-2" size={30} />
+                          <span className="text-[10px] font-bold text-[#C5A059] tracking-widest animate-pulse">SUBIENDO...</span>
+                        </div>
+                      ) : formData.foto_principal ? (
+                        <>
+                          <Image src={formData.foto_principal} alt="Portada" fill className="object-cover transition-transform duration-700 group-hover:scale-105" />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+                            <button type="button" onClick={() => filePrincipalRef.current?.click()} className="bg-white p-3 rounded-full text-gray-700 hover:scale-110 transition-transform shadow-xl"><Camera size={18}/></button>
+                            <button type="button" onClick={() => setFormData({...formData, foto_principal: ""})} className="bg-red-500 p-3 rounded-full text-white hover:scale-110 transition-transform shadow-xl"><Trash2 size={18}/></button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center p-8 space-y-4">
+                          <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center text-gray-300">
+                            <ImageIcon size={32} />
+                          </div>
+                          <div className="flex flex-col gap-2 w-full max-w-[180px]">
+                            <button type="button" onClick={() => cameraPrincipalRef.current?.click()} className="bg-[#0A0A0A] text-white py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest hover:bg-[#C5A059] transition-colors">Cámara</button>
+                            <button type="button" onClick={() => filePrincipalRef.current?.click()} className="bg-white border border-gray-100 text-gray-500 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest shadow-sm hover:bg-gray-50">Galería</button>
+                          </div>
+                        </div>
+                      )}
+                      <input type="file" ref={filePrincipalRef} hidden accept="image/*" onChange={(e) => onFileChange(e, true)} />
+                      <input type="file" ref={cameraPrincipalRef} hidden accept="image/*" capture="environment" onChange={(e) => onFileChange(e, true)} />
                     </div>
                   </div>
 
-                  {/* GALERÍA EXTRA */}
-                  <div className="md:col-span-8">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 mb-2 block">Imágenes Extras</span>
-                    <div className="grid grid-cols-4 sm:grid-cols-5 gap-3">
-                        {imagenesExtra.map((img, idx) => (
-                          <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-gray-200 bg-white shadow-sm">
-                             <Image src={img} alt="" fill className="object-cover" />
-                             <button type="button" onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} className="absolute top-1 right-1 bg-red-500 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center">×</button>
-                          </div>
-                        ))}
-                        <div className="relative aspect-square rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 flex flex-col items-center justify-center p-1 gap-1">
-                           {uploadingExtra ? ( <Loader2 className="animate-spin text-[#C5A059]" size={16}/> ) : (
-                             <>
-                               <button type="button" onClick={() => cameraExtraRef.current?.click()} className="w-full bg-black py-1 rounded text-[8px] font-bold uppercase text-white">Cámara</button>
-                               <button type="button" onClick={() => fileExtraRef.current?.click()} className="w-full bg-white py-1 rounded border border-gray-200 text-[8px] font-bold uppercase text-gray-500">Galería</button>
-                             </>
-                           )}
+                  {/* GALERÍA DE DETALLES */}
+                  <div className="md:col-span-7 space-y-3">
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-400 ml-1">Álbum de Detalles</span>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {imagenesExtra.map((img, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-[2rem] overflow-hidden border border-gray-50 bg-white group shadow-sm">
+                          <Image src={img} alt="" fill className="object-cover" />
+                          <button 
+                            type="button" 
+                            onClick={() => setImagenesExtra(imagenesExtra.filter((_, i) => i !== idx))} 
+                            className="absolute top-2 right-2 bg-white/90 backdrop-blur-md text-red-500 w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all shadow-lg hover:bg-red-50"
+                          >
+                            <X size={16}/>
+                          </button>
                         </div>
+                      ))}
+                      
+                      {/* Botón de Añadir en Galería */}
+                      <div className="relative aspect-square rounded-[2rem] border-2 border-dashed border-gray-100 bg-[#FDFBF7] flex flex-col items-center justify-center p-4 hover:border-[#C5A059]/30 transition-all group">
+                        {uploadingExtra ? (
+                          <Loader2 className="animate-spin text-[#C5A059]" size={24}/>
+                        ) : (
+                          <div className="flex flex-col gap-2 w-full">
+                            <button type="button" onClick={() => cameraExtraRef.current?.click()} className="flex items-center justify-center bg-white w-10 h-10 rounded-full shadow-sm mx-auto text-gray-400 group-hover:text-[#C5A059] transition-colors">
+                              <Plus size={20}/>
+                            </button>
+                            <span className="text-[8px] font-bold text-gray-400 text-center uppercase tracking-widest">Añadir Foto</span>
+                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                               <button type="button" onClick={() => fileExtraRef.current?.click()} className="flex-1 bg-white text-[7px] font-bold p-1 rounded-md border border-gray-100 uppercase">Files</button>
+                               <button type="button" onClick={() => cameraExtraRef.current?.click()} className="flex-1 bg-black text-white text-[7px] font-bold p-1 rounded-md uppercase">Cam</button>
+                            </div>
+                          </div>
+                        )}
                         <input type="file" ref={fileExtraRef} hidden accept="image/*" onChange={(e) => onFileChange(e, false)} />
                         <input type="file" ref={cameraExtraRef} hidden accept="image/*" capture="environment" onChange={(e) => onFileChange(e, false)} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -405,9 +456,6 @@ export default function RamosAdminPage() {
               <div key={ramo.id} className={`bg-white rounded-2xl shadow-sm overflow-hidden border transition-all hover:shadow-md hover:translate-y-[-2px] ${!ramo.activo ? 'opacity-60 grayscale' : 'border-gray-100'}`}>
                 <div className="relative h-64 bg-gray-50 group cursor-pointer" onClick={() => handleEditClick(ramo)}>
                   {ramo.foto_principal ? <Image src={ramo.foto_principal} alt={ramo.nombre} fill className="object-cover" /> : <div className="flex items-center justify-center h-full text-4xl opacity-20">💐</div>}
-                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="bg-white/90 text-black text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-xl">Editar</span>
-                  </div>
                 </div>
                 <div className="p-5">
                   <div className="flex justify-between items-start mb-2">
@@ -465,6 +513,62 @@ export default function RamosAdminPage() {
                   <p className="text-[10px] text-gray-400 font-bold">{env.precio_unitario} Bs</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL DE ALERTA PERSONALIZADO --- */}
+      {alertModal.show && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-sm overflow-hidden shadow-2xl animate-in zoom-in-95 duration-250">
+            <div className="p-8 text-center">
+              {/* ICONO DINÁMICO */}
+              <div className={`mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-6 ${
+                alertModal.type === 'success' ? 'bg-green-50 text-green-500' : 
+                alertModal.type === 'error' ? 'bg-red-50 text-red-500' : 'bg-[#F9F6EE] text-[#C5A059]'
+              }`}>
+                {alertModal.type === 'success' && <Check size={32} />}
+                {alertModal.type === 'error' && <X size={32} />}
+                {alertModal.type === 'confirm' && <Package size={32} />}
+              </div>
+
+              <h3 className="font-serif text-xl text-gray-800 mb-2">
+                {alertModal.type === 'confirm' ? '¿Confirmar acción?' : 'Notificación'}
+              </h3>
+              <p className="text-gray-500 text-sm leading-relaxed mb-8">
+                {alertModal.message}
+              </p>
+
+              {/* BOTONES */}
+              <div className="flex gap-3">
+                {alertModal.type === 'confirm' ? (
+                  <>
+                    <button 
+                      onClick={() => setAlertModal({ ...alertModal, show: false })}
+                      className="flex-1 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-gray-400 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      Cancelar
+                    </button>
+                    <button 
+                      onClick={() => {
+                        alertModal.onConfirm?.();
+                        setAlertModal({ ...alertModal, show: false });
+                      }}
+                      className="flex-1 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-white bg-red-500 shadow-lg shadow-red-200 hover:bg-red-600 transition-all"
+                    >
+                      Eliminar
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    onClick={() => setAlertModal({ ...alertModal, show: false })}
+                    className="w-full py-4 rounded-2xl text-[10px] font-bold uppercase tracking-[0.2em] text-white bg-[#0A0A0A] shadow-lg hover:bg-[#C5A059] transition-all"
+                  >
+                    Entendido
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -7,6 +7,7 @@ import {
   AlertTriangle, Timer, Store, 
   ShieldCheck, ArrowRight, Settings2
 } from "lucide-react";
+import QRManager from "@/components/QRManager";
 
 interface TiendaConfig {
   tienda_abierta: boolean | null;
@@ -14,6 +15,7 @@ interface TiendaConfig {
   horario_cierre: string;
   cierre_temporal: boolean;
   minutos_preparacion: number;
+  qr_pago: string | null;
 }
 
 export default function AdminPage() {
@@ -22,7 +24,8 @@ export default function AdminPage() {
     horario_apertura: "09:00",
     horario_cierre: "19:00",
     cierre_temporal: false,
-    minutos_preparacion: 30
+    minutos_preparacion: 30,
+    qr_pago: null
   });
   
   const [cargando, setCargando] = useState(false);
@@ -41,7 +44,8 @@ export default function AdminPage() {
           horario_apertura: data.horario_apertura?.slice(0, 5) || "09:00",
           horario_cierre: data.horario_cierre?.slice(0, 5) || "19:00",
           cierre_temporal: !!data.cierre_temporal,
-          minutos_preparacion: data.minutos_preparacion || 30
+          minutos_preparacion: data.minutos_preparacion || 30,
+          qr_pago: data.qr_pago || null
         });
       }
     };
@@ -102,7 +106,6 @@ export default function AdminPage() {
           <div className={`relative overflow-hidden p-8 rounded-[2.5rem] border transition-all duration-500 shadow-xl shadow-gray-100/50 ${
             config.tienda_abierta ? "bg-white border-gray-100" : "bg-red-50/30 border-red-100"
           }`}>
-            {/* Decoración de fondo */}
             <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#C5A059]/5 rounded-full blur-3xl" />
 
             <div className="relative space-y-8">
@@ -172,8 +175,11 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* SECCIÓN 2: LOGÍSTICA (Ocupa 5 columnas) */}
+        {/* SECCIÓN 2: LOGÍSTICA & QR (Ocupa 5 columnas) */}
         <div className="lg:col-span-5 space-y-6">
+          {/* NUEVO: Gestión de QR de Pago */}
+          <QRManager initialQR={config.qr_pago} />
+
           <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100/50 space-y-8 relative overflow-hidden">
             <div className="space-y-1">
               <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
@@ -184,7 +190,6 @@ export default function AdminPage() {
             </div>
 
             <div className="space-y-4">
-              {/* Preparación Card */}
               <div className="group p-6 bg-white rounded-3xl border border-gray-100 hover:border-[#C5A059]/30 transition-all shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <span className="font-bold text-gray-700 text-sm tracking-tight">Tiempo de Preparación</span>
@@ -212,7 +217,6 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* Pausa Emergencia Card */}
               <div className={`p-6 rounded-3xl border transition-all duration-500 ${
                 config.cierre_temporal 
                   ? "bg-orange-500 border-orange-400 shadow-lg shadow-orange-100" 

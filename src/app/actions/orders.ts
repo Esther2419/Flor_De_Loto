@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/prisma";
+import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath } from "next/cache";
@@ -13,6 +14,10 @@ interface OrderData {
   hora_recojo: string;
   total: number;
   items: any[];
+  comprobante_url?: string | null;
+  monto_pagado?: number;
+  titular_cuenta?: string;
+  mensaje_pago?: string;
 }
 
 function getValidId(id: string | number): bigint {
@@ -29,6 +34,67 @@ function getMinutesTotal(input: any): number {
   const parts = String(input).split(':');
   if (parts.length < 2) return 0;
   return Number(parts[0]) * 60 + Number(parts[1]);
+}
+
+// Helper para extraer HH:mm de un Date (DB) de forma segura
+function getTimeFromDate(date: any): string | null {
+  if (!date) return null;
+  if (typeof date === 'string') return date.substring(0, 5);
+  if (date instanceof Date) {
+    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' });
+  }
+  return null;
+}
+
+// --- NUEVA FUNCIÓN: Verificar disponibilidad (Cliente) ---
+export async function checkAvailabilityAction(fecha: string, hora: string) {
+  try {
+    const fechaString = `${fecha}T${hora}:00-04:00`;
+    const fechaDate = new Date(fechaString);
+    
+    if (isNaN(fechaDate.getTime())) return { available: false, message: "Fecha inválida" };
+
+    // 1. Verificar Bloqueo de Día
+    const startDay = new Date(fechaDate); startDay.setHours(0,0,0,0);
+    const endDay = new Date(fechaDate); endDay.setHours(23,59,59,999);
+    
+    const bloqueos = await prisma.bloqueos_horario.findMany({
+      where: { fecha: { gte: startDay, lte: endDay } }
+    } as any);
+    
+    for (const bloqueo of bloqueos) {
+      const bInicio = getTimeFromDate(bloqueo.hora_inicio);
+      const bFin = getTimeFromDate(bloqueo.hora_fin);
+
+      // Si no tiene horas definidas, es bloqueo de día completo
+      if (!bInicio || !bFin) {
+        return { available: false, message: `Fecha bloqueada: ${bloqueo.motivo || "Cierre administrativo"}` };
+      }
+      // Si tiene horas, verificar colisión (hora es string "HH:mm")
+      if (hora >= bInicio && hora < bFin) {
+        return { available: false, message: `Horario no disponible (${bInicio} - ${bFin}): ${bloqueo.motivo}` };
+      }
+    }
+
+    // 2. Verificar Cupo por Hora
+    const startHour = new Date(fechaDate); startHour.setMinutes(0,0,0);
+    const endHour = new Date(fechaDate); endHour.setMinutes(59,59,999);
+
+    const [count, config] = await Promise.all([
+      prisma.pedidos.count({
+        where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
+      }),
+      prisma.configuracion.findUnique({ where: { id: 1 } })
+    ]);
+
+    const limit = (config as any)?.pedidos_por_hora || 5;
+    
+    if (count >= limit) return { available: false, message: "Cupos llenos para este horario." };
+
+    return { available: true };
+  } catch (error) {
+    return { available: false, message: "Error al verificar disponibilidad." };
+  }
 }
 
 export async function createOrderAction(data: OrderData) {
@@ -62,6 +128,10 @@ export async function createOrderAction(data: OrderData) {
       const soloFecha = data.fecha_entrega.split('T')[0].trim();
       const horaLimpia = data.hora_recojo.trim();
       
+      if (!horaLimpia) {
+        throw new Error("La hora de recojo es obligatoria.");
+      }
+
       // Armamos el string ISO correcto para Bolivia
       const fechaString = `${soloFecha}T${horaLimpia}:00-04:00`;
       const fechaEntregaExacta = new Date(fechaString);
@@ -85,16 +155,55 @@ export async function createOrderAction(data: OrderData) {
         throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
       }
 
+      // --- VALIDACIÓN DE ÚLTIMO MINUTO (Backend Robustness) ---
+      // 1. Verificar si el día está bloqueado en la tabla de excepciones
+      const startDay = new Date(fechaEntregaExacta); startDay.setHours(0,0,0,0);
+      const endDay = new Date(fechaEntregaExacta); endDay.setHours(23,59,59,999);
+      
+      const bloqueosDia = await (tx as any).bloqueos_horario.findMany({
+        where: { fecha: { gte: startDay, lte: endDay } }
+      });
+
+      for (const bloqueo of bloqueosDia) {
+        const bInicio = getTimeFromDate(bloqueo.hora_inicio);
+        const bFin = getTimeFromDate(bloqueo.hora_fin);
+
+        if (!bInicio || !bFin) {
+           throw new Error(`Lo sentimos, esta fecha acaba de ser bloqueada: ${bloqueo.motivo}`);
+        }
+        if (horaLimpia >= bInicio && horaLimpia < bFin) {
+           throw new Error(`Lo sentimos, el horario ${horaLimpia} acaba de ser bloqueado: ${bloqueo.motivo}`);
+        }
+      }
+
+      // 2. Verificar cupo de pedidos por hora (Concurrency Check)
+      const startHour = new Date(fechaEntregaExacta); startHour.setMinutes(0,0,0);
+      const endHour = new Date(fechaEntregaExacta); endHour.setMinutes(59,59,999);
+
+      const pedidosEnEsaHora = await tx.pedidos.count({
+        where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
+      });
+
+      const limitePorHora = (config as any).pedidos_por_hora || 5;
+      if (pedidosEnEsaHora >= limitePorHora) {
+        throw new Error(`Lo sentimos, el horario de las ${horaLimpia} se acaba de llenar. Por favor elige otra hora.`);
+      }
+      // -------------------------------------------------------
+
       const nuevoPedido = await tx.pedidos.create({
         data: {
-          usuario_id: usuario.id,
+          usuarios: { connect: { id: usuario.id } },
           nombre_contacto: data.nombre_contacto,
           telefono_contacto: data.telefono_contacto,
           fecha_pedido: ahoraBolivia, 
           fecha_entrega: fechaEntregaExacta,
           nombre_receptor: data.quien_recoge,
           total_pagar: data.total,
-          estado: "pendiente"
+          estado: "pendiente",
+          comprobante_pago: data.comprobante_url || null,
+          titular_cuenta: data.titular_cuenta || null,
+          monto_transferencia: data.monto_pagado || data.total,
+          observacion_pago: data.mensaje_pago || null
         }
       });
 
@@ -122,10 +231,101 @@ export async function createOrderAction(data: OrderData) {
     });
 
     revalidatePath("/mis-pedidos");
+    revalidatePath("/admin/pagos");
     return { success: true, orderId: pedido.id.toString() };
 
   } catch (error: any) {
     console.error("Error en createOrderAction:", error.message);
     return { success: false, message: error.message || "Error al procesar el pedido" };
+  }
+}
+
+// --- NUEVA FUNCIÓN: Cancelar Pedido ---
+export async function cancelOrderAction(orderId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) return { success: false, message: "No autenticado" };
+
+  try {
+    const usuario = await prisma.usuarios.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!usuario) return { success: false, message: "Usuario no encontrado" };
+
+    // Convertir ID de manera segura
+    const id = getValidId(orderId);
+
+    const pedido = await prisma.pedidos.findUnique({
+      where: { id },
+    });
+
+    if (!pedido) return { success: false, message: "Pedido no encontrado" };
+
+    // 1. Verificar propiedad
+    if (pedido.usuario_id !== usuario.id) {
+      return { success: false, message: "No tienes permiso para cancelar este pedido" };
+    }
+
+    // 2. Verificar estado (Solo se puede cancelar si es 'pendiente')
+    if (pedido.estado !== 'pendiente') {
+      return { success: false, message: "El pedido ya ha sido procesado y no se puede cancelar." };
+    }
+
+    // 3. Proceder a cancelar
+    await prisma.pedidos.update({
+      where: { id },
+      data: { 
+        estado: 'rechazado',
+        fecha_rechazado: new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })),
+        motivo_rechazo: "Cancelado por el cliente"
+      },
+    });
+
+    revalidatePath("/mis-pedidos");
+    return { success: true, message: "Pedido cancelado correctamente" };
+
+  } catch (error: any) {
+    console.error("Error al cancelar pedido:", error);
+    return { success: false, message: error.message || "Error al procesar la cancelación" };
+  }
+}
+
+// --- NUEVA FUNCIÓN: Subir Comprobante (Cliente) ---
+export async function uploadComprobante(formData: FormData) {
+  const file = formData.get("file") as File;
+  if (!file) return { success: false, error: "No hay archivo" };
+
+  // Validar tamaño en servidor (5MB)
+  if (file.size > 5 * 1024 * 1024) return { success: false, error: "El archivo excede el límite de 5MB" };
+
+  try {
+    const fileName = `pago_${Date.now()}.webp`;
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .upload(fileName, file);
+
+    if (error) throw error;
+
+    const { data: { publicUrl } } = supabase.storage.from("comprobantes").getPublicUrl(fileName);
+    return { success: true, url: publicUrl };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+// --- NUEVA FUNCIÓN: Eliminar Comprobante ---
+export async function deleteComprobante(url: string) {
+  try {
+    const fileName = url.split('/').pop();
+    if (!fileName) return { success: false, error: "URL inválida" };
+
+    const { error } = await supabase.storage
+      .from("comprobantes")
+      .remove([fileName]);
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
   }
 }

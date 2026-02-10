@@ -2,6 +2,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import { useSession } from "next-auth/react";
+import { useToast, ToastProvider } from "@/context/ToastContext";
+import { supabase } from "@/lib/supabase";
 import { 
   getCartAction, 
   syncCartAction, 
@@ -38,8 +40,9 @@ interface CartContextType {
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 
-export function CartProvider({ children }: { children: ReactNode }) {
+function CartContent({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
+  const { toast } = useToast();
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -49,24 +52,49 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const loadCart = async () => {
       if (status === "authenticated") {
-        const localCart = JSON.parse(localStorage.getItem("flor-de-loto-cart") || "[]");
-        if (localCart.length > 0) {
-          const syncedItems = await syncCartAction(localCart);
-          if (syncedItems) {
-            setItems(syncedItems as unknown as CartItem[]);
-            localStorage.removeItem("flor-de-loto-cart"); 
+        try {
+          const localCart = JSON.parse(localStorage.getItem("flor-de-loto-cart") || "[]");
+          if (localCart.length > 0) {
+            const syncedItems = await syncCartAction(localCart);
+            if (syncedItems) {
+              setItems(syncedItems as unknown as CartItem[]);
+              localStorage.removeItem("flor-de-loto-cart"); 
+            }
+          } else {
+            const dbItems = await getCartAction();
+            if (dbItems) setItems(dbItems as unknown as CartItem[]);
           }
-        } else {
-          const dbItems = await getCartAction();
-          if (dbItems) setItems(dbItems as unknown as CartItem[]);
+        } catch (error) {
+          console.error("Error cargando carrito:", error);
+          toast("Error de conexión al cargar el carrito", "error");
         }
       } else if (status === "unauthenticated") {
+        // Limpieza de seguridad: Evitar que queden items de la sesión anterior
+        setItems([]); 
         const savedCart = localStorage.getItem("flor-de-loto-cart");
-        if (savedCart) setItems(JSON.parse(savedCart));
+        if (savedCart) {
+          try {
+            setItems(JSON.parse(savedCart));
+          } catch (e) {
+            localStorage.removeItem("flor-de-loto-cart");
+          }
+        }
       }
       setIsLoaded(true);
     };
     if (status !== "loading") loadCart();
+  }, [status, toast]);
+
+  // Sincronización Realtime (Multi-dispositivo)
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    const channel = supabase.channel('carrito_realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'carrito_items' }, async () => {
+        const dbItems = await getCartAction();
+        if (dbItems) setItems(dbItems as unknown as CartItem[]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [status]);
 
   useEffect(() => {
@@ -76,6 +104,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [items, isLoaded, status]);
 
   const addToCart = async (product: Omit<CartItem, "cantidad">) => {
+    const prevItems = [...items]; // Snapshot para Rollback
+
     setItems((currentItems) => {
       const existingItem = currentItems.find((item) => item.id === product.id);
       if (existingItem) {
@@ -87,20 +117,36 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
 
     if (status === "authenticated") {
-      // IMPORTANTE: Enviamos el objeto completo al servidor
-      await addToCartAction({ 
-        ...product, 
-        cantidad: 1 
-      });
+      try {
+        await addToCartAction({ ...product, cantidad: 1 });
+      } catch (error) {
+        setItems(prevItems); // Rollback si falla
+        toast("Error al guardar en el servidor", "error");
+      }
     }
   };
 
   const removeFromCart = async (id: string) => {
+    const prevItems = [...items]; // Snapshot
     setItems((currentItems) => currentItems.filter((item) => item.id !== id));
-    if (status === "authenticated") await removeFromCartAction(id);
+    
+    if (status === "authenticated") {
+      try {
+        await removeFromCartAction(id);
+      } catch (error) {
+        setItems(prevItems); // Rollback
+        toast("Error al eliminar producto", "error");
+      }
+    }
   };
 
   const updateQuantity = async (id: string, delta: number) => {
+    const prevItems = [...items]; // Snapshot
+    const itemToUpdate = items.find(i => i.id === id);
+    
+    // Evitar llamadas innecesarias si la cantidad es 1 y se resta
+    if (delta < 0 && itemToUpdate && itemToUpdate.cantidad <= 1) return;
+
     setItems((currentItems) => 
       currentItems.map((item) => {
         if (item.id === id) {
@@ -110,7 +156,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         return item;
       })
     );
-    if (status === "authenticated") await updateQuantityAction(id, delta);
+
+    if (status === "authenticated") {
+      try {
+        await updateQuantityAction(id, delta);
+      } catch (error) {
+        setItems(prevItems); // Rollback
+        toast("Error al actualizar cantidad", "error");
+      }
+    }
   };
 
   const clearCart = () => setItems([]);
@@ -126,6 +180,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }}>
       {children}
     </CartContext.Provider>
+  );
+}
+
+export function CartProvider({ children }: { children: ReactNode }) {
+  return (
+    <ToastProvider>
+      <CartContent>{children}</CartContent>
+    </ToastProvider>
   );
 }
 

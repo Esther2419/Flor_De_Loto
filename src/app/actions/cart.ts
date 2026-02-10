@@ -72,7 +72,9 @@ export async function getCartAction() {
       precio: pers?.precioComprado || precioBaseDB, 
       precioOriginal: pers?.precioOriginal || precioBaseDB,
       esOferta: pers?.esOferta || false,
-      foto: foto,
+      foto: foto || "/LogoSinLetra.png",
+      imagen: foto || "/LogoSinLetra.png",
+      foto_principal: foto || "/LogoSinLetra.png",
       cantidad: detalle.cantidad,
       tipo: esFlor ? 'flor' : 'ramo',
       personalizacion: detalle.personalizacion ? JSON.parse(JSON.stringify(detalle.personalizacion)) : undefined

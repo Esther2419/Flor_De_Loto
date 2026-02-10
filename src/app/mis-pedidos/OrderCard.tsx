@@ -1,19 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { es } from "date-fns/locale";
 import { formatInTimeZone } from 'date-fns-tz';
-import { Package, Calendar, Clock, UserCheck, Eye, X, Palette, Flower2, MessageSquare, Ban } from "lucide-react";
+import { Package, Calendar, Clock, UserCheck, Eye, X, Palette, Flower2, MessageSquare, Ban, Trash2, AlertTriangle } from "lucide-react";
 import Image from "next/image";
 import WhatsAppButton from "@/components/WhatsAppButton";
+import { cancelOrderAction } from "@/app/actions/orders";
+import { useToast } from "@/context/ToastContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }: any) {
   const [showModal, setShowModal] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const { toast } = useToast();
   const zonaHoraria = 'America/La_Paz';
 
   // LÓGICA DE BLOQUEO DE WHATSAPP
-  const estadosBloqueados = ["aceptado", "terminado", "entregado", "rechazado"];
+  const estadosBloqueados = ["aceptado", "terminado", "entregado", "rechazado", "cancelado"];
   const estaBloqueado = estadosBloqueados.includes(pedido.estado || "");
+  const puedeCancelar = pedido.estado === 'pendiente';
+  
+  // Detectamos si es una cancelación del cliente para mostrar el estilo correcto
+  const esCancelado = pedido.estado === 'cancelado' || (pedido.estado === 'rechazado' && pedido.motivo_rechazo === "Cancelado por el cliente");
 
   const getFlorData = (id: string) => {
     const flor = catalogoFlores.find((f: any) => f.id.toString() === id);
@@ -25,9 +35,25 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
     return env || { nombre: "Envoltura desconocida", foto: null };
   };
 
+  const handleCancel = () => {
+    setShowCancelModal(true);
+  };
+
+  const onConfirmCancel = async () => {
+    startTransition(async () => {
+      const result = await cancelOrderAction(pedido.id.toString());
+      if (result.success) {
+        toast("Pedido cancelado exitosamente", "success");
+      } else {
+        toast(result.message, "error");
+      }
+      setShowCancelModal(false);
+    });
+  };
+
   return (
     <>
-      <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow p-6 md:p-8">
+      <div className={`bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow p-6 md:p-8 ${esCancelado ? 'opacity-60 grayscale-[0.5]' : ''}`}>
         <div className="flex flex-col md:flex-row justify-between gap-6">
           <div className="space-y-4 flex-1">
             <div className="flex items-center gap-4 flex-wrap">
@@ -39,6 +65,7 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
                 pedido.estado === 'entregado' ? 'bg-green-50 text-green-600 border-green-100' :
                 pedido.estado === 'aceptado' ? 'bg-blue-50 text-blue-600 border-blue-100' :
                 pedido.estado === 'terminado' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                esCancelado ? 'bg-gray-100 text-gray-500 border-gray-200 line-through' :
                 'bg-red-50 text-red-600 border-red-100'
               }`}>
                 {pedido.estado}
@@ -66,10 +93,10 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               </div>
             </div>
 
-            {/* MOSTRAR MOTIVO DE RECHAZO SI EXISTE */}
-            {pedido.estado === 'rechazado' && pedido.motivo_rechazo && (
+            {/* MOSTRAR MOTIVO DE RECHAZO O CANCELACIÓN SI EXISTE */}
+            {(pedido.estado === 'rechazado' || pedido.estado === 'cancelado') && pedido.motivo_rechazo && (
               <div className="bg-red-50 p-3 rounded-xl border border-red-100 animate-pulse">
-                <p className="text-[9px] font-black text-red-700 uppercase mb-1">Motivo del rechazo:</p>
+                <p className="text-[9px] font-black text-red-700 uppercase mb-1">{esCancelado ? 'Motivo de cancelación:' : 'Motivo del rechazo:'}</p>
                 <p className="text-xs text-red-600 italic">"{pedido.motivo_rechazo}"</p>
               </div>
             )}
@@ -101,6 +128,17 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
               >
                 <Eye size={16} /> Ver Detalles Completos
               </button>
+
+              {/* BOTÓN DE CANCELAR (Solo visible si es Pendiente) */}
+              {puedeCancelar && (
+                <button 
+                  onClick={handleCancel}
+                  disabled={isPending}
+                  className="flex items-center justify-center gap-2 w-full bg-white text-red-600 border border-red-100 px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] hover:bg-red-50 transition-all disabled:opacity-50"
+                >
+                  {isPending ? 'Cancelando...' : <><Trash2 size={16} /> Cancelar Pedido</>}
+                </button>
+              )}
 
               {/* BOTÓN DE WHATSAPP CON LÓGICA DE BLOQUEO */}
               {!estaBloqueado ? (
@@ -243,6 +281,39 @@ export default function OrderCard({ pedido, catalogoFlores, catalogoEnvolturas }
           </div>
         </div>
       )}
+
+      {/* MODAL DE CONFIRMACIÓN DE CANCELACIÓN */}
+      <AnimatePresence>
+        {showCancelModal && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowCancelModal(false)}
+          >
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
+                <AlertTriangle size={32} />
+              </div>
+              <h3 className="font-serif italic text-xl text-gray-800 mb-2">¿Cancelar Pedido?</h3>
+              <p className="text-sm text-gray-500 mb-6">
+                ¿Estás seguro de que deseas cancelar este pedido? Esta acción no se puede deshacer.
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <button onClick={() => setShowCancelModal(false)} className="py-3 rounded-xl font-bold uppercase tracking-widest text-[10px] border border-gray-200 text-gray-400 hover:bg-gray-50 transition-colors">
+                  Volver
+                </button>
+                <button onClick={onConfirmCancel} disabled={isPending} className="py-3 bg-red-500 text-white rounded-xl font-bold text-[10px] uppercase tracking-widest hover:bg-red-600 transition-colors shadow-lg shadow-red-200 flex items-center justify-center gap-2">
+                  {isPending ? 'Procesando...' : 'Sí, Cancelar'}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

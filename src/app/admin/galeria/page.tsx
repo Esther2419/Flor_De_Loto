@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { getGaleria, createGaleriaItem, deleteGaleriaItem, updateGaleriaItem } from "./actions";
 import { uploadToBucket, deleteFromBucket } from "@/lib/storage";
-import { Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon, Loader2, Edit3 } from "lucide-react";
+import { Plus, LayoutGrid, Camera, Check, X, ZoomIn, Trash2, Image as ImageIcon, Loader2, Edit3, AlertCircle } from "lucide-react";
 import Cropper from 'react-easy-crop';
 
 // --- UTILIDADES DE IMAGEN ---
@@ -35,6 +35,11 @@ export default function GaleriaAdminPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [isEditing, setIsEditing] = useState(false);
 
+  // --- NUEVOS ESTADOS DE INTERFAZ ---
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState<{id: string, url: string} | null>(null);
+  const [toast, setToast] = useState<{msg: string, type: 'success' | 'error'} | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +52,12 @@ export default function GaleriaAdminPage() {
   const [uploading, setUploading] = useState(false);
 
   const BUCKET_NAME = 'galeria';
+
+  // Función para mostrar notificaciones elegantes
+  const showNotice = (msg: string, type: 'success' | 'error' = 'success') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   useEffect(() => { if (activeTab === "ver") loadData(); }, [activeTab]);
 
@@ -92,42 +103,115 @@ export default function GaleriaAdminPage() {
       
       if (url) setFormData(prev => ({ ...prev, foto: url }));
       setImageToCrop(null);
+      showNotice("Imagen procesada correctamente");
     } catch (err) { 
-      alert("No se pudo procesar la imagen.");
+      showNotice("No se pudo procesar la imagen.", "error");
     } finally { 
       setUploading(false); 
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // --- MANEJO DE ACCIONES ---
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.foto) return alert("Sube una foto primero");
-    
+    if (!formData.foto) return showNotice("Debes subir una foto", "error");
+    setShowConfirmModal(true);
+  };
+
+  const handleExecuteSave = async () => {
     setLoading(true);
     const res = isEditing 
         ? await updateGaleriaItem(formData.id, formData.foto, formData.descripcion)
         : await createGaleriaItem(formData.foto, formData.descripcion);
     
     if (res.success) {
+      showNotice(isEditing ? "Cambios guardados con éxito" : "¡Nueva foto publicada!");
       resetForm(); 
       setActiveTab("ver"); 
       loadData();
+      setShowConfirmModal(false);
     } else {
-      alert(res.error);
+      showNotice(res.error || "Ocurrió un error inesperado", "error");
     }
     setLoading(false);
   };
 
-  const handleDelete = async (id: string, url: string) => {
-    if (confirm("¿Eliminar permanentemente de la galería?")) {
-        await deleteFromBucket(url, BUCKET_NAME);
-        const res = await deleteGaleriaItem(id);
-        if (res.success) { setSelectedItem(null); loadData(); }
+  const handleDelete = (id: string, url: string) => {
+    setShowDeleteModal({ id, url });
+  };
+
+  const handleExecuteDelete = async () => {
+    if (!showDeleteModal) return;
+    setLoading(true);
+    try {
+        await deleteFromBucket(showDeleteModal.url, BUCKET_NAME);
+        const res = await deleteGaleriaItem(showDeleteModal.id);
+        if (res.success) { 
+          showNotice("Eliminado de la galería");
+          setSelectedItem(null); 
+          setShowDeleteModal(null);
+          loadData(); 
+        }
+    } catch {
+        showNotice("Error al eliminar el archivo", "error");
+    } finally {
+        setLoading(false);
     }
   };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 p-2 md:p-0">
+      
+      {/* 1. NOTIFICACIÓN TOAST */}
+      {toast && (
+        <div className={`fixed top-10 left-1/2 -translate-x-1/2 z-[200] flex items-center gap-3 px-8 py-4 rounded-full shadow-2xl border animate-in slide-in-from-top duration-300 ${
+          toast.type === 'success' ? 'bg-zinc-900 border-[#C5A059]/30 text-white' : 'bg-red-600 border-none text-white'
+        }`}>
+          {toast.type === 'success' ? <Check className="text-[#C5A059]" size={18}/> : <AlertCircle size={18}/>}
+          <p className="text-[10px] font-black uppercase tracking-[0.2em]">{toast.msg}</p>
+        </div>
+      )}
+
+      {/* 2. MODAL DE CONFIRMACIÓN DE GUARDADO */}
+      {showConfirmModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div className="bg-zinc-900 p-10 text-center">
+               <div className="w-16 h-16 bg-[#C5A059]/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-[#C5A059]/20">
+                <ImageIcon className="text-[#C5A059]" size={28} />
+              </div>
+              <h2 className="text-xl font-serif italic text-white">¿Publicar cambios?</h2>
+            </div>
+            <div className="p-8 flex flex-col gap-3">
+                <button onClick={handleExecuteSave} disabled={loading} className="w-full bg-[#C5A059] text-white py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                  {loading ? <Loader2 className="animate-spin mx-auto" size={18}/> : "SÍ, CONFIRMAR"}
+                </button>
+                <button onClick={() => setShowConfirmModal(false)} className="w-full py-2 text-zinc-400 font-bold text-[10px] uppercase tracking-widest">Regresar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. MODAL DE ELIMINACIÓN */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-white w-full max-w-sm rounded-[40px] overflow-hidden shadow-2xl animate-in zoom-in duration-300">
+            <div className="p-10 text-center">
+              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Trash2 className="text-red-500" size={28} />
+              </div>
+              <h2 className="text-xl font-serif italic text-zinc-800">¿Eliminar permanentemente?</h2>
+              <p className="text-zinc-400 text-xs mt-2">Esta acción no se puede deshacer.</p>
+            </div>
+            <div className="p-8 pt-0 flex flex-col gap-3">
+                <button onClick={handleExecuteDelete} disabled={loading} className="w-full bg-red-500 text-white py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all">
+                  {loading ? <Loader2 className="animate-spin mx-auto" size={18}/> : "ELIMINAR AHORA"}
+                </button>
+                <button onClick={() => setShowDeleteModal(null)} className="w-full py-2 text-zinc-400 font-bold text-[10px] uppercase tracking-widest">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* MODAL RECORTE */}
       {imageToCrop && (

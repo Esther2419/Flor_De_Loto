@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ChevronDown, ChevronUp, ShoppingBag, Loader2 } from "lucide-react";
 
@@ -51,43 +52,50 @@ export default function NuestrasFlores({ flores }: { flores: Flor[] }) {
               {visibleFlores.map((flor) => (
                 <div 
                   key={flor.id} 
-                  onClick={() => flor.disponible && handleComprar(flor.id)}
                   className={`group bg-white rounded-md overflow-hidden border border-gray-100 transition-all duration-300 ${
                     !flor.disponible ? 'opacity-60 cursor-not-allowed' : 'hover:shadow-md cursor-pointer hover:-translate-y-1'
                   }`}
                 >
-                  <div className="relative aspect-square bg-gray-100">
-                    {flor.foto ? (
-                      <Image 
-                        src={flor.foto} 
-                        alt={flor.nombre} 
-                        fill 
-                        className={`object-cover ${!flor.disponible ? 'grayscale' : ''}`} 
-                      />
-                    ) : (
-                      <div className="flex items-center justify-center h-full text-2xl">🌸</div>
-                    )}
-                    {!flor.disponible && (
-                      <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
-                        <span className="bg-black/60 text-white text-[7px] px-2 py-0.5 rounded-full uppercase">Sin Stock</span>
-                      </div>
-                    )}
+                  {/* Enlace Absoluto (z-10) */}
+                  {flor.disponible && (
+                    <Link href={`/detalles/flor/${flor.id}`} className="absolute inset-0 z-10" />
+                  )}
+
+                  {/* Contenido Visual */}
+                  <div className="relative">
+                    <div className="relative aspect-square bg-gray-100">
+                      {flor.foto ? (
+                        <Image 
+                          src={flor.foto} 
+                          alt={flor.nombre} 
+                          fill 
+                          className={`object-cover ${!flor.disponible ? 'grayscale' : ''}`} 
+                        />
+                      ) : (
+                        <div className="flex items-center justify-center h-full text-2xl">🌸</div>
+                      )}
+                      {!flor.disponible && (
+                        <div className="absolute inset-0 bg-black/20 flex items-center justify-center">
+                          <span className="bg-black/60 text-white text-[7px] px-2 py-0.5 rounded-full uppercase">Sin Stock</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2 pb-0 text-center flex flex-col gap-1">
+                      <h3 className="font-serif text-[11px] font-bold text-[#0A0A0A] truncate">{flor.nombre} {flor.color || ""}</h3>
+                      <p className="text-[#C5A059] font-bold text-xs">Bs {flor.precio_unitario}</p>
+                    </div>
                   </div>
-                  <div className="p-2 text-center flex flex-col gap-1">
-                    <h3 className="font-serif text-[11px] font-bold text-[#0A0A0A] truncate">
-                      {flor.nombre} {flor.color || ""}
-                    </h3>
-                    <p className="text-[#C5A059] font-bold text-xs">Bs {flor.precio_unitario}</p>
-                    
-                    
-                    {/* Botón Comprar explícito */}
+
+                  {/* Botón (z-20) */}
+                  <div className="p-2 pt-1 relative z-20">
                     <button
                       onClick={(e) => {
+                        e.preventDefault();
                         e.stopPropagation();
                         if (flor.disponible) handleComprar(flor.id);
                       }}
                       disabled={!flor.disponible || loadingId === flor.id}
-                      className="mt-1 w-full py-1.5 bg-[#0A0A0A] text-white text-[8px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-1 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200 disabled:text-gray-400"
+                      className="w-full py-1.5 bg-[#0A0A0A] text-white text-[8px] font-bold uppercase tracking-widest rounded flex items-center justify-center gap-1 hover:bg-[#C5A059] transition-colors disabled:bg-gray-200 disabled:text-gray-400"
                     >
                       {loadingId === flor.id ? (
                         <Loader2 className="w-3 h-3 animate-spin" />
