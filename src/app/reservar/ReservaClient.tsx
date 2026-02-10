@@ -430,7 +430,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-0">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-        <div className={`lg:col-span-2 bg-white p-8 md:p-12 rounded-[2.5rem] border transition-all ${!estaRealmenteAbierto ? "opacity-60 grayscale pointer-events-none" : "border-gray-100 shadow-sm"}`}>
+        <div className={`lg:col-span-2 bg-white p-6 md:p-12 rounded-[2.5rem] border transition-all ${!estaRealmenteAbierto ? "opacity-60 grayscale pointer-events-none" : "border-gray-100 shadow-sm"}`}>
           
           {!tiendaAbiertaBD || cierreTemporal ? (
             <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl mb-6 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
@@ -446,11 +446,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
             </div>
           )}
 
-          <h2 className="font-serif italic text-4xl text-gris mb-2">Finalizar Reserva</h2>
+          <h2 className="font-serif italic text-3xl md:text-4xl text-gris mb-2">Finalizar Reserva</h2>
           <p className="text-gray-400 text-sm mb-8">Información para el recojo en tienda física.</p>
           
           <form onSubmit={handlePreSubmit} className="space-y-8">
-            <div className="bg-gray-50/50 p-6 rounded-3xl border border-gray-100 flex items-center gap-4">
+            <div className="bg-gray-50/50 p-4 md:p-6 rounded-3xl border border-gray-100 flex items-center gap-4">
                 <UserCheck className="text-[#C5A059]" size={24} />
                 <div className="flex-1">
                   <p className="text-[10px] font-bold uppercase text-gray-400">Cliente Titular</p>
@@ -475,7 +475,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                         setFormData({...formData, quienRecoge: target.value});
                     }}
                     placeholder="Nombre completo"
-                    className="w-full p-4 pl-12 bg-white border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium"
+                    className="w-full p-3 md:p-4 pl-12 bg-white border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium"
                   />
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><User size={18} /></div>
                 </div>
@@ -484,7 +484,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
               <div className="space-y-2" ref={dropdownRef}>
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2"><Phone size={12}/> WhatsApp de Contacto</label>
                 <div className="flex gap-2 relative">
-                    <div onClick={() => setIsCountryOpen(!isCountryOpen)} className="flex items-center gap-2 p-4 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 min-w-[130px] justify-between transition-colors shadow-sm">
+                    <div onClick={() => setIsCountryOpen(!isCountryOpen)} className="flex items-center gap-2 p-3 md:p-4 bg-white border border-gray-200 rounded-2xl cursor-pointer hover:bg-gray-50 min-w-[110px] md:min-w-[130px] justify-between transition-colors shadow-sm">
                         <div className="flex items-center gap-2">
                             <img src={selectedCountry.flag} alt={selectedCountry.code} className="w-6 h-4 object-cover rounded-sm" />
                             <span className="text-sm font-bold text-gray-600">{selectedCountry.prefix}</span>
@@ -521,7 +521,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                         value={formData.whatsapp}
                         onInput={(e) => e.currentTarget.value = e.currentTarget.value.replace(/\D/g, '')}
                         onChange={(e) => setFormData({...formData, whatsapp: e.target.value})} 
-                        className="flex-1 p-4 border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium" 
+                        className="flex-1 min-w-0 p-3 md:p-4 border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium" 
                     />
                 </div>
               </div>
@@ -548,9 +548,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
                         setFormData({...formData, fechaEntrega: selected});
                       }
                     }} 
-                    className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
+                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
                   />
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Calendar size={18} /></div>
                 </div>
               </div>
 
@@ -564,9 +563,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     min={minTimeValid} max={horario.max} 
                     value={formData.horaRecojo}
                     onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})}
-                    className="w-full p-4 pl-12 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
+                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
                   />
-                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><Clock size={18} /></div>
                 </div>
               </div>
             </div>
@@ -587,7 +585,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
             </div>
 
             {/* SECCIÓN DE PAGO QR */}
-            <div className="mt-8 p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
+            <div className="mt-8 p-5 md:p-6 bg-white rounded-[2rem] border border-gray-100 shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="p-2 bg-[#C5A059]/10 rounded-xl text-[#C5A059]">
                   <QrCode size={24} />
@@ -680,6 +678,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors resize-none h-20"
                         />
                      </div>
+                  </div>
+
+                  <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex gap-3 items-start">
+                    <ShieldCheck className="text-blue-600 shrink-0 mt-0.5" size={16} />
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold text-blue-800 uppercase">Verificación de Comprobante</p>
+                      <p className="text-[10px] text-blue-700 leading-relaxed">
+                        Asegúrate de subir una captura real y legible. Todos los pagos son verificados; el uso de comprobantes falsos o alterados ocasionará la anulación del pedido.
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
