@@ -132,6 +132,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
     setFormData(prev => ({ ...prev, montoTransferencia: total.toString() }));
   }, [total]);
 
+  // Cálculo de validación de pago mínimo (50%)
+  const montoMinimo = total * 0.5;
+  const montoIngresado = parseFloat(formData.montoTransferencia);
+  const esMontoValido = !isNaN(montoIngresado) && montoIngresado >= montoMinimo;
+
   useEffect(() => {
     const checkStatus = () => {
       const ahora = new Date();
@@ -471,7 +476,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     type="text" required value={formData.quienRecoge}
                     onInput={(e) => {
                         const target = e.target as HTMLInputElement;
-                        target.value = target.value.replace(/[0-9]/g, ''); 
+                        target.value = target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''); 
                         setFormData({...formData, quienRecoge: target.value});
                     }}
                     placeholder="Nombre completo"
@@ -655,7 +660,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
                           type="text" 
                           placeholder="Ej: Juan Perez"
                           value={formData.titularCuenta}
-                          onChange={(e) => setFormData({...formData, titularCuenta: e.target.value})}
+                          onInput={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              target.value = target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''); 
+                              setFormData({...formData, titularCuenta: target.value});
+                          }}
                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
                         />
                      </div>
@@ -666,8 +675,18 @@ export default function ReservaClient({ userData }: { userData: any }) {
                           placeholder="Monto"
                           value={formData.montoTransferencia}
                           onChange={(e) => setFormData({...formData, montoTransferencia: e.target.value})}
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
+                          className={`w-full p-3 bg-gray-50 border rounded-xl text-xs font-bold text-gray-700 outline-none transition-colors ${
+                            !esMontoValido ? "border-red-300 focus:border-red-500" : "border-gray-200 focus:border-[#C5A059]"
+                          }`}
                         />
+                        <p className="text-[10px] text-blue-600 font-bold mt-1 ml-1">
+                            * Obligatorio: Pago mínimo del 50% (Bs {montoMinimo.toFixed(2)}) para procesar el pedido.
+                        </p>
+                        {!esMontoValido && (
+                            <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                                <AlertCircle size={10} /> El monto es insuficiente.
+                            </p>
+                        )}
                      </div>
                      <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 ml-1">Mensaje / Observación (Opcional)</label>
@@ -695,7 +714,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
 
             <button 
                 type="submit"
-                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl} 
+                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl || !esMontoValido} 
                 className="w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-[#C5A059] text-white hover:bg-[#b38f4d] disabled:opacity-50 transition-all shadow-lg shadow-[#C5A059]/20"
             >
               {isSubmitting ? (

@@ -20,6 +20,7 @@ export async function validarPago(pedidoId: string, accion: 'confirmar' | 'recha
     });
 
     revalidatePath("/admin/pedidos");
+    revalidatePath(`/admin/pedidos/${pedidoId}`);
     
     return { success: true };
   } catch (error) {
@@ -66,6 +67,7 @@ export async function eliminarPago(pedidoId: string) {
 
     revalidatePath("/admin/pedidos");
     revalidatePath("/admin/pagos");
+    revalidatePath(`/admin/pedidos/${pedidoId}`);
     
     return { success: true };
   } catch (error) {
@@ -133,6 +135,7 @@ export async function actualizarEstadoPago(pedidoId: string, estadoPago: string)
       data: { pago_confirmado: estadoPago }
     });
     revalidatePath("/admin/pedidos");
+    revalidatePath(`/admin/pedidos/${pedidoId}`);
     return { success: true };
   } catch (error) {
     console.error("Error actualizando estado de pago:", error);
