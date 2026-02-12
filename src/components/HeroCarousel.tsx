@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
+import { MapPin } from "lucide-react";
 
 export default function HeroCarousel() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -146,6 +147,16 @@ export default function HeroCarousel() {
             aria-label={`Ir a diapositiva ${index + 1}`}
           />
         ))}
+      </div>
+
+      {/* --- UBICACIÓN --- */}
+      <div className="absolute bottom-5 right-5 z-20 md:bottom-8 md:right-8">
+        <div className="flex items-center gap-2 px-4 py-2 bg-black/60 backdrop-blur-sm border border-[#C5A059]/50 rounded-full shadow-xl transition-transform hover:scale-105 cursor-default">
+          <MapPin className="w-3 h-3 text-[#C5A059] md:w-4 md:h-4" />
+          <span className="text-[10px] font-bold tracking-widest text-white uppercase md:text-xs">
+            Cochabamba - Bolivia
+          </span>
+        </div>
       </div>
     </div>
   );
