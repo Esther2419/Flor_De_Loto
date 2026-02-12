@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Cropper from "react-easy-crop";
 import { uploadPaymentQR, deletePaymentQR } from "@/app/actions/admin";
 import { Trash2, Upload, Image as ImageIcon, Loader2, X, Check } from "lucide-react";
@@ -14,6 +14,10 @@ export default function QRManager({ initialQR }: { initialQR: string | null }) {
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+
+  useEffect(() => {
+    setQrUrl(initialQR);
+  }, [initialQR]);
 
   const onCropComplete = useCallback((_un: any, pixels: any) => {
     setCroppedAreaPixels(pixels);
