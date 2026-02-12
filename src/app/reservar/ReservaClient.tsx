@@ -218,14 +218,35 @@ export default function ReservaClient({ userData }: { userData: any }) {
     fetchBloqueos();
   }, [fetchBloqueos]);
 
-  const availableTimeSlots = useMemo(() => {
+  // --- LÓGICA DE HORAS Y MINUTOS SEPARADOS ---
+  const availableHours = useMemo(() => {
     if (!horario.min || !horario.max) return [];
+    const [minH] = minTimeValid.split(':').map(Number);
+    const [maxH] = horario.max.split(':').map(Number);
     
-    const allSlots = generateTimeSlots(horario.min, horario.max, intervalo);
+    const hours = [];
+    for (let h = minH; h <= maxH; h++) {
+      hours.push(h);
+    }
+    return hours;
+  }, [minTimeValid, horario.max]);
+
+  const availableMinutes = useMemo(() => {
+    const currentHStr = formData.horaRecojo.split(':')[0];
+    if (!currentHStr) return [];
     
-    // Filter slots that are earlier than minTimeValid
-    return allSlots.filter(slot => slot >= minTimeValid);
-  }, [horario, minTimeValid, intervalo]);
+    const currentH = parseInt(currentHStr);
+    const [minH, minM] = minTimeValid.split(':').map(Number);
+    const [maxH, maxM] = horario.max.split(':').map(Number);
+    
+    const mins = [];
+    for (let m = 0; m < 60; m += intervalo) {
+      if (currentH === minH && m < minM) continue;
+      if (currentH === maxH && m > maxM) continue;
+      mins.push(m);
+    }
+    return mins;
+  }, [formData.horaRecojo, minTimeValid, horario.max, intervalo]);
 
   // Cargar el QR de la tabla configuración
   useEffect(() => {
@@ -246,6 +267,15 @@ export default function ReservaClient({ userData }: { userData: any }) {
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, () => {
         setRefreshTrigger(prev => prev + 1); // Revalidar cupos si entra un pedido nuevo
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion', filter: 'id=eq.1' }, (payload) => {
+        const newData = payload.new as any;
+        setTiendaAbiertaBD(newData.tienda_abierta);
+        setCierreTemporal(!!newData.cierre_temporal);
+        setHorario({ min: newData.horario_apertura?.slice(0, 5) || "09:00", max: newData.horario_cierre?.slice(0, 5) || "19:00" });
+        setMinutosPrep(Number(newData.minutos_preparacion) || 6);
+        setIntervalo(Number(newData.intervalo_minutos) || 10);
+        if (newData.qr_pago) setQrPagoUrl(newData.qr_pago);
       })
       .subscribe();
 
@@ -591,20 +621,65 @@ export default function ReservaClient({ userData }: { userData: any }) {
                 <label className="text-[10px] font-bold uppercase tracking-widest text-gray-400 flex items-center gap-2">
                   <Clock size={12}/> Hora Estimada
                 </label>
-                <div className="relative">
-                  <select
-                    required
-                    value={formData.horaRecojo}
-                    onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})}
-                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold appearance-none bg-white"
-                  >
-                    <option value="">Seleccionar hora</option>
-                    {availableTimeSlots.map((time) => (
-                      <option key={time} value={time}>{formatTimeStr(time)}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-                    <ChevronDown size={18} />
+                <div className="flex gap-3">
+                  {/* Selector de Hora */}
+                  <div className="relative flex-1">
+                    <select
+                      required
+                      value={formData.horaRecojo.split(':')[0] || ""}
+                      onChange={(e) => {
+                        const newH = e.target.value;
+                        const currentM = formData.horaRecojo.split(':')[1] || "";
+                        
+                        // Validar si el minuto seleccionado sigue siendo válido para la nueva hora
+                        const [minH, minM] = minTimeValid.split(':').map(Number);
+                        const [maxH, maxM] = horario.max.split(':').map(Number);
+                        const hNum = parseInt(newH);
+                        
+                        let isValidM = true;
+                        if (currentM) {
+                            const mNum = parseInt(currentM);
+                            if (hNum === minH && mNum < minM) isValidM = false;
+                            if (hNum === maxH && mNum > maxM) isValidM = false;
+                        }
+                        
+                        setFormData({...formData, horaRecojo: `${newH}:${isValidM ? currentM : ""}`});
+                      }}
+                      className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold appearance-none bg-white"
+                    >
+                      <option value="">Hora</option>
+                      {availableHours.map((h) => {
+                        const d = new Date(); d.setHours(h, 0);
+                        return (
+                          <option key={h} value={String(h).padStart(2, '0')}>{format(d, "hh aa")}</option>
+                        );
+                      })}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                      <ChevronDown size={18} />
+                    </div>
+                  </div>
+
+                  {/* Selector de Minutos */}
+                  <div className="relative flex-1">
+                    <select
+                      required
+                      value={formData.horaRecojo.split(':')[1] || ""}
+                      onChange={(e) => {
+                        const currentH = formData.horaRecojo.split(':')[0];
+                        if(currentH) setFormData({...formData, horaRecojo: `${currentH}:${e.target.value}`});
+                      }}
+                      disabled={!formData.horaRecojo.split(':')[0]}
+                      className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold appearance-none bg-white disabled:bg-gray-50 disabled:text-gray-300"
+                    >
+                      <option value="">Min</option>
+                      {availableMinutes.map((m) => (
+                        <option key={m} value={String(m).padStart(2, '0')}>{String(m).padStart(2, '0')}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                      <ChevronDown size={18} />
+                    </div>
                   </div>
                 </div>
               </div>

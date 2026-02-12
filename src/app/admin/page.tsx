@@ -56,6 +56,38 @@ export default function AdminPage() {
       }
     };
     fetchConfig();
+
+    // Suscripción a cambios en tiempo real
+    const channel = supabase
+      .channel('configuracion_dashboard')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'configuracion',
+          filter: 'id=eq.1',
+        },
+        (payload) => {
+          const newData = payload.new as any;
+          setConfig(prev => ({
+            ...prev,
+            tienda_abierta: newData.tienda_abierta,
+            horario_apertura: newData.horario_apertura?.slice(0, 5) || "09:00",
+            horario_cierre: newData.horario_cierre?.slice(0, 5) || "19:00",
+            cierre_temporal: !!newData.cierre_temporal,
+            minutos_preparacion: newData.minutos_preparacion || 30,
+            pedidos_por_hora: newData.pedidos_por_hora || 5,
+            intervalo_minutos: newData.intervalo_minutos || 10,
+            qr_pago: newData.qr_pago || null
+          }));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const actualizarBD = async (nuevosValores: Partial<TiendaConfig>) => {
@@ -151,7 +183,11 @@ export default function AdminPage() {
                       type="time" 
                       value={config.horario_apertura} 
                       onChange={(e) => setConfig({...config, horario_apertura: e.target.value})} 
-                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-bold text-gray-700 focus:ring-4 focus:ring-[#C5A059]/10 focus:border-[#C5A059] outline-none transition-all shadow-sm" 
+                      className={`w-full bg-white border rounded-2xl p-4 text-xl font-bold text-gray-700 outline-none transition-all shadow-sm ${
+                        !config.horario_apertura 
+                          ? "border-red-300 focus:ring-4 focus:ring-red-100 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-4 focus:ring-[#C5A059]/10 focus:border-[#C5A059]"
+                      }`}
                     />
                   </div>
                   <div className="space-y-3 group">
@@ -160,7 +196,11 @@ export default function AdminPage() {
                       type="time" 
                       value={config.horario_cierre} 
                       onChange={(e) => setConfig({...config, horario_cierre: e.target.value})} 
-                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-bold text-gray-700 focus:ring-4 focus:ring-[#C5A059]/10 focus:border-[#C5A059] outline-none transition-all shadow-sm" 
+                      className={`w-full bg-white border rounded-2xl p-4 text-xl font-bold text-gray-700 outline-none transition-all shadow-sm ${
+                        !config.horario_cierre 
+                          ? "border-red-300 focus:ring-4 focus:ring-red-100 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-4 focus:ring-[#C5A059]/10 focus:border-[#C5A059]"
+                      }`}
                     />
                   </div>
                 </div>
@@ -198,7 +238,11 @@ export default function AdminPage() {
                       type="number" min="1"
                       value={config.pedidos_por_hora} 
                       onChange={(e) => setConfig({...config, pedidos_por_hora: parseInt(e.target.value) || 0})}
-                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-black text-gray-800 focus:ring-2 focus:ring-[#C5A059]/20 outline-none transition-all"
+                      className={`w-full bg-white border rounded-2xl p-4 text-xl font-black text-gray-800 outline-none transition-all ${
+                        config.pedidos_por_hora < 1 
+                          ? "border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-2 focus:ring-[#C5A059]/20 focus:border-[#C5A059]"
+                      }`}
                    />
                    <button 
                       onClick={() => actualizarBD({ pedidos_por_hora: config.pedidos_por_hora })}
@@ -216,7 +260,11 @@ export default function AdminPage() {
                       type="number" min="5" step="5"
                       value={config.intervalo_minutos} 
                       onChange={(e) => setConfig({...config, intervalo_minutos: parseInt(e.target.value) || 0})}
-                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-black text-gray-800 focus:ring-2 focus:ring-[#C5A059]/20 outline-none transition-all"
+                      className={`w-full bg-white border rounded-2xl p-4 text-xl font-black text-gray-800 outline-none transition-all ${
+                        config.intervalo_minutos < 5 
+                          ? "border-red-300 focus:ring-2 focus:ring-red-200 focus:border-red-500" 
+                          : "border-gray-200 focus:ring-2 focus:ring-[#C5A059]/20 focus:border-[#C5A059]"
+                      }`}
                    />
                    <button 
                       onClick={() => actualizarBD({ intervalo_minutos: config.intervalo_minutos })}
@@ -259,7 +307,11 @@ export default function AdminPage() {
                       type="number" 
                       value={config.minutos_preparacion} 
                       onChange={(e) => setConfig({...config, minutos_preparacion: parseInt(e.target.value) || 0})} 
-                      className="w-full bg-gray-50 border-none rounded-2xl p-4 pr-12 text-2xl font-black text-gray-800 focus:ring-0"
+                      className={`w-full bg-gray-50 rounded-2xl p-4 pr-12 text-2xl font-black text-gray-800 outline-none transition-all border-2 ${
+                        config.minutos_preparacion < 1 
+                          ? "border-red-300 focus:border-red-500" 
+                          : "border-transparent focus:border-transparent"
+                      }`}
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] font-black text-gray-400 uppercase tracking-widest">Min</span>
                   </div>
