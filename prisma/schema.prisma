@@ -184,6 +184,7 @@ model configuracion {
   cierre_temporal     Boolean?  @default(false)
   pedidos_por_hora    Int?      @default(5)
   qr_pago             String?
+  intervalo_minutos   String?
 }
 
 model detalle_pedidos {

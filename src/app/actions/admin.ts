@@ -97,11 +97,14 @@ export async function deletePaymentQR() {
   }
 }
 
-export async function updatePedidosPorHora(cantidad: number) {
+export async function updatePedidosPorHora(cantidad: number, intervalo: number) {
   try {
     await prisma.configuracion.update({
       where: { id: 1 },
-      data: { pedidos_por_hora: cantidad } as any
+      data: { 
+        pedidos_por_hora: cantidad,
+        intervalo_minutos: intervalo
+      } as any
     });
     revalidatePath("/reservar");
     return { success: true };

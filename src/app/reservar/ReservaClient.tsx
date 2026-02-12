@@ -46,6 +46,24 @@ const COUNTRIES = [
   { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
+const generateTimeSlots = (start: string, end: string, step: number) => {
+  const slots = [];
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  
+  let current = startH * 60 + startM;
+  const endTotal = endH * 60 + endM;
+
+  while (current <= endTotal) {
+    const h = Math.floor(current / 60);
+    const m = current % 60;
+    const timeString = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    slots.push(timeString);
+    current += step;
+  }
+  return slots;
+};
+
 export default function ReservaClient({ userData }: { userData: any }) {
   const { items, total, clearCart, removeFromCart } = useCart();
   const router = useRouter();
@@ -56,6 +74,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [yaCerroPorHora, setYaCerroPorHora] = useState(false);
   const [horario, setHorario] = useState({ min: "09:00", max: "21:00" });
   const [minutosPrep, setMinutosPrep] = useState(6);
+  const [intervalo, setIntervalo] = useState(10);
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -192,11 +211,21 @@ export default function ReservaClient({ userData }: { userData: any }) {
         setCierreTemporal(data.cierre_temporal);
         setHorario({ min: data.horario_apertura.slice(0, 5), max: data.horario_cierre.slice(0, 5) });
         setMinutosPrep(Number(data.minutos_preparacion) || 6);
+        setIntervalo(Number(data.intervalo_minutos) || 10);
       }
     };
     fetchConfig();
     fetchBloqueos();
   }, [fetchBloqueos]);
+
+  const availableTimeSlots = useMemo(() => {
+    if (!horario.min || !horario.max) return [];
+    
+    const allSlots = generateTimeSlots(horario.min, horario.max, intervalo);
+    
+    // Filter slots that are earlier than minTimeValid
+    return allSlots.filter(slot => slot >= minTimeValid);
+  }, [horario, minTimeValid, intervalo]);
 
   // Cargar el QR de la tabla configuración
   useEffect(() => {
@@ -563,13 +592,20 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   <Clock size={12}/> Hora Estimada
                 </label>
                 <div className="relative">
-                  <input 
-                    type="time" required 
-                    min={minTimeValid} max={horario.max} 
+                  <select
+                    required
                     value={formData.horaRecojo}
                     onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})}
-                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
-                  />
+                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold appearance-none bg-white"
+                  >
+                    <option value="">Seleccionar hora</option>
+                    {availableTimeSlots.map((time) => (
+                      <option key={time} value={time}>{formatTimeStr(time)}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <ChevronDown size={18} />
+                  </div>
                 </div>
               </div>
             </div>
