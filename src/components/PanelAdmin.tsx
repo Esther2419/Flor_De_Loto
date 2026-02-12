@@ -25,7 +25,6 @@ import {
   CalendarOff,      // Icono para Feriados
   ReceiptText      // Icono para Comprobantes
 } from "lucide-react";
-import { getConfigAction, updatePedidosPorHora, getBloqueosAction, toggleBloqueoFecha } from "@/app/actions/admin";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -38,41 +37,6 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-
-  // --- ESTADOS PARA EL DASHBOARD (Configuración y Bloqueos) ---
-  const [pedidosPorHora, setPedidosPorHora] = useState(5);
-  const [bloqueos, setBloqueos] = useState<string[]>([]);
-  const [fechaBloqueoInput, setFechaBloqueoInput] = useState("");
-  const [loadingConfig, setLoadingConfig] = useState(false);
-
-  useEffect(() => {
-    if (session && hasAdminAccess) {
-      // Cargar configuración inicial
-      getConfigAction().then((cfg) => {
-        if (cfg) setPedidosPorHora(cfg.pedidos_por_hora ?? 5);
-      });
-      // Cargar bloqueos
-      getBloqueosAction().then((data: any[]) => {
-        // Extraemos solo las fechas para el dashboard simple
-        setBloqueos(data.map(b => b.fecha));
-      });
-    }
-  }, [session]);
-
-  const handleUpdateCapacity = async () => {
-    setLoadingConfig(true);
-    await updatePedidosPorHora(Number(pedidosPorHora));
-    setLoadingConfig(false);
-    alert("Capacidad actualizada correctamente.");
-  };
-
-  const handleToggleBloqueo = async (fecha: string) => {
-    if (!fecha) return;
-    await toggleBloqueoFecha(fecha);
-    getBloqueosAction().then((data: any[]) => {
-      setBloqueos(data.map((b) => b.fecha));
-    }); // Recargar lista
-  };
 
   // --- LÓGICA DE PERMISOS UNIFICADA ---
   const rolUsuario = session?.user?.rol?.toLowerCase();
@@ -357,110 +321,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
 
         <main className="flex-1 overflow-auto p-4 md:p-8">
           <div className="max-w-7xl mx-auto">
-             {children || (
-               <div className="space-y-8">
-                 {/* Header del Dashboard */}
-                 <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm flex items-center gap-6">
-                    <div className="bg-[#C5A059]/10 w-16 h-16 rounded-full flex items-center justify-center text-[#C5A059] shrink-0">
-                        <LayoutDashboard size={32} />
-                    </div>
-                    <div>
-                        <h2 className="text-2xl font-serif italic text-gray-800">Panel de Control</h2>
-                        <p className="text-gray-400 text-sm">Gestiona la disponibilidad y capacidad de la tienda.</p>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    {/* TARJETA 1: CAPACIDAD POR HORA */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <Package size={20} className="text-[#C5A059]" /> Capacidad de Pedidos
-                        </h3>
-                        <p className="text-xs text-gray-400 mb-6">Define cuántos pedidos máximos se pueden aceptar por cada bloque de hora.</p>
-                        
-                        <div className="flex gap-4">
-                            <input 
-                                type="number" min="1" 
-                                value={pedidosPorHora}
-                                onChange={(e) => setPedidosPorHora(Number(e.target.value))}
-                                className="w-24 p-3 bg-gray-50 border border-gray-200 rounded-xl font-bold text-center outline-none focus:border-[#C5A059]"
-                            />
-                            <button 
-                                onClick={handleUpdateCapacity}
-                                disabled={loadingConfig}
-                                className="flex-1 bg-[#C5A059] text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-[#b38f4d] transition-colors"
-                            >
-                                {loadingConfig ? "Guardando..." : "Actualizar Límite"}
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* TARJETA 2: BLOQUEO DE FECHAS */}
-                    <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-sm">
-                        <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            <Lock size={20} className="text-red-500" /> Excepciones y Feriados
-                        </h3>
-                        <p className="text-xs text-gray-400 mb-6">Bloquea días específicos para que no se puedan recibir pedidos (ej. Feriados).</p>
-                        
-                        <div className="flex gap-4 mb-6">
-                            <input 
-                                type="date" 
-                                value={fechaBloqueoInput}
-                                onChange={(e) => setFechaBloqueoInput(e.target.value)}
-                                className="flex-1 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-600 outline-none focus:border-red-400"
-                            />
-                            <button 
-                                onClick={() => { handleToggleBloqueo(fechaBloqueoInput); setFechaBloqueoInput(""); }}
-                                className="px-6 bg-red-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-600 transition-colors"
-                            >
-                                {bloqueos.includes(fechaBloqueoInput) ? "Desbloquear" : "Bloquear"}
-                            </button>
-                        </div>
-
-                        {bloqueos.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                                {bloqueos.map(fecha => (
-                                    <span key={fecha} className="bg-red-50 text-red-600 border border-red-100 px-3 py-1 rounded-lg text-[10px] font-bold flex items-center gap-2">
-                                        {fecha}
-                                        <button onClick={() => handleToggleBloqueo(fecha)} className="hover:text-red-800"><X size={12}/></button>
-                                    </span>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-xs text-gray-300 italic text-center">No hay fechas bloqueadas manualmente.</p>
-                        )}
-                    </div>
-                 </div>
-
-                 {/* ACCESOS RÁPIDOS */}
-                 <div>
-                    <h3 className="text-lg font-serif italic text-gray-800 mb-4">Accesos Rápidos</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        {isSuperAdmin && (
-                            <Link
-                                href="/admin/usuarios"
-                                className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group"
-                            >
-                                <div className="p-3 bg-rose-50 text-rose-600 rounded-lg group-hover:bg-rose-600 group-hover:text-white transition-colors mb-3">
-                                    <Users size={24} />
-                                </div>
-                                <span className="font-medium text-gray-700">Personal</span>
-                            </Link>
-                        )}
-
-                        <Link
-                            href="/admin/pagos"
-                            className="flex flex-col items-center justify-center p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all group"
-                        >
-                            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors mb-3">
-                                <ReceiptText size={24} />
-                            </div>
-                            <span className="font-medium text-gray-700">Comprobantes</span>
-                        </Link>
-                    </div>
-                 </div>
-               </div>
-             )}
+             {children}
           </div>
         </main>
       </div>

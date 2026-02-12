@@ -155,6 +155,16 @@ export async function createOrderAction(data: OrderData) {
         throw new Error("HORARIO NO PERMITIDO. La tienda está fuera de su horario de atención.");
       }
 
+      // --- VALIDACIÓN DE PAGO MÍNIMO ---
+      // Recalculamos el total desde los items para mayor seguridad
+      const totalCalculado = data.items.reduce((acc: number, item: any) => acc + (Number(item.precio) * Number(item.cantidad)), 0);
+      const pagoMinimo = totalCalculado * 0.5;
+      const montoPagado = data.monto_pagado ?? 0;
+
+      if (montoPagado < pagoMinimo) {
+        throw new Error(`El pago mínimo requerido es de Bs ${pagoMinimo.toFixed(2)} (50% del total).`);
+      }
+
       // --- VALIDACIÓN DE ÚLTIMO MINUTO (Backend Robustness) ---
       // 1. Verificar si el día está bloqueado en la tabla de excepciones
       const startDay = new Date(fechaEntregaExacta); startDay.setHours(0,0,0,0);

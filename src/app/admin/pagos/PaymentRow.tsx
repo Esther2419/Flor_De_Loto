@@ -40,12 +40,18 @@ export default function PaymentRow({ pedido }: { pedido: any }) {
             <p className="text-[10px] font-bold uppercase text-gray-400 tracking-widest">Titular de Cuenta</p>
             <h3 className="font-bold text-gray-800 text-lg capitalize">{pedido.titular_cuenta || "No especificado"}</h3>
           </div>
-          <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
-            pedido.estado === 'aceptado' ? 'bg-green-100 text-green-700' :
-            pedido.estado === 'rechazado' ? 'bg-red-100 text-red-700' :
-            'bg-yellow-100 text-yellow-700'
-          }`}>
-            {pedido.estado === 'aceptado' ? 'PAGADO' : pedido.estado}
+          <div className="flex flex-col items-end gap-2">
+            <div className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest ${
+                pedido.pago_confirmado === 'pago total' ? 'bg-green-100 text-green-700' :
+                pedido.pago_confirmado === 'pago parcial' ? 'bg-blue-100 text-blue-700' :
+                pedido.pago_confirmado === 'rechazado' ? 'bg-red-100 text-red-700' :
+                'bg-yellow-100 text-yellow-700'
+            }`}>
+                {pedido.pago_confirmado || 'pendiente'}
+            </div>
+            <p className="text-[9px] text-gray-400 font-medium italic">
+                Estado del pedido: {pedido.estado}
+            </p>
           </div>
         </div>
 

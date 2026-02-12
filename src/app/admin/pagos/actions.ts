@@ -8,18 +8,42 @@ import { revalidatePath } from "next/cache";
 // Acción para componentes cliente (usada en PaymentRow.tsx)
 export async function validarPago(pedidoId: string, accion: 'confirmar' | 'rechazar') {
   try {
-    const nuevoEstado = accion === 'confirmar' ? 'aceptado' : 'rechazado';
-    const fechaCampo = accion === 'confirmar' ? { fecha_aceptado: new Date() } : { fecha_rechazado: new Date() };
+    const id = BigInt(pedidoId);
     
+    if (accion === 'rechazar') {
+      await prisma.pedidos.update({
+        where: { id },
+        data: { 
+          estado: 'rechazado',
+          pago_confirmado: 'rechazado',
+          fecha_rechazado: new Date()
+        }
+      });
+      revalidatePath("/admin/pedidos");
+      return { success: true };
+    }
+
+    // Si es confirmar, leemos los montos para decidir el estado de pago_confirmado
+    const pedido = await prisma.pedidos.findUnique({
+      where: { id },
+      select: { total_pagar: true, monto_transferencia: true }
+    });
+
+    const total = Number(pedido?.total_pagar || 0);
+    const pagado = Number(pedido?.monto_transferencia || 0);
+    const estadoVerificacion = pagado >= total ? "pago total" : "pago parcial";
+
     await prisma.pedidos.update({
-      where: { id: BigInt(pedidoId) },
+      where: { id },
       data: { 
-        estado: nuevoEstado,
-        ...fechaCampo
+        estado: 'aceptado',
+        pago_confirmado: estadoVerificacion,
+        fecha_aceptado: new Date()
       }
     });
 
     revalidatePath("/admin/pedidos");
+    revalidatePath("/admin/pagos");
     
     return { success: true };
   } catch (error) {

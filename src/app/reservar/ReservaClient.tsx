@@ -46,6 +46,24 @@ const COUNTRIES = [
   { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
 
+const generateTimeSlots = (start: string, end: string, step: number) => {
+  const slots = [];
+  const [startH, startM] = start.split(':').map(Number);
+  const [endH, endM] = end.split(':').map(Number);
+  
+  let current = startH * 60 + startM;
+  const endTotal = endH * 60 + endM;
+
+  while (current <= endTotal) {
+    const h = Math.floor(current / 60);
+    const m = current % 60;
+    const timeString = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    slots.push(timeString);
+    current += step;
+  }
+  return slots;
+};
+
 export default function ReservaClient({ userData }: { userData: any }) {
   const { items, total, clearCart, removeFromCart } = useCart();
   const router = useRouter();
@@ -56,6 +74,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [yaCerroPorHora, setYaCerroPorHora] = useState(false);
   const [horario, setHorario] = useState({ min: "09:00", max: "21:00" });
   const [minutosPrep, setMinutosPrep] = useState(6);
+  const [intervalo, setIntervalo] = useState(10);
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -132,6 +151,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
     setFormData(prev => ({ ...prev, montoTransferencia: total.toString() }));
   }, [total]);
 
+  // Cálculo de validación de pago mínimo (50%)
+  const montoMinimo = total * 0.5;
+  const montoIngresado = parseFloat(formData.montoTransferencia);
+  const esMontoValido = !isNaN(montoIngresado) && montoIngresado >= montoMinimo;
+
   useEffect(() => {
     const checkStatus = () => {
       const ahora = new Date();
@@ -187,11 +211,21 @@ export default function ReservaClient({ userData }: { userData: any }) {
         setCierreTemporal(data.cierre_temporal);
         setHorario({ min: data.horario_apertura.slice(0, 5), max: data.horario_cierre.slice(0, 5) });
         setMinutosPrep(Number(data.minutos_preparacion) || 6);
+        setIntervalo(Number(data.intervalo_minutos) || 10);
       }
     };
     fetchConfig();
     fetchBloqueos();
   }, [fetchBloqueos]);
+
+  const availableTimeSlots = useMemo(() => {
+    if (!horario.min || !horario.max) return [];
+    
+    const allSlots = generateTimeSlots(horario.min, horario.max, intervalo);
+    
+    // Filter slots that are earlier than minTimeValid
+    return allSlots.filter(slot => slot >= minTimeValid);
+  }, [horario, minTimeValid, intervalo]);
 
   // Cargar el QR de la tabla configuración
   useEffect(() => {
@@ -471,7 +505,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     type="text" required value={formData.quienRecoge}
                     onInput={(e) => {
                         const target = e.target as HTMLInputElement;
-                        target.value = target.value.replace(/[0-9]/g, ''); 
+                        target.value = target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''); 
                         setFormData({...formData, quienRecoge: target.value});
                     }}
                     placeholder="Nombre completo"
@@ -558,13 +592,20 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   <Clock size={12}/> Hora Estimada
                 </label>
                 <div className="relative">
-                  <input 
-                    type="time" required 
-                    min={minTimeValid} max={horario.max} 
+                  <select
+                    required
                     value={formData.horaRecojo}
                     onChange={(e) => setFormData({...formData, horaRecojo: e.target.value})}
-                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
-                  />
+                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold appearance-none bg-white"
+                  >
+                    <option value="">Seleccionar hora</option>
+                    {availableTimeSlots.map((time) => (
+                      <option key={time} value={time}>{formatTimeStr(time)}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
+                    <ChevronDown size={18} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -655,7 +696,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
                           type="text" 
                           placeholder="Ej: Juan Perez"
                           value={formData.titularCuenta}
-                          onChange={(e) => setFormData({...formData, titularCuenta: e.target.value})}
+                          onInput={(e) => {
+                              const target = e.target as HTMLInputElement;
+                              target.value = target.value.replace(/[^a-zA-ZáéíóúÁÉÍÓÚñÑ\s]/g, ''); 
+                              setFormData({...formData, titularCuenta: target.value});
+                          }}
                           className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
                         />
                      </div>
@@ -666,8 +711,18 @@ export default function ReservaClient({ userData }: { userData: any }) {
                           placeholder="Monto"
                           value={formData.montoTransferencia}
                           onChange={(e) => setFormData({...formData, montoTransferencia: e.target.value})}
-                          className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 outline-none focus:border-[#C5A059] transition-colors"
+                          className={`w-full p-3 bg-gray-50 border rounded-xl text-xs font-bold text-gray-700 outline-none transition-colors ${
+                            !esMontoValido ? "border-red-300 focus:border-red-500" : "border-gray-200 focus:border-[#C5A059]"
+                          }`}
                         />
+                        <p className="text-[10px] text-blue-600 font-bold mt-1 ml-1">
+                            * Obligatorio: Pago mínimo del 50% (Bs {montoMinimo.toFixed(2)}) para procesar el pedido.
+                        </p>
+                        {!esMontoValido && (
+                            <p className="text-[10px] text-red-500 font-bold mt-1 ml-1 flex items-center gap-1">
+                                <AlertCircle size={10} /> El monto es insuficiente.
+                            </p>
+                        )}
                      </div>
                      <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase block mb-1.5 ml-1">Mensaje / Observación (Opcional)</label>
@@ -695,7 +750,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
 
             <button 
                 type="submit"
-                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl} 
+                disabled={!estaRealmenteAbierto || isSubmitting || items.length === 0 || !!availabilityError || !comprobanteUrl || !esMontoValido} 
                 className="w-full py-5 rounded-2xl font-bold uppercase tracking-widest text-xs flex items-center justify-center gap-3 bg-[#C5A059] text-white hover:bg-[#b38f4d] disabled:opacity-50 transition-all shadow-lg shadow-[#C5A059]/20"
             >
               {isSubmitting ? (

@@ -29,7 +29,7 @@ export default function LocationSection() {
           
           <div className="relative rounded-lg md:rounded-2xl overflow-hidden shadow-lg border border-gray-100 group w-full h-full">
             <Image 
-              src="/portada2.jpg" 
+              src="/tienda.jpg" 
               alt="Fachada Flor de Loto" 
               fill
               className="object-cover transition-transform duration-700 group-hover:scale-105"

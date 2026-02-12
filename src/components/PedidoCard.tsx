@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { BotoneraAdmin } from "@/components/BotoneraAdmin";
 import { CheckCircle2, AlertCircle, ZoomIn, X } from "lucide-react";
@@ -26,6 +26,14 @@ export function PedidoCard({
     pedido.pago_confirmado === 'parcial' ? 'parcial' : 'none'
   );
   const [showModal, setShowModal] = useState(false);
+
+  // Sincronizar estado local cuando la prop del pedido se actualiza desde el servidor
+  useEffect(() => {
+    setVerificationStatus(
+      pedido.pago_confirmado === 'total' ? 'total' : 
+      pedido.pago_confirmado === 'parcial' ? 'parcial' : 'none'
+    );
+  }, [pedido.pago_confirmado]);
   
   // Asumimos que el campo del comprobante puede ser 'comprobante_pago' o 'comprobante'
   const comprobanteUrl = pedido.comprobante_pago || pedido.comprobante; 

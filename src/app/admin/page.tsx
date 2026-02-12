@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { 
   Clock, Save, Loader2, Power, 
   AlertTriangle, Timer, Store, 
-  ShieldCheck, ArrowRight, Settings2
+  ShieldCheck, ArrowRight, Settings2, Package
 } from "lucide-react";
 import QRManager from "@/components/QRManager";
 
@@ -15,6 +15,8 @@ interface TiendaConfig {
   horario_cierre: string;
   cierre_temporal: boolean;
   minutos_preparacion: number;
+  pedidos_por_hora: number;
+  intervalo_minutos: number;
   qr_pago: string | null;
 }
 
@@ -25,6 +27,8 @@ export default function AdminPage() {
     horario_cierre: "19:00",
     cierre_temporal: false,
     minutos_preparacion: 30,
+    pedidos_por_hora: 5,
+    intervalo_minutos: 10,
     qr_pago: null
   });
   
@@ -45,6 +49,8 @@ export default function AdminPage() {
           horario_cierre: data.horario_cierre?.slice(0, 5) || "19:00",
           cierre_temporal: !!data.cierre_temporal,
           minutos_preparacion: data.minutos_preparacion || 30,
+          pedidos_por_hora: data.pedidos_por_hora || 5,
+          intervalo_minutos: data.intervalo_minutos || 10,
           qr_pago: data.qr_pago || null
         });
       }
@@ -172,6 +178,56 @@ export default function AdminPage() {
                 </button>
               </div>
             </div>
+          </div>
+
+          {/* NUEVA SECCIÓN: Configuración de Pedidos */}
+          <div className="bg-white p-8 rounded-[2.5rem] border border-gray-100 shadow-xl shadow-gray-100/50 space-y-6">
+             <div className="space-y-1">
+                <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                   <Package size={28} className="text-[#C5A059]" />
+                   Configuración de Pedidos
+                </h3>
+                <p className="text-sm text-gray-500 italic">Define límites y tiempos de atención.</p>
+             </div>
+
+             <div className="space-y-6">
+                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:border-[#C5A059]/30 transition-all space-y-4">
+                   <label className="text-xs font-bold text-gray-500 ml-1">Pedidos por Hora</label>
+                   <p className="text-[10px] text-gray-400">Límite máximo de pedidos aceptados por hora.</p>
+                   <input 
+                      type="number" min="1"
+                      value={config.pedidos_por_hora} 
+                      onChange={(e) => setConfig({...config, pedidos_por_hora: parseInt(e.target.value) || 0})}
+                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-black text-gray-800 focus:ring-2 focus:ring-[#C5A059]/20 outline-none transition-all"
+                   />
+                   <button 
+                      onClick={() => actualizarBD({ pedidos_por_hora: config.pedidos_por_hora })}
+                      disabled={cargando}
+                      className="w-full py-3 bg-gray-900 text-white rounded-xl hover:bg-black flex items-center justify-center gap-2 font-bold shadow-lg transition-all active:scale-[0.99] text-xs uppercase tracking-widest mt-2"
+                   >
+                      {cargando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} className="text-[#C5A059]" />}
+                      Guardar Límite
+                   </button>
+                </div>
+                <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:border-[#C5A059]/30 transition-all space-y-4">
+                   <label className="text-xs font-bold text-gray-500 ml-1">Tiempo entre Pedidos (Minutos)</label>
+                   <p className="text-[10px] text-gray-400">Tiempo de preparación o intervalo entre entregas.</p>
+                   <input 
+                      type="number" min="5" step="5"
+                      value={config.intervalo_minutos} 
+                      onChange={(e) => setConfig({...config, intervalo_minutos: parseInt(e.target.value) || 0})}
+                      className="w-full bg-white border border-gray-200 rounded-2xl p-4 text-xl font-black text-gray-800 focus:ring-2 focus:ring-[#C5A059]/20 outline-none transition-all"
+                   />
+                   <button 
+                      onClick={() => actualizarBD({ intervalo_minutos: config.intervalo_minutos })}
+                      disabled={cargando}
+                      className="w-full py-3 bg-gray-900 text-white rounded-xl hover:bg-black flex items-center justify-center gap-2 font-bold shadow-lg transition-all active:scale-[0.99] text-xs uppercase tracking-widest mt-2"
+                   >
+                      {cargando ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} className="text-[#C5A059]" />}
+                      Guardar Intervalo
+                   </button>
+                </div>
+             </div>
           </div>
         </div>
 
