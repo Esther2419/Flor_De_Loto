@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 
 interface OrderData {
   nombre_contacto: string;
@@ -53,24 +53,39 @@ function getTimeFromDate(date: any): string | null {
 
 // --- NUEVA FUNCIÓN: Verificar disponibilidad (Cliente) ---
 export async function checkAvailabilityAction(fecha: string, hora: string) {
+  noStore(); // Evitar caché para validación en tiempo real
   try {
     const fechaString = `${fecha}T${hora}:00-04:00`;
     const fechaDate = new Date(fechaString);
     
-    if (isNaN(fechaDate.getTime())) return { available: false, message: "Fecha inválida" };
+    if (isNaN(fechaDate.getTime())) return { available: false, message: "Horario no disponible" };
 
     // 1. Verificar Bloqueo de Día
-    const startDay = new Date(fechaDate); startDay.setHours(0,0,0,0);
-    const endDay = new Date(fechaDate); endDay.setHours(23,59,59,999);
+    // Usamos la fecha string directa para crear rango UTC y evitar desfases de zona horaria
+    const startDay = new Date(`${fecha}T00:00:00Z`);
+    const endDay = new Date(`${fecha}T23:59:59.999Z`);
     
     const bloqueos = await prisma.bloqueos_horario.findMany({
       where: { fecha: { gte: startDay, lte: endDay } }
     } as any);
     
     const config = await prisma.configuracion.findUnique({ where: { id: 1 } });
-    const intervalo = Number((config as any)?.intervalo_minutos) || 10; // Forzar número
+    
+    // 2. Verificar Tiempo de Preparación (Nuevo)
+    // Esto evita que el usuario intente pedir si no cumple con el tiempo mínimo
+    const ahoraBolivia = new Date(); // Usamos tiempo absoluto real para comparar correctamente
+    const bufferMinutos = Number((config as any)?.minutos_preparacion) || 120;
+    const diffMinutos = Math.floor((fechaDate.getTime() - ahoraBolivia.getTime()) / 60000);
+    
+    if (diffMinutos < bufferMinutos) {
+       return { available: false, message: `Anticipación insuficiente (mínimo ${bufferMinutos} min).` };
+    }
 
     for (const bloqueo of bloqueos) {
+      // Safeguard: Asegurar que el bloqueo pertenece estrictamente a este día (ignora hora)
+      const blockDateStr = bloqueo.fecha.toISOString().split('T')[0];
+      if (blockDateStr !== fecha) continue;
+
       const bInicio = getTimeFromDate(bloqueo.hora_inicio);
       const bFin = getTimeFromDate(bloqueo.hora_fin);
 
@@ -84,12 +99,12 @@ export async function checkAvailabilityAction(fecha: string, hora: string) {
       const horaMin = getMinutesTotal(hora);
 
       // Aplicar Buffer de intervalo
-      if (horaMin >= (bInicioMin - intervalo) && horaMin < (bFinMin + intervalo)) {
+      if (horaMin >= bInicioMin && horaMin < bFinMin) {
         return { available: false, message: `Lo sentimos, el horario de ${bInicio} a ${bFin} no está disponible por: ${bloqueo.motivo || "Mantenimiento"}` };
       }
     }
 
-    // 2. Verificar Cupo por Hora
+    // 3. Verificar Cupo por Hora
     const startHour = new Date(fechaDate); startHour.setMinutes(0,0,0);
     const endHour = new Date(fechaDate); endHour.setMinutes(59,59,999);
 
@@ -118,7 +133,7 @@ export async function createOrderAction(data: OrderData) {
   if (!usuario) return { success: false, message: "Usuario no encontrado" };
 
   try {
-    const ahoraBolivia = new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" }));
+    const ahoraBolivia = new Date(); // Usamos tiempo absoluto real
 
     const pedido = await prisma.$transaction(async (tx) => {
       const config = await tx.configuracion.findUnique({ where: { id: 1 } });
@@ -148,7 +163,7 @@ export async function createOrderAction(data: OrderData) {
       const fechaEntregaExacta = new Date(fechaString);
 
       if (isNaN(fechaEntregaExacta.getTime())) {
-        throw new Error(`Error de formato. Recibido: ${data.fecha_entrega}, Procesado: ${fechaString}`);
+        throw new Error("La fecha u hora seleccionada no es válida.");
       }
       // -----------------------------------------------
 
@@ -178,14 +193,18 @@ export async function createOrderAction(data: OrderData) {
 
       // --- VALIDACIÓN DE ÚLTIMO MINUTO (Backend Robustness) ---
       // 1. Verificar si el día está bloqueado en la tabla de excepciones
-      const startDay = new Date(fechaEntregaExacta); startDay.setHours(0,0,0,0);
-      const endDay = new Date(fechaEntregaExacta); endDay.setHours(23,59,59,999);
+      const startDay = new Date(`${soloFecha}T00:00:00Z`);
+      const endDay = new Date(`${soloFecha}T23:59:59.999Z`);
       
       const bloqueosDia = await (tx as any).bloqueos_horario.findMany({
         where: { fecha: { gte: startDay, lte: endDay } }
       });
 
       for (const bloqueo of bloqueosDia) {
+        // Safeguard: Asegurar que el bloqueo pertenece estrictamente a este día
+        const blockDateStr = bloqueo.fecha.toISOString().split('T')[0];
+        if (blockDateStr !== soloFecha) continue;
+
         const bInicio = getTimeFromDate(bloqueo.hora_inicio);
         const bFin = getTimeFromDate(bloqueo.hora_fin);
 
@@ -196,7 +215,7 @@ export async function createOrderAction(data: OrderData) {
         const bInicioMin = getMinutesTotal(bInicio);
         const bFinMin = getMinutesTotal(bFin);
         
-        if (minutosPedido >= (bInicioMin - intervalo) && minutosPedido < (bFinMin + intervalo)) {
+        if (minutosPedido >= bInicioMin && minutosPedido < bFinMin) {
            throw new Error(`Lo sentimos, el horario de ${bInicio} a ${bFin} no está disponible por: ${bloqueo.motivo}`);
         }
       }
@@ -301,7 +320,7 @@ export async function cancelOrderAction(orderId: string) {
       where: { id },
       data: { 
         estado: 'rechazado',
-        fecha_rechazado: new Date(new Date().toLocaleString("en-US", { timeZone: "America/La_Paz" })),
+        fecha_rechazado: new Date(),
         motivo_rechazo: "Cancelado por el cliente"
       },
     });

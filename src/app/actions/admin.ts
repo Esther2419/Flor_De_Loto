@@ -2,7 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { supabase, supabaseAdmin } from "@/lib/supabase";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, unstable_noStore as noStore } from "next/cache";
 
 // --- GESTIÓN DE CONFIGURACIÓN (Pedidos por hora y QR) ---
 
@@ -175,6 +175,7 @@ export async function toggleBloqueoFecha(fecha: string) {
 }
 
 export async function getBloqueosAction() {
+  noStore(); // Evitar caché para actualizaciones en tiempo real
   try {
     const bloqueos = await prisma.bloqueos_horario.findMany({
       orderBy: { fecha: 'asc' }
