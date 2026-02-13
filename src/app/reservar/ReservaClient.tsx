@@ -81,6 +81,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [blockedReasons, setBlockedReasons] = useState<Record<string, string>>({});
+  const [partialBlocks, setPartialBlocks] = useState<any[]>([]);
   const [currentBlockedReason, setCurrentBlockedReason] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
@@ -190,6 +191,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
       const data = await getBloqueosAction();
       // Solo bloqueamos visualmente los días completos (sin horario específico)
       const fullDayBlocks = data.filter((b: any) => !b.hora_inicio && !b.hora_fin);
+      const partBlocks = data.filter((b: any) => b.hora_inicio && b.hora_fin);
       
       const dates = fullDayBlocks.map((b: any) => b.fecha);
       const reasons = fullDayBlocks.reduce((acc: any, b: any) => {
@@ -198,6 +200,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
       }, {});
       setBlockedDates(dates);
       setBlockedReasons(reasons);
+      setPartialBlocks(partBlocks);
     } catch (error) {
       console.error("Error actualizando bloqueos:", error);
     }
@@ -224,12 +227,40 @@ export default function ReservaClient({ userData }: { userData: any }) {
     const [minH] = minTimeValid.split(':').map(Number);
     const [maxH] = horario.max.split(':').map(Number);
     
-    const hours = [];
+    let hours = [];
     for (let h = minH; h <= maxH; h++) {
       hours.push(h);
     }
+
+    // Filtrar horas bloqueadas parcialmente
+    if (formData.fechaEntrega) {
+      const blocksForDate = partialBlocks.filter((b: any) => b.fecha === formData.fechaEntrega);
+      if (blocksForDate.length > 0) {
+        hours = hours.filter(h => {
+          // Verificar si hay AL MENOS UN minuto disponible en esta hora
+          for (let m = 0; m < 60; m += intervalo) {
+            // Respetar restricciones de apertura/cierre y hora actual
+            if (h === minH && m < minTimeValid.split(':').map(Number)[1]) continue;
+            const [limitMaxH, limitMaxM] = horario.max.split(':').map(Number);
+            if (h === limitMaxH && m > limitMaxM) continue;
+
+            const t = h * 60 + m;
+            const isBlocked = blocksForDate.some((b: any) => {
+              const [sH, sM] = b.hora_inicio.split(':').map(Number);
+              const [eH, eM] = b.hora_fin.split(':').map(Number);
+              const start = (sH * 60 + sM) - intervalo; // Buffer antes
+              const end = (eH * 60 + eM) + intervalo;   // Buffer después
+              return t >= start && t < end;
+            });
+
+            if (!isBlocked) return true; // Encontramos un minuto libre, mostramos la hora
+          }
+          return false; // Todos los minutos válidos de esta hora están bloqueados
+        });
+      }
+    }
     return hours;
-  }, [minTimeValid, horario.max]);
+  }, [minTimeValid, horario.max, formData.fechaEntrega, partialBlocks, intervalo]);
 
   const availableMinutes = useMemo(() => {
     const currentHStr = formData.horaRecojo.split(':')[0];
@@ -239,14 +270,32 @@ export default function ReservaClient({ userData }: { userData: any }) {
     const [minH, minM] = minTimeValid.split(':').map(Number);
     const [maxH, maxM] = horario.max.split(':').map(Number);
     
-    const mins = [];
+    let mins = [];
     for (let m = 0; m < 60; m += intervalo) {
       if (currentH === minH && m < minM) continue;
       if (currentH === maxH && m > maxM) continue;
       mins.push(m);
     }
+
+    // Filtrar minutos bloqueados
+    if (formData.fechaEntrega) {
+      const blocksForDate = partialBlocks.filter((b: any) => b.fecha === formData.fechaEntrega);
+      if (blocksForDate.length > 0) {
+        mins = mins.filter(m => {
+          const t = currentH * 60 + m;
+          const isBlocked = blocksForDate.some((b: any) => {
+            const [sH, sM] = b.hora_inicio.split(':').map(Number);
+            const [eH, eM] = b.hora_fin.split(':').map(Number);
+            const start = (sH * 60 + sM) - intervalo; // Buffer antes
+            const end = (eH * 60 + eM) + intervalo;   // Buffer después
+            return t >= start && t < end;
+          });
+          return !isBlocked;
+        });
+      }
+    }
     return mins;
-  }, [formData.horaRecojo, minTimeValid, horario.max, intervalo]);
+  }, [formData.horaRecojo, minTimeValid, horario.max, intervalo, formData.fechaEntrega, partialBlocks]);
 
   // Cargar el QR de la tabla configuración
   useEffect(() => {
@@ -491,6 +540,57 @@ export default function ReservaClient({ userData }: { userData: any }) {
     setIsDeleting(false);
   };
 
+  const getAvailabilityText = () => {
+    if (!estaRealmenteAbierto) return "LA TIENDA SE ENCUENTRA CERRADA.";
+    if (!formData.fechaEntrega) return "";
+
+    // Formatear fecha
+    let dateText = "";
+    if (formData.fechaEntrega === fechaHoyBolivia) {
+      dateText = "el día de hoy";
+    } else {
+      const [y, m, d] = formData.fechaEntrega.split('-').map(Number);
+      const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+      dateText = `el ${d} de ${months[m-1]} del ${y}`;
+    }
+
+    // Calcular rangos
+    const [minH, minM] = minTimeValid.split(':').map(Number);
+    const [maxH, maxM] = horario.max.split(':').map(Number);
+    let startMin = minH * 60 + minM;
+    let endMin = maxH * 60 + maxM;
+
+    if (startMin >= endMin) return `* No hay horarios disponibles para ${dateText}.`;
+
+    const blocks = partialBlocks
+      .filter((b: any) => b.fecha === formData.fechaEntrega)
+      .map((b: any) => {
+        const [sH, sM] = b.hora_inicio.split(':').map(Number);
+        const [eH, eM] = b.hora_fin.split(':').map(Number);
+        return { 
+          start: Math.max(0, (sH * 60 + sM) - intervalo), 
+          end: (eH * 60 + eM) + intervalo 
+        };
+      })
+      .sort((a: any, b: any) => a.start - b.start);
+
+    let availableIntervals = [];
+    let currentStart = startMin;
+
+    for (const block of blocks) {
+      if (block.end <= currentStart) continue;
+      if (block.start >= endMin) break;
+      if (block.start > currentStart) availableIntervals.push({ start: currentStart, end: block.start });
+      currentStart = Math.max(currentStart, block.end);
+    }
+    if (currentStart < endMin) availableIntervals.push({ start: currentStart, end: endMin });
+
+    if (availableIntervals.length === 0) return `* No hay horarios disponibles para ${dateText} debido a bloqueos administrativos.`;
+
+    const formatTime = (minutes: number) => { const d = new Date(); d.setHours(Math.floor(minutes / 60), minutes % 60); return format(d, "hh:mm aa"); };
+    return `* Horarios disponibles para ${dateText}: ${availableIntervals.map(i => `de ${formatTime(i.start)} a ${formatTime(i.end)}`).join(" y ")}.`;
+  };
+
   return (
     <div className="max-w-6xl mx-auto px-4 md:px-0">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
@@ -539,7 +639,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                         setFormData({...formData, quienRecoge: target.value});
                     }}
                     placeholder="Nombre completo"
-                    className="w-full p-3 md:p-4 pl-12 bg-white border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium"
+                    className="w-full p-3 md:p-4 pl-12 md:pl-12 bg-white border border-gray-200 text-gris rounded-2xl outline-none focus:border-[#C5A059] transition-all font-medium"
                   />
                   <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"><User size={18} /></div>
                 </div>
@@ -691,9 +791,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   Necesitamos por lo menos {minutosPrep + 2} minutos para realizar tu pedido.
               </p>
               <p className="text-[10px] text-gray-400 font-medium ml-5 uppercase">
-                {estaRealmenteAbierto 
-                  ? `* Recojo disponible para el ${formData.fechaEntrega === fechaHoyBolivia ? 'día de hoy' : formData.fechaEntrega}: de ${formatTimeStr(minTimeValid)} a ${formatTimeStr(horario.max)}.`
-                  : "LA TIENDA SE ENCUENTRA CERRADA."}
+                {getAvailabilityText()}
               </p>
               {availabilityError && (
                 <p className="text-xs text-red-500 font-bold ml-5 flex items-center gap-1"><AlertCircle size={12}/> {availabilityError}</p>
