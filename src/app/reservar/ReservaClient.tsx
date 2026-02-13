@@ -127,9 +127,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
 
   // --- LÓGICA DE CALENDARIO ---
   const fechaHoyBolivia = useMemo(() => {
-    const ahora = new Date();
-    const bolivia = new Date(ahora.toLocaleString("en-US", { timeZone: "America/La_Paz" }));
-    return bolivia.toISOString().split('T')[0];
+    // Usamos en-CA porque devuelve formato YYYY-MM-DD directamente
+    return new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
   }, []);
 
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES.find(c => c.code === "BO") || COUNTRIES[0]);
@@ -189,9 +188,16 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const fetchBloqueos = useCallback(async () => {
     try {
       const data = await getBloqueosAction();
+      
+      // Normalizar fechas a YYYY-MM-DD para asegurar coincidencia exacta
+      const normalizedData = data.map((b: any) => ({
+        ...b,
+        fecha: typeof b.fecha === 'string' ? b.fecha.split('T')[0] : b.fecha
+      }));
+
       // Solo bloqueamos visualmente los días completos (sin horario específico)
-      const fullDayBlocks = data.filter((b: any) => !b.hora_inicio && !b.hora_fin);
-      const partBlocks = data.filter((b: any) => b.hora_inicio && b.hora_fin);
+      const fullDayBlocks = normalizedData.filter((b: any) => !b.hora_inicio && !b.hora_fin);
+      const partBlocks = normalizedData.filter((b: any) => b.hora_inicio && b.hora_fin);
       
       const dates = fullDayBlocks.map((b: any) => b.fecha);
       const reasons = fullDayBlocks.reduce((acc: any, b: any) => {
@@ -248,8 +254,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
             const isBlocked = blocksForDate.some((b: any) => {
               const [sH, sM] = b.hora_inicio.split(':').map(Number);
               const [eH, eM] = b.hora_fin.split(':').map(Number);
-              const start = (sH * 60 + sM) - intervalo; // Buffer antes
-              const end = (eH * 60 + eM) + intervalo;   // Buffer después
+              const start = (sH * 60 + sM); // Buffer antes
+              const end = (eH * 60 + eM);   // Buffer después
               return t >= start && t < end;
             });
 
@@ -286,8 +292,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
           const isBlocked = blocksForDate.some((b: any) => {
             const [sH, sM] = b.hora_inicio.split(':').map(Number);
             const [eH, eM] = b.hora_fin.split(':').map(Number);
-            const start = (sH * 60 + sM) - intervalo; // Buffer antes
-            const end = (eH * 60 + eM) + intervalo;   // Buffer después
+            const start = (sH * 60 + sM); // Buffer antes
+            const end = (eH * 60 + eM);   // Buffer después
             return t >= start && t < end;
           });
           return !isBlocked;
@@ -568,8 +574,8 @@ export default function ReservaClient({ userData }: { userData: any }) {
         const [sH, sM] = b.hora_inicio.split(':').map(Number);
         const [eH, eM] = b.hora_fin.split(':').map(Number);
         return { 
-          start: Math.max(0, (sH * 60 + sM) - intervalo), 
-          end: (eH * 60 + eM) + intervalo 
+          start: Math.max(0, (sH * 60 + sM)), 
+          end: (eH * 60 + eM) 
         };
       })
       .sort((a: any, b: any) => a.start - b.start);

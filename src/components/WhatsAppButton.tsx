@@ -44,7 +44,7 @@ ${productosTexto}
 
 *TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*`;
 
-    window.open(`https://wa.me/59162646545?text=${encodeURIComponent(mensaje)}`, "_blank");
+    window.open(`https://wa.me/59179783761?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
 
   return (
