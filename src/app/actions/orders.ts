@@ -41,7 +41,12 @@ function getTimeFromDate(date: any): string | null {
   if (!date) return null;
   if (typeof date === 'string') return date.substring(0, 5);
   if (date instanceof Date) {
-    return date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' });
+    // Usamos en-GB para asegurar consistencia con el formato del admin (24h)
+    return date.toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      timeZone: 'America/La_Paz' 
+    });
   }
   return null;
 }
@@ -62,6 +67,9 @@ export async function checkAvailabilityAction(fecha: string, hora: string) {
       where: { fecha: { gte: startDay, lte: endDay } }
     } as any);
     
+    const config = await prisma.configuracion.findUnique({ where: { id: 1 } });
+    const intervalo = Number((config as any)?.intervalo_minutos) || 10; // Forzar número
+
     for (const bloqueo of bloqueos) {
       const bInicio = getTimeFromDate(bloqueo.hora_inicio);
       const bFin = getTimeFromDate(bloqueo.hora_fin);
@@ -71,8 +79,13 @@ export async function checkAvailabilityAction(fecha: string, hora: string) {
         return { available: false, message: `Fecha bloqueada: ${bloqueo.motivo || "Cierre administrativo"}` };
       }
       // Si tiene horas, verificar colisión (hora es string "HH:mm")
-      if (hora >= bInicio && hora < bFin) {
-        return { available: false, message: `Horario no disponible (${bInicio} - ${bFin}): ${bloqueo.motivo}` };
+      const bInicioMin = getMinutesTotal(bInicio);
+      const bFinMin = getMinutesTotal(bFin);
+      const horaMin = getMinutesTotal(hora);
+
+      // Aplicar Buffer de intervalo
+      if (horaMin >= (bInicioMin - intervalo) && horaMin < (bFinMin + intervalo)) {
+        return { available: false, message: `Lo sentimos, el horario de ${bInicio} a ${bFin} no está disponible por: ${bloqueo.motivo || "Mantenimiento"}` };
       }
     }
 
@@ -80,12 +93,9 @@ export async function checkAvailabilityAction(fecha: string, hora: string) {
     const startHour = new Date(fechaDate); startHour.setMinutes(0,0,0);
     const endHour = new Date(fechaDate); endHour.setMinutes(59,59,999);
 
-    const [count, config] = await Promise.all([
-      prisma.pedidos.count({
-        where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
-      }),
-      prisma.configuracion.findUnique({ where: { id: 1 } })
-    ]);
+    const count = await prisma.pedidos.count({
+      where: { fecha_entrega: { gte: startHour, lte: endHour }, estado: { not: 'cancelado' } }
+    });
 
     const limit = (config as any)?.pedidos_por_hora || 5;
     
@@ -122,6 +132,7 @@ export async function createOrderAction(data: OrderData) {
       }
 
       const bufferMinutos = Number((config as any).minutos_preparacion) || 120;
+      const intervalo = Number((config as any)?.intervalo_minutos) || 10; // Forzar número
       
       // --- FIX DEFINITIVO PARA EL FORMATO DE FECHA ---
       // Si data.fecha_entrega viene como "2026-02-01T06:10...", tomamos solo "2026-02-01"
@@ -181,8 +192,12 @@ export async function createOrderAction(data: OrderData) {
         if (!bInicio || !bFin) {
            throw new Error(`Lo sentimos, esta fecha acaba de ser bloqueada: ${bloqueo.motivo}`);
         }
-        if (horaLimpia >= bInicio && horaLimpia < bFin) {
-           throw new Error(`Lo sentimos, el horario ${horaLimpia} acaba de ser bloqueado: ${bloqueo.motivo}`);
+        
+        const bInicioMin = getMinutesTotal(bInicio);
+        const bFinMin = getMinutesTotal(bFin);
+        
+        if (minutosPedido >= (bInicioMin - intervalo) && minutosPedido < (bFinMin + intervalo)) {
+           throw new Error(`Lo sentimos, el horario de ${bInicio} a ${bFin} no está disponible por: ${bloqueo.motivo}`);
         }
       }
 
