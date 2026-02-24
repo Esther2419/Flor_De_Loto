@@ -17,6 +17,7 @@ import CartSidebar from "./CartSidebar";
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [tiendaAbierta, setTiendaAbierta] = useState(true);
+  const [mensajeCierre, setMensajeCierre] = useState("TIENDA CERRADA");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -57,11 +58,110 @@ export default function Navbar() {
   }, [searchTerm]);
 
   useEffect(() => {
-    const fetchEstado = async () => {
-      const { data } = await supabase.from('configuracion').select('tienda_abierta').eq('id', 1).single();
-      if (data) setTiendaAbierta(data.tienda_abierta);
+    const checkEstadoTienda = async () => {
+      // 1. Obtener configuración manual y hora actual de Bolivia
+      const { data: config } = await supabase.from('configuracion').select('tienda_abierta').eq('id', 1).single();
+      
+      const ahora = new Date();
+      const horaActual = ahora.toLocaleTimeString('en-GB', { 
+        hour: '2-digit', minute: '2-digit', timeZone: 'America/La_Paz' 
+      });
+      const fechaHoy = ahora.toLocaleDateString('en-CA', { timeZone: 'America/La_Paz' });
+
+      // 2. Buscar bloqueos futuros
+      const { data: bloqueos } = await supabase
+        .from('bloqueos_horario')
+        .select('motivo, hora_inicio, hora_fin, fecha')
+        .gte('fecha', fechaHoy)
+        .order('fecha', { ascending: true });
+
+      const bloqueosHoy = bloqueos?.filter((b: any) => b.fecha === fechaHoy) || [];
+
+      // Verificar bloqueo total de hoy
+      const bloqueoTotalHoy = bloqueosHoy.find((b: any) => !b.hora_inicio || !b.hora_fin);
+
+      if (bloqueoTotalHoy) {
+        setTiendaAbierta(false);
+        
+        // Calcular siguiente fecha disponible
+        const [y, m, d] = fechaHoy.split('-').map(Number);
+        let checkDate = new Date(y, m - 1, d);
+        checkDate.setDate(checkDate.getDate() + 1); // Empezar mañana
+        
+        let daysChecked = 0;
+        let foundDate = null;
+
+        while (daysChecked < 60) {
+            const yStr = checkDate.getFullYear();
+            const mStr = String(checkDate.getMonth() + 1).padStart(2, '0');
+            const dStr = String(checkDate.getDate()).padStart(2, '0');
+            const dateStr = `${yStr}-${mStr}-${dStr}`;
+            
+            const isBlocked = bloqueos?.some((b: any) => b.fecha === dateStr && (!b.hora_inicio || !b.hora_fin));
+            
+            if (!isBlocked) {
+                foundDate = new Date(checkDate);
+                break;
+            }
+            checkDate.setDate(checkDate.getDate() + 1);
+            daysChecked++;
+        }
+
+        if (foundDate) {
+            const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+            const dateFormatted = foundDate.toLocaleDateString('es-ES', options).toUpperCase();
+            setMensajeCierre(`CERRADO. VOLVEMOS EL ${dateFormatted}`);
+        } else {
+            setMensajeCierre("CERRADO TEMPORALMENTE");
+        }
+        return;
+      }
+
+      // Verificar bloqueo parcial (por horas)
+      const bloqueoParcial = bloqueosHoy.find((b: any) => {
+          if (!b.hora_inicio || !b.hora_fin) return false;
+          const inicio = b.hora_inicio.slice(0, 5);
+          const fin = b.hora_fin.slice(0, 5);
+          return horaActual >= inicio && horaActual <= fin;
+      });
+
+      if (bloqueoParcial) {
+        setTiendaAbierta(false);
+        setMensajeCierre(bloqueoParcial.motivo ? `CERRADO: ${bloqueoParcial.motivo.toUpperCase()}` : "CERRADO TEMPORALMENTE");
+        return;
+      }
+
+      if (config) {
+        setTiendaAbierta(config.tienda_abierta);
+        setMensajeCierre("TIENDA CERRADA");
+      }
     };
-    fetchEstado();
+
+    checkEstadoTienda();
+
+    // Suscripciones Realtime
+    const channelBloqueos = supabase
+      .channel('navbar_bloqueos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bloqueos_horario' }, () => {
+        checkEstadoTienda();
+      })
+      .subscribe();
+
+    const channelConfig = supabase
+      .channel('navbar_config')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'configuracion', filter: 'id=eq.1' }, () => {
+        checkEstadoTienda();
+      })
+      .subscribe();
+
+    // Intervalo para verificar el cambio de hora cada minuto sin recargar
+    const timer = setInterval(checkEstadoTienda, 60000);
+
+    return () => {
+      supabase.removeChannel(channelBloqueos);
+      supabase.removeChannel(channelConfig);
+      clearInterval(timer);
+    };
   }, []);
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -96,7 +196,7 @@ export default function Navbar() {
               <div className="flex flex-col">
                 <h1 className="font-serif italic font-bold text-base md:text-3xl leading-none bg-gradient-to-r from-[#BF953F] via-[#F3E5AB] to-[#BF953F] bg-clip-text text-transparent">Flor de Loto</h1>
                 <span className={`text-[6px] md:text-[10px] uppercase tracking-[0.35em] font-bold ${tiendaAbierta ? "text-[#D4AF37]" : "text-red-500"}`}>
-                  {tiendaAbierta ? "Floristería" : "TIENDA CERRADA"}
+                  {tiendaAbierta ? "Floristería" : mensajeCierre}
                 </span>
               </div>
             </Link>

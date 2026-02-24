@@ -7,7 +7,7 @@ import Image from "next/image";
 import { supabase } from "@/lib/supabase";
 import { 
   Send, User, Phone, Clock, Loader2, Trash2, 
-  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet, CalendarOff,
+  ShieldCheck, UserCheck, ChevronDown, Search, Check, Lock, AlertCircle, Calendar, AlertTriangle, Wallet,
   QrCode, Download, Upload, CheckCircle2, X
 } from "lucide-react";
 import { createOrderAction, checkAvailabilityAction, uploadComprobante, deleteComprobante } from "@/app/actions/orders";
@@ -78,11 +78,9 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [minTimeValid, setMinTimeValid] = useState("00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
-  const [showBlockedModal, setShowBlockedModal] = useState(false);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [blockedReasons, setBlockedReasons] = useState<Record<string, string>>({});
   const [partialBlocks, setPartialBlocks] = useState<any[]>([]);
-  const [currentBlockedReason, setCurrentBlockedReason] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [availabilityError, setAvailabilityError] = useState<string | null>(null);
 
@@ -130,6 +128,28 @@ export default function ReservaClient({ userData }: { userData: any }) {
     // Usamos en-CA porque devuelve formato YYYY-MM-DD directamente
     return new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
   }, []);
+
+  const fechaFinAno = useMemo(() => {
+    const [year] = fechaHoyBolivia.split('-');
+    return `${year}-12-31`;
+  }, [fechaHoyBolivia]);
+
+  const formatBlockedDate = (dateStr: string) => {
+    if (!dateStr) return "";
+    if (dateStr === fechaHoyBolivia) return "hoy";
+    
+    const [y, m, d] = fechaHoyBolivia.split('-').map(Number);
+    const tomorrow = new Date(y, m - 1, d + 1);
+    const tY = tomorrow.getFullYear();
+    const tM = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const tD = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowStr = `${tY}-${tM}-${tD}`;
+    
+    if (dateStr === tomorrowStr) return "mañana";
+    
+    const [bY, bM, bD] = dateStr.split('-');
+    return `${bD}/${bM}/${bY}`;
+  };
 
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES.find(c => c.code === "BO") || COUNTRIES[0]);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
@@ -227,9 +247,23 @@ export default function ReservaClient({ userData }: { userData: any }) {
     fetchBloqueos();
   }, [fetchBloqueos]);
 
+  const formatTimeStr = (timeStr: string) => {
+    try {
+      const [h, m] = timeStr.split(':');
+      const d = new Date(); d.setHours(parseInt(h), parseInt(m));
+      return format(d, "hh:mm aa");
+    } catch { return timeStr; }
+  };
+
   // --- LÓGICA DE HORAS Y MINUTOS SEPARADOS ---
   const availableHours = useMemo(() => {
     if (!horario.min || !horario.max) return [];
+    
+    // Si la fecha está bloqueada completamente, no hay horas disponibles
+    if (formData.fechaEntrega && blockedDates.includes(formData.fechaEntrega)) {
+      return [];
+    }
+
     const [minH] = minTimeValid.split(':').map(Number);
     const [maxH] = horario.max.split(':').map(Number);
     
@@ -266,7 +300,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
       }
     }
     return hours;
-  }, [minTimeValid, horario.max, formData.fechaEntrega, partialBlocks, intervalo]);
+  }, [minTimeValid, horario.max, formData.fechaEntrega, partialBlocks, intervalo, blockedDates]);
 
   const availableMinutes = useMemo(() => {
     const currentHStr = formData.horaRecojo.split(':')[0];
@@ -312,6 +346,95 @@ export default function ReservaClient({ userData }: { userData: any }) {
     fetchConfig();
   }, []);
 
+  // --- ESTADO DEL BANNER PRINCIPAL (ABIERTO/CERRADO/BLOQUEADO) ---
+  const bannerStatus = useMemo(() => {
+    if (!tiendaAbiertaBD || cierreTemporal) {
+      return { 
+        style: "bg-red-50 border-red-100 text-red-600", 
+        icon: <AlertCircle size={14} />, 
+        message: "LA TIENDA ESTÁ CERRADA TEMPORALMENTE." 
+      };
+    }
+
+    const isTodayBlocked = blockedDates.includes(fechaHoyBolivia);
+    
+    if (isTodayBlocked) {
+      // Buscar siguiente fecha disponible
+      const [y, m, d] = fechaHoyBolivia.split('-').map(Number);
+      let checkDate = new Date(y, m - 1, d);
+      let daysChecked = 0;
+      
+      // Avanzamos al menos un día porque hoy está bloqueado
+      checkDate.setDate(checkDate.getDate() + 1); 
+      
+      while (daysChecked < 60) {
+        const yStr = checkDate.getFullYear();
+        const mStr = String(checkDate.getMonth() + 1).padStart(2, '0');
+        const dStr = String(checkDate.getDate()).padStart(2, '0');
+        const dateStr = `${yStr}-${mStr}-${dStr}`;
+        
+        if (!blockedDates.includes(dateStr)) {
+           const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+           const dateFormatted = checkDate.toLocaleDateString('es-ES', options);
+           const motivo = blockedReasons[fechaHoyBolivia] || "Mantenimiento";
+           
+           return { 
+             style: "bg-red-50 border-red-200 text-red-600", 
+             icon: <Calendar size={14} />, 
+             message: `CERRADO POR ${motivo.toUpperCase()}. VOLVEMOS EL ${dateFormatted.toUpperCase()}.` 
+           };
+        }
+        checkDate.setDate(checkDate.getDate() + 1);
+        daysChecked++;
+      }
+      return { 
+        style: "bg-red-50 border-red-200 text-red-600", 
+        icon: <AlertCircle size={14} />, 
+        message: "NO HAY FECHAS DISPONIBLES PRÓXIMAMENTE." 
+      };
+    }
+
+    if (yaCerroPorHora) {
+        // Verificar si mañana está bloqueado
+        const [y, m, d] = fechaHoyBolivia.split('-').map(Number);
+        let checkDate = new Date(y, m - 1, d + 1); // Mañana
+        
+        let daysChecked = 0;
+        while (daysChecked < 60) {
+            const yStr = checkDate.getFullYear();
+            const mStr = String(checkDate.getMonth() + 1).padStart(2, '0');
+            const dStr = String(checkDate.getDate()).padStart(2, '0');
+            const dateStr = `${yStr}-${mStr}-${dStr}`;
+            
+            if (!blockedDates.includes(dateStr)) {
+                if (daysChecked === 0) {
+                    return { 
+                        style: "bg-orange-50 border-orange-200 text-orange-700", 
+                        icon: <Clock size={14} />, 
+                        message: "TIENDA CERRADA POR HOY. PUEDES AGENDAR PARA MAÑANA." 
+                    };
+                } else {
+                    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
+                    const dateFormatted = checkDate.toLocaleDateString('es-ES', options);
+                    return { 
+                        style: "bg-orange-50 border-orange-200 text-orange-700", 
+                        icon: <Clock size={14} />, 
+                        message: `TIENDA CERRADA POR HOY. PRÓXIMA APERTURA: ${dateFormatted.toUpperCase()}.` 
+                    };
+                }
+            }
+            checkDate.setDate(checkDate.getDate() + 1);
+            daysChecked++;
+        }
+    }
+
+    return { 
+        style: "bg-green-50 border-green-100 text-green-700", 
+        icon: <Check size={14} />, 
+        message: `TIENDA ABIERTA • RECOJOS HASTA LAS ${formatTimeStr(horario.max)}` 
+    };
+  }, [tiendaAbiertaBD, cierreTemporal, blockedDates, fechaHoyBolivia, yaCerroPorHora, horario.max, blockedReasons]);
+
   // --- REALTIME: Escuchar cambios en bloqueos y pedidos ---
   useEffect(() => {
     const channel = supabase.channel('reservas-realtime-client')
@@ -339,20 +462,17 @@ export default function ReservaClient({ userData }: { userData: any }) {
     };
   }, [fetchBloqueos]);
 
-  // --- REALTIME: Si la fecha seleccionada se bloquea de repente (Día completo) ---
-  useEffect(() => {
-    if (formData.fechaEntrega && blockedDates.includes(formData.fechaEntrega)) {
-      setCurrentBlockedReason(blockedReasons[formData.fechaEntrega] || "");
-      setShowBlockedModal(true);
-      setFormData(prev => ({ ...prev, fechaEntrega: "" }));
-    }
-  }, [blockedDates, formData.fechaEntrega, blockedReasons]);
-
   const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!estaRealmenteAbierto || items.length === 0) return;
+    
+    if (blockedDates.includes(formData.fechaEntrega)) {
+      toast("La fecha seleccionada no está disponible.", "error");
+      return;
+    }
+
     if (availabilityError) {
       toast(availabilityError, "error");
       return;
@@ -414,14 +534,6 @@ export default function ReservaClient({ userData }: { userData: any }) {
   };
 
   const filteredCountries = COUNTRIES.filter(c => c.name.toLowerCase().includes(searchCountry.toLowerCase()) || c.prefix.includes(searchCountry));
-
-  const formatTimeStr = (timeStr: string) => {
-    try {
-      const [h, m] = timeStr.split(':');
-      const d = new Date(); d.setHours(parseInt(h), parseInt(m));
-      return format(d, "hh:mm aa");
-    } catch { return timeStr; }
-  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -560,6 +672,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
       dateText = `el ${d} de ${months[m-1]} del ${y}`;
     }
 
+    if (blockedDates.includes(formData.fechaEntrega)) {
+      const reason = blockedReasons[formData.fechaEntrega] || "Mantenimiento";
+      return `* El día ${dateText} no está disponible por: ${reason}.`;
+    }
+
     // Calcular rangos
     const [minH, minM] = minTimeValid.split(':').map(Number);
     const [maxH, maxM] = horario.max.split(':').map(Number);
@@ -602,19 +719,9 @@ export default function ReservaClient({ userData }: { userData: any }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
         <div className={`lg:col-span-2 bg-white p-6 md:p-12 rounded-[2.5rem] border transition-all ${!estaRealmenteAbierto ? "opacity-60 grayscale pointer-events-none" : "border-gray-100 shadow-sm"}`}>
           
-          {!tiendaAbiertaBD || cierreTemporal ? (
-            <div className="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-2xl mb-6 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
-              <AlertCircle size={14} /> LA TIENDA ESTÁ CERRADA TEMPORALMENTE.
-            </div>
-          ) : yaCerroPorHora && formData.fechaEntrega === fechaHoyBolivia ? (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl mb-6 text-center text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
-              <Clock size={14} /> TIENDA CERRADA POR HOY. PUEDES AGENDAR PARA MAÑANA.
-            </div>
-          ) : (
-            <div className="bg-green-50 border border-green-100 text-green-700 px-4 py-3 rounded-2xl mb-6 text-center text-[10px] font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-              <Check size={14} /> TIENDA ABIERTA • RECOJOS HASTA LAS {formatTimeStr(horario.max)}
-            </div>
-          )}
+          <div className={`${bannerStatus.style} border px-4 py-3 rounded-2xl mb-6 text-center text-[10px] md:text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm`}>
+            {bannerStatus.icon} {bannerStatus.message}
+          </div>
 
           <h2 className="font-serif italic text-3xl md:text-4xl text-gris mb-2">Finalizar Reserva</h2>
           <p className="text-gray-400 text-sm mb-8">Información para el recojo en tienda física.</p>
@@ -707,17 +814,9 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   <input 
                     type="date" required 
                     min={fechaHoyBolivia} // BLOQUEA FECHAS ANTERIORES
+                    max={fechaFinAno} // BLOQUEA FECHAS FUTURAS (SOLO ESTE AÑO)
                     value={formData.fechaEntrega}
-                    onChange={(e) => {
-                      const selected = e.target.value;
-                      if (blockedDates.includes(selected)) {
-                        setCurrentBlockedReason(blockedReasons[selected] || "");
-                        setShowBlockedModal(true);
-                        setFormData({...formData, fechaEntrega: ""});
-                      } else {
-                        setFormData({...formData, fechaEntrega: selected});
-                      }
-                    }} 
+                    onChange={(e) => setFormData({...formData, fechaEntrega: e.target.value})} 
                     className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
                   />
                 </div>
@@ -1032,39 +1131,6 @@ export default function ReservaClient({ userData }: { userData: any }) {
                   </button>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* MODAL DE FECHA BLOQUEADA */}
-      <AnimatePresence>
-        {showBlockedModal && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowBlockedModal(false)}
-          >
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl p-6 text-center"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500">
-                <CalendarOff size={32} />
-              </div>
-              <h3 className="font-serif italic text-xl text-gray-800 mb-2">Fecha No Disponible</h3>
-              <p className="text-sm text-gray-500 mb-6">
-                {currentBlockedReason 
-                  ? `Lo sentimos, esta fecha no está disponible: ${currentBlockedReason}.` 
-                  : "Lo sentimos, la fecha seleccionada está bloqueada por feriado o cierre administrativo. Por favor elige otra fecha."}
-              </p>
-              <button 
-                onClick={() => setShowBlockedModal(false)}
-                className="w-full py-3 bg-red-500 text-white rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-red-600 transition-colors shadow-lg shadow-red-200"
-              >
-                Entendido
-              </button>
             </motion.div>
           </motion.div>
         )}
