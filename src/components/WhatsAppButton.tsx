@@ -31,17 +31,18 @@ export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
 
     const mensaje = `*NUEVO PEDIDO ${pedido.id}*
 
-*Cliente:* ${pedido.nombre_contacto}
-*WhatsApp:* ${pedido.telefono_contacto}
-*Recoge:* ${pedido.nombre_receptor}
-*Hora:* ${horaFormateada}
+  *Cliente:* ${pedido.nombre_contacto}
+  *WhatsApp:* ${pedido.telefono_contacto}
+  *Recoge:* ${pedido.nombre_receptor}
+  *Hora:* ${horaFormateada}
 
-*PRODUCTOS:*
-${productosTexto}
+  *PRODUCTOS:*
+  ${productosTexto}
 
-*TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*
+  *TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*
 
-Revisa el comprobante en la app.`;
+  Revisa el comprobante en la app.
+  `;
 
     window.open(`https://wa.me/59162646545?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
