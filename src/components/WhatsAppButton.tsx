@@ -2,7 +2,7 @@
 
 import React from "react";
 import { MessageCircle } from "lucide-react";
-import { format, addMinutes } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
 
 interface WhatsAppButtonProps {
   pedido: any;
@@ -10,10 +10,7 @@ interface WhatsAppButtonProps {
 
 export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
   const handleWhatsAppClick = () => {
-    const fechaBase = new Date(pedido.fecha_entrega);
-    const zonaHorariaOffset = fechaBase.getTimezoneOffset();
-    const fechaAjustada = addMinutes(fechaBase, zonaHorariaOffset);
-    const horaFormateada = format(fechaAjustada, "hh:mm aa");
+    const horaFormateada = formatInTimeZone(new Date(pedido.fecha_entrega), 'America/La_Paz', 'hh:mm aa');
 
     const productosTexto = pedido.detalle_pedidos
       .map((detalle: any) => {
@@ -42,7 +39,9 @@ export default function WhatsAppButton({ pedido }: WhatsAppButtonProps) {
 *PRODUCTOS:*
 ${productosTexto}
 
-*TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*`;
+*TOTAL: Bs ${Number(pedido.total_pagar).toFixed(0)}*
+
+Revisa el comprobante en la app.`;
 
     window.open(`https://wa.me/59162646545?text=${encodeURIComponent(mensaje)}`, "_blank");
   };
