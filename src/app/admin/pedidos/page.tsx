@@ -3,7 +3,7 @@ import prisma from "@/lib/prisma";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import Link from "next/link";
-import { Flower2, Calendar, Clock, ArrowDownUp, ListFilter } from "lucide-react";
+import { Flower2, Calendar, Clock, ArrowDownUp, ListFilter, CheckCircle2 } from "lucide-react";
 import AdminPedidosRealtime from "@/components/AdminPedidosRealtime";
 import { PedidoCard } from "@/components/PedidoCard";
 
@@ -56,7 +56,7 @@ export default async function AdminPedidosPage({
   const notifyId = searchParams.notify;
   const telefonoCliente = searchParams.tel;
 
-  // Lógica para filtrar por fecha (Hoy en Bolivia)
+  // Lógica para filtrar pedidos
   let whereClause: any = {};
   
   if (filter === 'today') {
@@ -77,6 +77,15 @@ export default async function AdminPedidosPage({
       gte: new Date(startIso),
       lte: new Date(endIso)
     };
+  } else if (filter === 'entregado') {
+    whereClause.estado = 'entregado';
+  } else if (filter === 'por_entregar') {
+    whereClause.OR = [
+      { estado: null },
+      { estado: 'pendiente' },
+      { estado: 'aceptado' },
+      { estado: 'terminado' }
+    ];
   }
 
   // Lógica de ordenamiento
@@ -125,8 +134,8 @@ export default async function AdminPedidosPage({
         
         {/* Barra de Herramientas de Filtro y Orden */}
         <div className="flex flex-wrap gap-3">
-          {/* Filtro de Fecha */}
-          <div className="flex items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
+          {/* Filtro de Fecha / Estado */}
+          <div className="flex flex-wrap items-center bg-white p-1 rounded-xl border border-gray-200 shadow-sm">
             <Link 
               href={`?filter=all&sort=${sort}`} 
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
@@ -138,6 +147,18 @@ export default async function AdminPedidosPage({
               className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'today' ? 'bg-[#C5A059] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
             >
               <Calendar size={14} /> Para Hoy
+            </Link>
+            <Link 
+              href={`?filter=por_entregar&sort=${sort}`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'por_entregar' ? 'bg-[#C5A059] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <ArrowDownUp size={14} /> Por Entregar
+            </Link>
+            <Link 
+              href={`?filter=entregado&sort=${sort}`} 
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all ${filter === 'entregado' ? 'bg-[#C5A059] text-white shadow-md' : 'text-gray-500 hover:bg-gray-50'}`}
+            >
+              <CheckCircle2 size={14} /> Entregado
             </Link>
           </div>
 

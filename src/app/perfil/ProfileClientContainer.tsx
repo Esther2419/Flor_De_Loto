@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Mail, Phone, User, Edit2, X, ChevronDown, Search, Check, Save } from "lucide-react";
+import { Mail, Phone, User, Edit2, X, ChevronDown, Search, Check, Save, LayoutDashboard } from "lucide-react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { parsePhoneNumberFromString } from "libphonenumber-js";
 import { updateProfile } from "./actions";
@@ -46,6 +47,7 @@ export default function ProfileClientContainer({ usuario, children }: { usuario:
   const [celularRaw, setCelularRaw] = useState("");
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES.find(c => c.code === "BO") || COUNTRIES[0]);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
+  const isAdminUser = String(usuario.rol || "").toLowerCase().includes("admin");
 
   useEffect(() => {
     const phone = parsePhoneNumberFromString(usuario.celular || "");
@@ -94,6 +96,18 @@ export default function ProfileClientContainer({ usuario, children }: { usuario:
         </div>
         <h2 className="text-3xl font-bold text-white uppercase tracking-wider">{isEditing ? "Modo Edición" : nombre}</h2>
         <p className="text-[#C5A059] text-xs font-bold uppercase tracking-[0.4em] mt-2">{usuario.rol}</p>
+        {isAdminUser && (
+          <div className="mt-4 space-y-3">
+            <div className="rounded-[2rem] border border-[#C5A059]/20 bg-[#FEF4D4] p-4 text-left">
+              <p className="text-[9px] uppercase tracking-[0.35em] font-bold text-[#A97C0A] mb-2">Panel de Admin</p>
+              <p className="text-sm font-medium text-[#050505]">Tu cuenta tiene acceso administrativo. Usa el panel para gestionar pedidos, productos y usuarios.</p>
+            </div>
+            <Link href="/admin" className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-[#050505] font-bold uppercase tracking-[0.3em] text-[11px] shadow-lg hover:bg-gray-100 transition-all">
+              <LayoutDashboard size={16} />
+              Ir al Panel Admin
+            </Link>
+          </div>
+        )}
       </div>
 
       <div className="p-8 md:p-12">
