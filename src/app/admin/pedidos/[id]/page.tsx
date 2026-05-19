@@ -1,6 +1,7 @@
 import React from "react";
 import prisma from "@/lib/prisma";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { toZonedTime } from 'date-fns-tz';
 import { es } from "date-fns/locale";
 import Image from "next/image";
 import Link from "next/link";
@@ -40,6 +41,15 @@ const COUNTRIES = [
   { code: "CA", name: "Canadá", prefix: "+1", flag: "https://flagcdn.com/ca.svg", limit: 10 },
   { code: "PT", name: "Portugal", prefix: "+351", flag: "https://flagcdn.com/pt.svg", limit: 9 },
 ].sort((a, b) => a.name.localeCompare(b.name));
+
+const BOLIVIA_TIMEZONE = 'America/La_Paz';
+
+function formatBoliviaDate(value: string | Date | null | undefined, pattern: string) {
+  if (!value) return "";
+  const date = typeof value === 'string' ? parseISO(value) : value;
+  const zonedDate = toZonedTime(date, BOLIVIA_TIMEZONE);
+  return format(zonedDate, pattern, { locale: es });
+}
 
 export default async function PedidoDetallePage({ params }: { params: { id: string } }) {
   const { id } = params;
@@ -114,7 +124,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
             />
             
             <p className="text-xs text-gray-400 mt-4 font-medium">
-              Solicitado el: {format(new Date(pedido.fecha_pedido || new Date()), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}
+              Solicitado el: {formatBoliviaDate(pedido.fecha_pedido || new Date(), "dd 'de' MMMM, yyyy - hh:mm aa")}
             </p>
           </div>
           
@@ -130,7 +140,7 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
              </div>
              <div className="flex items-center justify-end gap-2 text-[10px] mt-2">
                 <span className="font-black text-gray-400 uppercase tracking-tighter">Entrega:</span>
-                <span className="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">{format(new Date(pedido.fecha_entrega), "dd 'de' MMMM, yyyy - hh:mm aa", { locale: es })}</span>
+                <span className="font-bold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-md">{formatBoliviaDate(pedido.fecha_entrega, "dd 'de' MMMM, yyyy - hh:mm aa")}</span>
              </div>
           </div>
         </div>
@@ -322,8 +332,8 @@ export default async function PedidoDetallePage({ params }: { params: { id: stri
               {pedido.pedidos_historial.map((h: any) => (
                 <div key={h.id.toString()} className="flex gap-6 text-xs relative">
                   <div className="w-20 text-right text-gray-400 font-mono shrink-0 py-1">
-                    {h.fecha ? format(new Date(h.fecha), "HH:mm") : "--:--"}
-                    <div className="text-[9px] opacity-60">{h.fecha ? format(new Date(h.fecha), "dd/MM") : ""}</div>
+                    {h.fecha ? formatBoliviaDate(h.fecha, "HH:mm") : "--:--"}
+                    <div className="text-[9px] opacity-60">{h.fecha ? formatBoliviaDate(h.fecha, "dd/MM") : ""}</div>
                   </div>
                   <div className="py-1">
                     <span className="font-bold text-gray-800 block">
