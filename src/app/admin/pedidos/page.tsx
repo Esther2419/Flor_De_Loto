@@ -164,7 +164,8 @@ export default async function AdminPedidosPage({
           const country = COUNTRIES.find(c => pedido.telefono_contacto?.startsWith(c.prefix));
           const displayPhone = country ? `${country.prefix} ${pedido.telefono_contacto?.slice(country.prefix.length)}` : pedido.telefono_contacto;
 
-          const formattedDate = format(new Date(pedido.fecha_pedido), "dd/MM/yy - hh:mm aa", { locale: es });
+          const pedidoDateObj = toBoliviaTime(new Date(pedido.fecha_pedido));
+          const formattedDate = format(pedidoDateObj, "dd/MM/yy - hh:mm aa", { locale: es });
           const deliveryDateObj = toBoliviaTime(new Date(pedido.fecha_entrega));
           const formattedDeliveryDate = format(deliveryDateObj, "EEEE dd 'de' MMMM", { locale: es });
           const formattedDeliveryTime = format(deliveryDateObj, "hh:mm aa", { locale: es });
