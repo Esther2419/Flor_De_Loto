@@ -29,8 +29,8 @@ function ModalElegante({
         <p className="text-sm text-gray-500 mb-8 leading-relaxed">{mensaje}</p>
 
         <div className="flex flex-col gap-3">
-          <button onClick={onAceptar} className={`py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg active:scale-95 ${esWhatsApp ? 'bg-[#C5A059] text-white' : 'bg-gray-900 text-white'}`}>Aceptar</button>
-          <button onClick={onCancelar} className="py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-700 transition-colors">Cancelar</button>
+          <button type="button" onClick={onAceptar} className={`py-4 rounded-2xl text-xs font-bold uppercase tracking-widest transition-all shadow-lg active:scale-95 ${esWhatsApp ? 'bg-[#C5A059] text-white' : 'bg-gray-900 text-white'}`}>Aceptar</button>
+          <button type="button" onClick={onCancelar} className="py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest hover:text-gray-700 transition-colors">Cancelar</button>
         </div>
       </div>
     </div>
@@ -116,10 +116,11 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
 
   return (
     <>
-      <div className="flex flex-wrap gap-2 justify-end">
+      <div className="flex flex-wrap gap-2 justify-end relative z-30 pointer-events-auto">
         {/* Botón Tomar / Retomar */}
         {(estadoActual === 'pendiente' || estadoActual === 'aceptado') && (
           <button 
+            type="button"
             onClick={() => handleAction('aceptado')} 
             className={`${estadoActual === 'aceptado' ? 'bg-orange-500 hover:bg-orange-600' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-all shadow-sm flex items-center gap-2`}
           >
@@ -130,21 +131,21 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
 
         {/* Botón Terminar */}
         {estadoActual === 'aceptado' && (
-          <button onClick={() => handleAction('terminado')} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors shadow-sm flex items-center gap-2">
+          <button type="button" onClick={() => handleAction('terminado')} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors shadow-sm flex items-center gap-2">
             <PackageCheck size={14} /> Marcar como Terminado
           </button>
         )}
 
         {/* Botón Entregar */}
         {estadoActual === 'terminado' && (
-          <button onClick={() => handleAction('entregado')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors shadow-sm flex items-center gap-2">
+          <button type="button" onClick={() => handleAction('entregado')} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors shadow-sm flex items-center gap-2">
             <CheckCircle2 size={14} /> Confirmar Entrega
           </button>
         )}
 
         {/* Botón Rechazar */}
         {estadoActual !== 'entregado' && estadoActual !== 'rechazado' && (
-          <button onClick={() => setShowRejectionModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors">
+          <button type="button" onClick={() => setShowRejectionModal(true)} className="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 px-4 py-2 rounded-lg text-xs font-bold uppercase transition-colors">
             Rechazar
           </button>
         )}
@@ -159,7 +160,7 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
                 <AlertTriangle size={18} />
                 <h3 className="font-bold text-sm uppercase tracking-wide">Rechazar Pedido</h3>
               </div>
-              <button onClick={() => setShowRejectionModal(false)} className="text-red-400 hover:text-red-700 transition-colors">
+              <button type="button" onClick={() => setShowRejectionModal(false)} className="text-red-400 hover:text-red-700 transition-colors">
                 <X size={20} />
               </button>
             </div>
@@ -179,12 +180,14 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
 
             <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
               <button 
+                type="button"
                 onClick={() => setShowRejectionModal(false)}
                 className="px-4 py-2 text-xs font-bold text-gray-500 hover:text-gray-700 uppercase tracking-wider"
               >
                 Cancelar
               </button>
               <button 
+                type="button"
                 onClick={() => handleAction('rechazado', rejectionReason)}
                 disabled={!rejectionReason.trim()}
                 className="px-6 py-2 bg-red-600 text-white rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-red-200 transition-all"

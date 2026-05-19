@@ -52,15 +52,14 @@ export function PedidoCard({
     <>
     <div className="group relative bg-white rounded-3xl shadow-sm border border-gray-100 p-6 flex flex-col hover:shadow-md transition-all">
       
-      {/* Enlace que cubre toda la tarjeta para navegación */}
-      <Link href={`/admin/pedidos/${pedido.id}`} className="absolute inset-0 z-10 rounded-3xl" />
-
       {/* Header de la tarjeta */}
-      <div className="flex justify-between items-start mb-4 relative z-20 pointer-events-none">
-        <div className="hover:opacity-70 transition-opacity">
-          <h2 className="text-xl font-serif italic text-gray-800">Pedido #{pedido.id}</h2>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver detalles →</p>
-        </div>
+      <div className="flex justify-between items-start mb-4 relative z-20">
+        <Link href={`/admin/pedidos/${pedido.id}`} className="group inline-block hover:opacity-80 transition-opacity">
+          <div>
+            <h2 className="text-xl font-serif italic text-gray-800">Pedido #{pedido.id}</h2>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ver detalles →</p>
+          </div>
+        </Link>
         
         {/* Badge de Verificación en Header */}
         {verificationStatus !== 'none' && (
@@ -120,7 +119,7 @@ export function PedidoCard({
       )}
 
       {/* Botonera de Estado */}
-      <div className={`mb-4 relative z-20 transition-all duration-300 ${needsVerification ? 'opacity-40 grayscale pointer-events-none select-none' : ''}`}>
+      <div className={`mb-4 relative z-30 transition-all duration-300 ${needsVerification ? 'opacity-40 grayscale pointer-events-none select-none' : 'pointer-events-auto'}`}>
         <BotoneraAdmin pedido={pedido} pedidoId={pedido.id.toString()} estadoActual={pedido.estado || ""} />
         {needsVerification && (
             <div className="absolute inset-0 flex items-center justify-center">
