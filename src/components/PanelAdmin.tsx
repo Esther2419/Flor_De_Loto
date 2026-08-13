@@ -25,6 +25,7 @@ import {
   CalendarOff,      // Icono para Feriados
   ReceiptText      // Icono para Comprobantes
 } from "lucide-react";
+import AdminPedidosRealtime from "./AdminPedidosRealtime";
 
 export default function PanelAdmin({ children }: { children?: React.ReactNode }) {
   const { data: session, status } = useSession();
@@ -320,6 +321,7 @@ export default function PanelAdmin({ children }: { children?: React.ReactNode })
         </header>
 
         <main className="flex-1 overflow-auto p-4 md:p-8">
+          <AdminPedidosRealtime />
           <div className="max-w-7xl mx-auto">
              {children}
           </div>
