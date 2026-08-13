@@ -14,6 +14,8 @@ import { createOrderAction, checkAvailabilityAction, uploadComprobante, deleteCo
 import { getBloqueosAction } from "@/app/actions/admin";
 import { useToast } from "@/context/ToastContext";
 import { format } from "date-fns";
+import { formatInTimeZone } from 'date-fns-tz';
+import { es } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 
 const COUNTRIES = [
@@ -129,6 +131,15 @@ export default function ReservaClient({ userData }: { userData: any }) {
     return new Date().toLocaleDateString("en-CA", { timeZone: "America/La_Paz" });
   }, []);
 
+  const fechaMananaBolivia = useMemo(() => {
+    const [y, m, d] = fechaHoyBolivia.split('-').map(Number);
+    const tomorrow = new Date(y, m - 1, d + 1);
+    const tY = tomorrow.getFullYear();
+    const tM = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const tD = String(tomorrow.getDate()).padStart(2, '0');
+    return `${tY}-${tM}-${tD}`;
+  }, [fechaHoyBolivia]);
+
   const fechaFinAno = useMemo(() => {
     const [year] = fechaHoyBolivia.split('-');
     return `${year}-12-31`;
@@ -154,17 +165,25 @@ export default function ReservaClient({ userData }: { userData: any }) {
   const [selectedCountry, setSelectedCountry] = useState(COUNTRIES.find(c => c.code === "BO") || COUNTRIES[0]);
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [searchCountry, setSearchCountry] = useState("");
+  const [hasUserChangedDate, setHasUserChangedDate] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({ 
     whatsapp: userData.celular?.replace(/\D/g, '') || "", 
     quienRecoge: "", 
-    fechaEntrega: fechaHoyBolivia, // Inicializado hoy
+    fechaEntrega: fechaHoyBolivia, 
     horaRecojo: "",
     titularCuenta: "",
     montoTransferencia: "",
     mensajePago: ""
   });
+
+  // Si la tienda ya cerró por la hora de hoy y el usuario aún no cambió manualmente la fecha, auto-seleccionar mañana
+  useEffect(() => {
+    if (yaCerroPorHora && !hasUserChangedDate && formData.fechaEntrega === fechaHoyBolivia) {
+      setFormData(prev => ({ ...prev, fechaEntrega: fechaMananaBolivia }));
+    }
+  }, [yaCerroPorHora, fechaHoyBolivia, fechaMananaBolivia, hasUserChangedDate, formData.fechaEntrega]);
 
   // Sincronizar el monto de transferencia con el total del carrito automáticamente
   useEffect(() => {
@@ -394,46 +413,28 @@ export default function ReservaClient({ userData }: { userData: any }) {
       };
     }
 
-    if (yaCerroPorHora) {
-        // Verificar si mañana está bloqueado
-        const [y, m, d] = fechaHoyBolivia.split('-').map(Number);
-        let checkDate = new Date(y, m - 1, d + 1); // Mañana
-        
-        let daysChecked = 0;
-        while (daysChecked < 60) {
-            const yStr = checkDate.getFullYear();
-            const mStr = String(checkDate.getMonth() + 1).padStart(2, '0');
-            const dStr = String(checkDate.getDate()).padStart(2, '0');
-            const dateStr = `${yStr}-${mStr}-${dStr}`;
-            
-            if (!blockedDates.includes(dateStr)) {
-                if (daysChecked === 0) {
-                    return { 
-                        style: "bg-orange-50 border-orange-200 text-orange-700", 
-                        icon: <Clock size={14} />, 
-                        message: "TIENDA CERRADA POR HOY. PUEDES AGENDAR PARA MAÑANA." 
-                    };
-                } else {
-                    const options: Intl.DateTimeFormatOptions = { weekday: 'long', day: 'numeric', month: 'long' };
-                    const dateFormatted = checkDate.toLocaleDateString('es-ES', options);
-                    return { 
-                        style: "bg-orange-50 border-orange-200 text-orange-700", 
-                        icon: <Clock size={14} />, 
-                        message: `TIENDA CERRADA POR HOY. PRÓXIMA APERTURA: ${dateFormatted.toUpperCase()}.` 
-                    };
-                }
-            }
-            checkDate.setDate(checkDate.getDate() + 1);
-            daysChecked++;
-        }
+    if (yaCerroPorHora && formData.fechaEntrega === fechaHoyBolivia) {
+      return { 
+        style: "bg-orange-50 border-orange-200 text-orange-700", 
+        icon: <Clock size={14} />, 
+        message: "TIENDA CERRADA POR HOY. SELECCIONA LA FECHA DE RECOJO A PARTIR DE MAÑANA." 
+      };
+    }
+
+    if (formData.fechaEntrega > fechaHoyBolivia) {
+      return { 
+        style: "bg-blue-50 border-blue-100 text-blue-700", 
+        icon: <Calendar size={14} />, 
+        message: `RESERVA PROGRAMADA PARA EL ${formData.fechaEntrega} • RECOJOS DE ${formatTimeStr(horario.min)} A ${formatTimeStr(horario.max)}` 
+      };
     }
 
     return { 
         style: "bg-green-50 border-green-100 text-green-700", 
         icon: <Check size={14} />, 
-        message: `TIENDA ABIERTA • RECOJOS HASTA LAS ${formatTimeStr(horario.max)}` 
+        message: `TIENDA ABIERTA HOY • RECOJOS HASTA LAS ${formatTimeStr(horario.max)}` 
     };
-  }, [tiendaAbiertaBD, cierreTemporal, blockedDates, fechaHoyBolivia, yaCerroPorHora, horario.max, blockedReasons]);
+  }, [tiendaAbiertaBD, cierreTemporal, blockedDates, formData.fechaEntrega, fechaHoyBolivia, yaCerroPorHora, horario.min, horario.max, blockedReasons]);
 
   // --- REALTIME: Escuchar cambios en bloqueos y pedidos ---
   useEffect(() => {
@@ -462,7 +463,11 @@ export default function ReservaClient({ userData }: { userData: any }) {
     };
   }, [fetchBloqueos]);
 
-  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && (formData.fechaEntrega !== fechaHoyBolivia || !yaCerroPorHora);
+  const esFechaFutura = formData.fechaEntrega > fechaHoyBolivia;
+  const esFechaHoyValida = formData.fechaEntrega === fechaHoyBolivia && !yaCerroPorHora;
+  const esFechaNoBloqueada = !blockedDates.includes(formData.fechaEntrega);
+
+  const estaRealmenteAbierto = tiendaAbiertaBD && !cierreTemporal && esFechaNoBloqueada && (esFechaFutura || esFechaHoyValida);
 
   const handlePreSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -515,7 +520,7 @@ export default function ReservaClient({ userData }: { userData: any }) {
 
       if (result.success) {
         isOrderCompleted.current = true; // Marcamos como completado para evitar borrado
-        toast("¡Pedido guardado!", "success");
+        toast("¡Pedido guardado con éxito!", "success");
         clearCart();
         window.location.href = "/mis-pedidos";
       } else {
@@ -816,10 +821,23 @@ export default function ReservaClient({ userData }: { userData: any }) {
                     min={fechaHoyBolivia} // BLOQUEA FECHAS ANTERIORES
                     max={fechaFinAno} // BLOQUEA FECHAS FUTURAS (SOLO ESTE AÑO)
                     value={formData.fechaEntrega}
-                    onChange={(e) => setFormData({...formData, fechaEntrega: e.target.value})} 
-                    className="w-full p-3 md:p-4 border border-gray-200 rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold" 
+                    onChange={(e) => {
+                      setHasUserChangedDate(true);
+                      setFormData({...formData, fechaEntrega: e.target.value});
+                    }} 
+                    className={`w-full p-3 md:p-4 border rounded-2xl outline-none focus:border-[#C5A059] text-gris font-bold transition-all ${
+                      formData.fechaEntrega === fechaHoyBolivia && yaCerroPorHora
+                        ? "border-orange-400 ring-2 ring-orange-200 bg-orange-50/20"
+                        : "border-gray-200"
+                    }`}
                   />
                 </div>
+                {formData.fechaEntrega === fechaHoyBolivia && yaCerroPorHora && (
+                  <p className="text-xs text-orange-600 font-bold flex items-center gap-1.5 mt-1 animate-pulse">
+                    <AlertCircle size={14} className="shrink-0" />
+                    Las entregas de hoy finalizaron. Selecciona mañana o una fecha posterior para continuar.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

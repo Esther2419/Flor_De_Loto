@@ -93,16 +93,7 @@ export function BotoneraAdmin({ pedido, pedidoId, estadoActual }: { pedido: any,
     setShowRejectionModal(false);
 
     if (res.success) {
-      // Preguntar si desea enviar la notificación automática
-      if (nuevoEstado !== 'entregado') { // Entregado no requiere mensaje según tu lista
-        setConfirmacion({
-          msg: `Estado actualizado a ${nuevoEstado}. ¿Deseas enviar la notificación por WhatsApp al cliente?`,
-          action: () => {
-            generarMensajeWhatsApp(nuevoEstado, obs);
-            setConfirmacion(null);
-          }
-        });
-      }
+      // Estado actualizado correctamente
     }
   };
 

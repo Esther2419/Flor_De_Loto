@@ -276,6 +276,8 @@ export async function createOrderAction(data: OrderData) {
 
     revalidatePath("/mis-pedidos");
     revalidatePath("/admin/pagos");
+    revalidatePath("/admin/pedidos");
+
     return { success: true, orderId: pedido.id.toString() };
 
   } catch (error: any) {
