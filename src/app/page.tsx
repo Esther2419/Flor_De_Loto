@@ -22,25 +22,25 @@ export default async function HomePage() {
     orderBy: { nombre: 'asc' },
   });
 
-  const categorias = categoriasRaw.map((cat) => ({
+  const categorias = categoriasRaw.map((cat: any) => ({
     id: cat.id.toString(),
     nombre: cat.nombre,
     foto: cat.foto,
     portada: cat.portada,
     descripcion: cat.descripcion,
-    children: cat.other_categorias.map((child) => ({
+    children: cat.other_categorias.map((child: any) => ({
       id: child.id.toString(),
       nombre: child.nombre,
       foto: child.foto,
       children: [], 
-    })).sort((a, b) => a.nombre.localeCompare(b.nombre)) 
+    })).sort((a: any, b: any) => a.nombre.localeCompare(b.nombre)) 
   }));
 
   const floresRaw = await prisma.flores.findMany({
     orderBy: { nombre: 'asc' },
   });
 
-  const flores = floresRaw.map(f => ({
+  const flores = floresRaw.map((f: any) => ({
     id: f.id.toString(),
     nombre: f.nombre,
     precio_unitario: Number(f.precio_unitario),
@@ -54,29 +54,38 @@ export default async function HomePage() {
     // CORRECCIÓN: Incluimos las relaciones para obtener flores y colores
     include: {
       ramo_detalle: {
-        include: { flores: { select: { nombre: true, color: true } } }
+        include: { flores: { select: { nombre: true, color: true, disponible: true } } }
       },
       ramo_envolturas: {
-        include: { envolturas: { select: { color: true } } }
+        include: { envolturas: { select: { color: true, disponible: true } } }
       }
     }
   });
 
-  const ramos = ramosRaw.map(r => ({
-    id: r.id.toString(),
-    nombre: r.nombre,
-    precio_base: Number(r.precio_base),
-    es_oferta: r.es_oferta || false,
-    precio_oferta: r.precio_oferta ? Number(r.precio_oferta) : null,
-    foto_principal: r.foto_principal,
-    activo: r.activo ?? true,
-    categoria_id: r.categoria_id ? r.categoria_id.toString() : "",
-    flores_nombres: r.ramo_detalle.map(d => d.flores.nombre),
-    colores: Array.from(new Set([
-      ...r.ramo_detalle.map(d => d.flores.color),
-      ...r.ramo_envolturas.map(e => e.envolturas.color)
-    ].filter((c): c is string => Boolean(c))))
-  }));
+  const ramos = ramosRaw.map((r: any) => {
+    // Verificar si alguna flor o envoltura requerida está agotada
+    const floresAgotadas = r.ramo_detalle.some((d: any) => d.flores.disponible === false);
+    const envolturasAgotadas = r.ramo_envolturas.some((e: any) => e.envolturas.disponible === false);
+    
+    // El ramo está activo si la BD dice que lo está Y ninguna flor/envoltura está agotada
+    const isActivo = (r.activo ?? true) && !floresAgotadas && !envolturasAgotadas;
+
+    return {
+      id: r.id.toString(),
+      nombre: r.nombre,
+      precio_base: Number(r.precio_base),
+      es_oferta: r.es_oferta || false,
+      precio_oferta: r.precio_oferta ? Number(r.precio_oferta) : null,
+      foto_principal: r.foto_principal,
+      activo: isActivo,
+      categoria_id: r.categoria_id ? r.categoria_id.toString() : "",
+      flores_nombres: r.ramo_detalle.map((d: any) => d.flores.nombre),
+      colores: Array.from(new Set([
+        ...r.ramo_detalle.map((d: any) => d.flores.color),
+        ...r.ramo_envolturas.map((e: any) => e.envolturas.color)
+      ].filter((c): c is string => Boolean(c))))
+    };
+  });
 
   return (
     <main className="min-h-screen bg-crema">
