@@ -29,6 +29,14 @@ export default async function DetallePage({ params }: { params: { type: string, 
       }),
       getDetalleRamoConOpciones(id)
     ]);
+
+    if (data) {
+      const floresAgotadas = data.ramo_detalle.some((d: any) => d.flores.disponible === false);
+      const envolturasAgotadas = data.ramo_envolturas.some((e: any) => e.envolturas.disponible === false);
+      if (floresAgotadas || envolturasAgotadas) {
+        data.activo = false;
+      }
+    }
   } else if (type === 'flor') {
     // Para FLORES: Carga la flor Y TAMBIÉN el catálogo de opciones para personalizar
     const [florData, todasLasFlores, todasLasEnvolturas] = await Promise.all([

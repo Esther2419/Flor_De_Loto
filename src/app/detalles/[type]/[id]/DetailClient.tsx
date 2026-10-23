@@ -387,6 +387,14 @@ export default function DetailClient({ data, type, id, opciones }: any) {
 
             {/* FOOTER Y BOTÓN DE ACCIÓN */}
             <div className="mt-12 pt-8 border-t-2 border-zinc-100 flex flex-col gap-4 w-full">
+              {!data.activo && (
+                <div className="bg-zinc-100 border border-zinc-200 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
+                  <AlertCircle className="text-zinc-500 shrink-0" size={20} />
+                  <p className="text-[11px] font-bold text-zinc-600 uppercase tracking-tight leading-tight">
+                    Temporalmente agotado. Faltan flores o envolturas para armar este producto.
+                  </p>
+                </div>
+              )}
               {sePasoDelLimite && (
                 <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2">
                   <AlertCircle className="text-red-500 shrink-0" size={20} />
@@ -407,7 +415,7 @@ export default function DetailClient({ data, type, id, opciones }: any) {
                   </div>
                 </div>
 
-                <div className={`flex-1 ${sePasoDelLimite ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
+                <div className={`flex-1 ${(sePasoDelLimite || !data.activo) ? 'opacity-30 pointer-events-none grayscale' : ''}`}>
                   <AddToCartButton 
                     id={cartId}
                     productoId={id}

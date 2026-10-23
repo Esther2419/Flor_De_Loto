@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { revalidatePath, unstable_noStore as noStore } from "next/cache";
+import { notificarPedidoTelegram } from "@/lib/telegram";
 
 interface OrderData {
   nombre_contacto: string;
@@ -135,7 +136,7 @@ export async function createOrderAction(data: OrderData) {
   try {
     const ahoraBolivia = new Date(); // Usamos tiempo absoluto real
 
-    const pedido = await prisma.$transaction(async (tx) => {
+    const pedido = await prisma.$transaction(async (tx: any) => {
       const config = await tx.configuracion.findUnique({ where: { id: 1 } });
       
       if (!config || !config.horario_apertura || !config.horario_cierre) {
@@ -273,6 +274,20 @@ export async function createOrderAction(data: OrderData) {
 
       return nuevoPedido;
     });
+
+    // Contar cuántos pedidos pendientes hay en total
+    const pendingCount = await prisma.pedidos.count({
+      where: { estado: 'pendiente' }
+    });
+
+    // Enviar notificación de Telegram en segundo plano (fire-and-forget)
+    notificarPedidoTelegram({
+      id: pedido.id.toString(),
+      nombre_contacto: data.nombre_contacto,
+      telefono_contacto: data.telefono_contacto,
+      total: data.total,
+      pendientes: pendingCount
+    }).catch(console.error);
 
     revalidatePath("/mis-pedidos");
     revalidatePath("/admin/pagos");
